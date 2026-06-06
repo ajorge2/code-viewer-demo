@@ -7,7 +7,8 @@ import path from 'path';
 import fs from 'fs/promises';
 import crypto from 'crypto';
 import {
-  walkProject, readSourceFile, languageFor, MAX_FILES, MAX_TOTAL_BYTES,
+  walkProject, readSourceFile, languageFor, isSourceFile, SKIP_DIRS,
+  MAX_FILE_BYTES, MAX_FILES, MAX_TOTAL_BYTES,
 } from './ingest/code.js';
 
 const MAX_RESIDENT = 3;   // projects kept resident in memory at once (LRU)
@@ -75,6 +76,37 @@ async function scanInto(absPath) {
   return { files, scan: { count: files.size, skipped, totalBytes, truncatedByCount, truncatedByBytes } };
 }
 
+// Build a files Map from uploaded { relPath, content } entries (a browser folder
+// upload), honoring the same caps as a disk scan. Used by hosted deploys where the
+// server can't read the user's filesystem.
+function buildFilesFromUpload(entries) {
+  const files = new Map();
+  let skipped = 0;
+  let totalBytes = 0;
+  let truncatedByBytes = false;
+  const list = Array.isArray(entries) ? entries.slice(0, MAX_FILES) : [];
+  const truncatedByCount = Array.isArray(entries) && entries.length > MAX_FILES;
+  for (const e of list) {
+    const relPath = e && typeof e.relPath === 'string' ? e.relPath : null;
+    const content = e && typeof e.content === 'string' ? e.content : null;
+    // Defensive: re-apply the ignored-dir + source-file + size filters server-side
+    // too (the client already filters, but never trust the upload).
+    if (!relPath || content == null) { skipped++; continue; }
+    const segs = relPath.split('/');
+    if (segs.some((s) => SKIP_DIRS.has(s)) || !isSourceFile(segs[segs.length - 1])) { skipped++; continue; }
+    const bytes = Buffer.byteLength(content, 'utf8');
+    if (bytes > MAX_FILE_BYTES) { skipped++; continue; }
+    if (totalBytes + bytes > MAX_TOTAL_BYTES) { truncatedByBytes = true; break; }
+    totalBytes += bytes;
+    const id = makeFileId(relPath);
+    files.set(id, {
+      id, relPath, absPath: null, language: languageFor(relPath),
+      content, lineCount: countLines(content), bytes,
+    });
+  }
+  return { files, scan: { count: files.size, skipped, totalBytes, truncatedByCount, truncatedByBytes } };
+}
+
 // Drop resident text from the least-recently-used projects beyond MAX_RESIDENT.
 // Never evicts the active project. Registry metadata is retained.
 function evictLRU() {
@@ -82,7 +114,9 @@ function evictLRU() {
   let over = resident.length - MAX_RESIDENT;
   if (over <= 0) return;
   const victims = resident
-    .filter((p) => p.id !== activeId)
+    // Uploaded projects live only in memory (no disk to re-scan), so never evict
+    // their text — evicting would lose them.
+    .filter((p) => p.id !== activeId && !p.uploaded)
     .sort((a, b) => a.lastUsed - b.lastUsed);
   for (const p of victims) {
     if (over <= 0) break;
@@ -135,6 +169,25 @@ export async function registerProject(inputPath) {
   return activateProject(id);
 }
 
+// Register a project from uploaded file contents (a browser folder upload) and
+// make it active. No disk involved — the text is held in memory. The id is a
+// content fingerprint so re-uploading the same folder reuses its localStorage
+// namespace (chunk-size overrides survive).
+export function registerUploadedProject(name, entries) {
+  const safeName = (typeof name === 'string' && name.trim()) || 'uploaded-project';
+  const { files, scan } = buildFilesFromUpload(entries);
+  const fp = crypto.createHash('sha1')
+    .update(`${safeName}|${[...files.values()].map((f) => `${f.relPath}:${f.bytes}`).join('|')}`)
+    .digest('hex').slice(0, 8);
+  const slug = safeName.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'project';
+  const id = `upload-${slug}-${fp}`;
+  projects.set(id, { id, absPath: safeName, name: safeName, files, scan, lastUsed: Date.now(), uploaded: true });
+  enforceRegistryCap();
+  activeId = id;
+  evictLRU();
+  return projectMeta(projects.get(id));
+}
+
 // Make a registered project active, (re)scanning it if it was evicted.
 export async function activateProject(id) {
   const p = projects.get(id);
@@ -144,6 +197,11 @@ export async function activateProject(id) {
     throw e;
   }
   if (!p.files) {
+    if (p.uploaded) {
+      const e = new Error('Uploaded project is no longer in memory — re-upload the folder.');
+      e.status = 410;
+      throw e;
+    }
     const { files, scan } = await scanInto(p.absPath);
     p.files = files;
     p.scan = scan;

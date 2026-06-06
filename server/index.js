@@ -2,31 +2,12 @@ import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import express from 'express';
 import cors from 'cors';
 
-const execAsync = promisify(exec);
-
-// Native macOS folder chooser (the server runs on the user's own machine in the
-// local single-user model, so the Finder dialog appears for them). Returns the
-// picked absolute path, or a { canceled } / { error } signal.
-async function chooseFolderNative() {
-  const script = 'POSIX path of (choose folder with prompt "Select a project folder")';
-  try {
-    const { stdout } = await execAsync(`osascript -e '${script}'`);
-    const picked = stdout.trim();
-    return picked ? { path: picked } : { canceled: true };
-  } catch (e) {
-    const msg = String(e.stderr || e.message || '');
-    if (msg.includes('-128')) return { canceled: true }; // user hit Cancel
-    return { error: 'Native folder picker unavailable on this platform.' };
-  }
-}
 import {
   loadProject, listFiles, getFile, fileCount, getScanStats,
-  registerProject, activateProject, removeProject, listProjects,
+  registerProject, registerUploadedProject, activateProject, removeProject, listProjects,
   activeProjectDir, activeProjectId,
 } from './store.js';
 import { chunkByLines, languageFor } from './ingest/code.js';
@@ -67,7 +48,9 @@ const PROJECT_DIR = path.resolve(process.env.PROJECT_DIR || path.join(__dirname,
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: '2mb' }));
+// Folder uploads (browser-picked projects) post all file contents in one body, so
+// allow a generous limit; per-file and total caps are enforced during ingest.
+app.use(express.json({ limit: '50mb' }));
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, projectDir: activeProjectDir(), files: fileCount(), scan: getScanStats() });
@@ -104,19 +87,21 @@ app.post('/api/projects', async (req, res) => {
   }
 });
 
-// Open a native Finder folder dialog, then register the chosen folder.
-app.post('/api/projects/pick', async (req, res) => {
-  const r = await chooseFolderNative();
-  if (r.error) return res.status(500).json({ error: r.error });
-  if (r.canceled || !r.path) {
-    return res.json({ canceled: true, activeId: activeProjectId(), projects: listProjects() });
+// Register (and activate) a project from an uploaded folder. The browser reads the
+// user's chosen directory and posts { name, files: [{ relPath, content }] }; the
+// server holds it in memory. This is how hosted deploys load a user's local code —
+// the server can't reach their filesystem, so the browser brings it the files.
+app.post('/api/projects/upload', (req, res) => {
+  const { name, files } = req.body || {};
+  if (!Array.isArray(files) || files.length === 0) {
+    return res.status(400).json({ error: 'No files in the uploaded folder.' });
   }
   try {
-    const project = await registerProject(r.path);
+    const project = registerUploadedProject(name, files);
     warmActiveProject();
     res.json({ project, activeId: activeProjectId(), projects: listProjects() });
   } catch (e) {
-    res.status(e.status || 500).json({ error: e.message });
+    res.status(e.status || 500).json({ error: e.message || 'Failed to load uploaded folder' });
   }
 });
 

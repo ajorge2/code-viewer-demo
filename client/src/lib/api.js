@@ -19,13 +19,17 @@ export async function fetchProjects() {
   return res.json() // { activeId, projects: [...] }
 }
 
-// Open a native Finder folder dialog (server-side) and register the chosen
-// folder. Returns { project?, canceled?, activeId, projects }.
-export async function pickProject() {
-  const res = await fetch('/api/projects/pick', { method: 'POST' })
+// Register a project from a browser folder upload. `files` is [{ relPath, content }]
+// read from the user's chosen directory (see lib/uploadFolder.js).
+export async function uploadProject(name, files) {
+  const res = await fetch('/api/projects/upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, files }),
+  })
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.error || 'Failed to open folder picker')
-  return data
+  if (!res.ok) throw new Error(data.error || 'Failed to upload folder')
+  return data // { project, activeId, projects }
 }
 
 export async function activateProject(id) {

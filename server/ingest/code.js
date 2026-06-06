@@ -6,7 +6,7 @@ import fs from 'fs/promises';
 import path from 'path';
 
 // Directories we never descend into.
-const SKIP_DIRS = new Set([
+export const SKIP_DIRS = new Set([
   'node_modules', '.git', 'dist', 'build', '.next', 'out', 'coverage',
   '.venv', 'venv', '__pycache__', '.mypy_cache', '.pytest_cache',
   '.idea', '.vscode', 'target', '.cache', 'vendor', '.turbo',

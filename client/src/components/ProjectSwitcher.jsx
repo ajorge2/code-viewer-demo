@@ -1,8 +1,10 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
+import { readFolderUpload } from '../lib/uploadFolder.js'
 
 // Top-bar control: shows the active project and a dropdown to switch between
-// registered projects or add a new one by local path.
-export default function ProjectSwitcher({ projects, activeId, onSwitch, onPick, onRemove }) {
+// registered projects or add a new one by picking a folder from your machine
+// (read in the browser and uploaded — works locally and in hosted deploys).
+export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload, onRemove }) {
   const [open, setOpen] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -13,6 +15,7 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onPick, 
   const [draggingId, setDraggingId] = useState(null)
   const [dropLeft, setDropLeft] = useState(null) // x (px in switch) of the drop indicator
   const ref = useRef(null)
+  const folderInputRef = useRef(null) // hidden <input webkitdirectory> for picking a folder
   const tabEls = useRef({})       // id -> tab DOM node, for midpoint hit-testing
   const dragRef = useRef(null)    // { id, startX, boundary } while a drag is in progress
   const suppressClick = useRef(false) // swallow the click that ends a real drag
@@ -126,14 +129,24 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onPick, 
     return () => document.removeEventListener('mousedown', onDoc)
   }, [open])
 
-  const pick = async () => {
+  // The user picked a folder: read it in the browser (filtered to source files)
+  // and hand the contents up for upload.
+  const onFolderChosen = async (e) => {
+    const fileList = e.target.files
+    e.target.value = '' // let the same folder be re-picked later
+    if (!fileList || !fileList.length) return
     setBusy(true)
     setError('')
     try {
-      await onPick()
+      const result = await readFolderUpload(fileList)
+      if (!result || result.files.length === 0) {
+        setError('No source files found in that folder.')
+        return
+      }
+      await onUpload(result.name, result.files)
       setOpen(false)
     } catch (err) {
-      setError(err.message || 'Failed to add project')
+      setError(err.message || 'Failed to load folder')
     } finally {
       setBusy(false)
     }
@@ -231,12 +244,29 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onPick, 
           </div>
 
           <div className="proj-add">
-            <button className="proj-pick-btn" type="button" onClick={pick} disabled={busy}>
+            <input
+              type="file"
+              multiple
+              hidden
+              ref={(el) => {
+                folderInputRef.current = el
+                // webkitdirectory/directory aren't standard React props; set them
+                // on the node so the picker selects a whole folder.
+                if (el) { el.setAttribute('webkitdirectory', ''); el.setAttribute('directory', '') }
+              }}
+              onChange={onFolderChosen}
+            />
+            <button
+              className="proj-pick-btn"
+              type="button"
+              onClick={() => folderInputRef.current?.click()}
+              disabled={busy}
+            >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
               </svg>
-              {busy ? 'Opening…' : 'Choose folder…'}
+              {busy ? 'Loading…' : 'Open folder…'}
             </button>
           </div>
           {error && <div className="proj-error">{error}</div>}

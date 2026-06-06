@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   fetchHealth, fetchFiles, fetchProjects,
-  pickProject, activateProject, removeProject,
+  uploadProject, activateProject, removeProject,
 } from './lib/api.js'
 import Library from './components/Library.jsx'
 import CodeViewer from './components/CodeViewer.jsx'
@@ -123,10 +123,12 @@ export default function App() {
 
   // Open the native folder picker and load the chosen project. Throws on
   // failure (caller surfaces the message); a no-op if the user cancels.
-  const handlePickProject = async () => {
-    const r = await pickProject()
+  // Load a project from a browser folder upload (works in hosted deploys, where
+  // the server can't read the user's filesystem).
+  const handleUploadProject = async (name, files) => {
+    const r = await uploadProject(name, files)
     setProjects(r.projects)
-    if (!r.canceled) await loadActiveFiles()
+    await loadActiveFiles()
   }
 
   const handleRemoveProject = async (id) => {
@@ -157,7 +159,7 @@ export default function App() {
           projects={projects}
           activeId={activeProjectId}
           onSwitch={switchProject}
-          onPick={handlePickProject}
+          onUpload={handleUploadProject}
           onRemove={handleRemoveProject}
         />
         <div className="topbar-right">
