@@ -1,0 +1,28 @@
+{
+  "name": "code-viewer-demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Visible code chunking — point it at a codebase, see how it chunks, tune chunk size live. Phase 1 of a code-architecture understanding tool.",
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "node --watch server/index.js",
+    "dev:client": "npm --prefix client run dev",
+    "build": "npm install --prefix client --include=dev && npm --prefix client run build",
+    "start": "node server/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.100.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "tree-sitter-wasms": "^0.1.13",
+    "web-tree-sitter": "^0.22.6"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

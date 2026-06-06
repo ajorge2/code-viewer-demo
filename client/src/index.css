@@ -1,0 +1,1275 @@
+:root {
+  color-scheme: light;
+  --bg: #ffffff;
+  /* Warm off-whites (was cool blue-grey #f7f8fa/#eef1f6) so small surfaces —
+     hovers, the lang chip, the switch — read warm rather than clinical. */
+  --panel: #faf7f4;
+  --panel-2: #f2ebe5;
+  --border: #c3bbb2;
+  /* White → soft-apricot wash for the big panel columns (library sidebar, the
+     notes/edits drawer). Distinct enough to read as a gradient, light enough to
+     keep text legible. */
+  --panel-grad: linear-gradient(180deg, #ffffff 0%, #ffffff 88%, #fdf6f0 100%);
+  /* Structural lines (was charcoal #444039): a very light, slightly-cool grey,
+     translucent. --line-grad fades it to nothing — top-left strong, dissolving
+     toward the bottom-right — for the bordered boxes' gradient-ring overlays
+     (which also carry a faint backdrop blur + white halo). */
+  --line: rgba(182, 195, 215, 0.5);
+  /* Absolute-length stops (not %): the grey is a fixed-size corner accent that
+     fades to white/transparent over ~150px. So a large border (code box) reads
+     mostly white while a short one stays greyer — white prominence scales with
+     the border's size. */
+  /* Fades from the cool grey to a faint cool *white* (not pure transparent) so
+     the lighter end keeps the same blue undertone rather than reading neutral. */
+  --line-grad: linear-gradient(135deg, rgba(182, 195, 215, 0.5) 0px, rgba(214, 237, 247, 0.3) 150px);
+  /* Manila-tab outline: white with a very slight cool hue. */
+  --tab-line: #eef3fb;
+  --text: #1f2430;
+  --muted: #6b7280;
+  --accent: #4f46e5;
+  --active: #e7e9ff;
+  --guide: #aab3c0;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  /* Gradient palettes — keep the anchor hues (#3BB4F0 cool, #D11E08 warm) and
+     blend in supporting colors so fills/thumbs/switches read as gradients. */
+  --fill-cool: linear-gradient(to right, #22d3ee, #3BB4F0, #6366f1);
+  --fill-warm: linear-gradient(to right, #fbbf24, #f97316, #D11E08);
+  --grad-cool: linear-gradient(135deg, #22d3ee, #3BB4F0 55%, #6366f1);
+  /* Chat-scoped variant of --grad-cool: the indigo tail (#6366f1) is replaced by a
+     teal-leaning blue so the chat user bubble / send button stay in the teal family
+     instead of drifting purple. */
+  --grad-cool-teal: linear-gradient(135deg, #22d3ee, #3BB4F0 55%, #2D93D6);
+  --grad-warm: linear-gradient(135deg, #fbbf24, #f97316 50%, #D11E08);
+}
+
+* { box-sizing: border-box; }
+/* Viewport-locked shell: the app is height:100vh with its own internal scroll
+   regions, so the document itself should never scroll. Without this, an element
+   pinned to the right edge with an outward transform (the drawer handle) pushed a
+   few px past the viewport and let the page scroll sideways onto the backdrop. */
+html, body, #root { height: 100%; margin: 0; overflow: hidden; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-weight: 200;
+}
+/* Form controls don't inherit font by default — pull them onto Inter ExtraLight
+   too. Elements that want monospace set var(--mono) explicitly, which wins. */
+button, input, select, textarea {
+  font-family: inherit;
+  font-weight: inherit;
+}
+/* Default-bold elements (e.g. <b>) inherit the extralight weight instead. */
+b, strong { font-weight: inherit; }
+/* Mono UI text (paths, tree, breadcrumb, chunk ranges) at 400; the file-viewer
+   code body stays ExtraLight 200 (inherited from body). */
+.lib-project, .tree-label, .vt-path, .cl-range { font-weight: 400; }
+
+.app { display: flex; flex-direction: column; height: 100vh; position: relative; }
+/* Shared gradient backdrop behind everything. Normally hidden (opaque top bar +
+   opaque panels cover it); revealed where things go transparent — the expanded
+   top bar and the opened-up bottom-right — so they read as one gradient field. */
+.app::before {
+  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-color: #fff;
+  background-image:
+    radial-gradient(60% 120% at 10% 12%, rgba(59, 180, 240, 0.48), transparent 60%),
+    radial-gradient(55% 120% at 34% 95%, rgba(34, 211, 238, 0.36), transparent 60%),
+    radial-gradient(55% 120% at 68% 4%, rgba(249, 115, 22, 0.32), transparent 60%),
+    radial-gradient(62% 130% at 95% 88%, rgba(209, 30, 8, 0.36), transparent 60%);
+  background-repeat: no-repeat; background-size: 160% 160%;
+  animation: topbar-drift 16s ease-in-out infinite alternate;
+}
+/* The drift animates background-position, which can't be composited — it repaints
+   the whole gradient every frame. While the welcome collapse is running, pause it
+   (backdrop + topbar) so that per-frame repaint doesn't compete with the expand
+   and make it choppy. Resumes once the controls settle in. */
+.app:has(.viewer.controls-hidden)::before,
+.app:has(.viewer.controls-hidden) .topbar { animation-play-state: paused; }
+/* Both sit above the fixed gradient backdrop (.app::before, z-index 0). The
+   topbar is bumped one higher than the app-body so the project-picker dropdown —
+   which overflows the topbar's bottom edge into the app-body's vertical space —
+   paints OVER the code/library below instead of being trapped under them. The
+   two don't overlap spatially (stacked column), so this only affects overflow. */
+.app-body { position: relative; z-index: 1; }
+.topbar { position: relative; z-index: 2; }
+
+/* Top bar */
+.topbar {
+  position: relative;
+  display: flex; align-items: flex-start; justify-content: flex-start;
+  /* Expandable height. Content is top-anchored (flex-start) so the brand, its
+     divider, and the reset/expand buttons stay put when the bar grows; only the
+     bottom edge (and the tab pinned to it) moves down. */
+  height: 74px; transition: height .4s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 12px 20px;
+  border-bottom: 1px solid; border-image: linear-gradient(to right, var(--line) 0, rgba(214, 237, 247, 0.3) 240px) 1;
+  /* Punchy on-brand "mesh": soft radial blobs (azure / cyan / orange / red)
+     with rounded, bubbly edges, drifting slowly. */
+  background-color: #fff;
+  background-image:
+    radial-gradient(60% 120% at 10% 12%, rgba(59, 180, 240, 0.48), transparent 60%),
+    radial-gradient(55% 120% at 34% 95%, rgba(34, 211, 238, 0.36), transparent 60%),
+    radial-gradient(55% 120% at 68% 4%, rgba(249, 115, 22, 0.32), transparent 60%),
+    radial-gradient(62% 130% at 95% 88%, rgba(209, 30, 8, 0.36), transparent 60%);
+  background-repeat: no-repeat;
+  background-size: 160% 160%;
+  animation: topbar-drift 16s ease-in-out infinite alternate;
+}
+/* Expanded state — taller bar with the extra room opening up below the content.
+   The bar goes transparent and drops its divider so it merges into the shared
+   gradient backdrop, continuous with the opened-up bottom-right. */
+.topbar.big {
+  height: 50vh;
+  background-color: transparent; background-image: none;
+  border-image: none; border-bottom-color: transparent;
+}
+@keyframes topbar-drift {
+  0%   { background-position:   0% 0%, 100% 100%,   0% 100%, 100% 0%; }
+  50%  { background-position:  45% 55%,  55% 45%,  70% 30%,  30% 70%; }
+  100% { background-position: 100% 100%,  0% 0%, 100% 0%,   0% 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .topbar { animation: none; }
+}
+.brand {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 18px 10px 0; position: relative;
+}
+/* Divider line, detached from the brand box so its length is independent: a fixed
+   height, vertically centered → equal whitespace above and below, with the bottom
+   sitting higher than a full-height border would. */
+.brand::after {
+  content: ""; position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+  width: 1px; height: 34px; background: #fff;
+}
+.logo {
+  color: #5CC6E8;
+  display: grid; place-items: center;
+}
+.topbar h1 {
+  font-size: 22.5px; margin: 0; font-weight: 900;
+  font-family: "Roboto Slab", Georgia, serif;
+}
+.subtitle { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+/* Byline under the CodeArchitect title — smaller + thinner than the slab title. */
+.brand .byline {
+  margin: 1px 0 0; font-size: 10px; font-weight: 300; letter-spacing: 0.2px;
+  color: var(--muted); text-align: center;
+}
+.topbar-right {
+  display: flex; align-items: center; gap: 14px;
+  border-left: 1px solid #fff; padding: 4px 0 4px 16px;
+  margin-left: auto; /* push to the far right; the tab sits next to the brand */
+  /* Fades in (after a short delay) once the bar collapses; the reset button and
+     its divider aren't shown while the bar is expanded. */
+  opacity: 1; transition: opacity .2s ease .12s;
+}
+.topbar.big .topbar-right { opacity: 0; pointer-events: none; transition: opacity 0s; }
+/* "Welcome" centered in the expanded top bar; hidden once it collapses. */
+.topbar-welcome {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  font-family: "Crete Round", Georgia, serif; font-weight: 400;
+  font-size: 85.5px; color: #fff; pointer-events: none; white-space: nowrap;
+  /* Very subtle dark halo so the white text stays legible over the gradient. */
+  text-shadow: 0 0 14px rgba(0, 0, 0, 0.12), 0 0 5px rgba(0, 0, 0, 0.09);
+  opacity: 0; transition: opacity .2s ease;
+}
+.topbar.big .topbar-welcome { opacity: 1; }
+.reload-btn {
+  display: grid; place-items: center; width: 32px; height: 32px;
+  border-radius: 8px; border: 0.5px solid var(--border); background: var(--panel);
+  color: var(--muted); cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+.reload-btn:hover { background: var(--panel-2); color: var(--text); }
+.reload-btn:active { transform: scale(0.94); }
+/* Top-bar pills/buttons get black borders (crisper than grey over the gradient).
+   Scoped to the bar so the project dropdown's inner borders stay grey. */
+.topbar .proj-current, .topbar .reload-btn { border-color: var(--line); }
+.muted { color: var(--muted); }
+
+/* Project switcher (top bar) — sits in flow just right of the brand divider, and
+   is pulled to the topbar's bottom edge (align-self:flex-end + a negative margin
+   that spans the 12px padding + 1px border) so the tab's open bottom overlaps the
+   divider, reading as part of the file bar below. */
+.proj-switch {
+  position: relative; align-self: flex-end;
+  margin: 0 0 -13px 12px; z-index: 5;
+  display: flex; align-items: flex-end;
+}
+/* Manila-folder tab: rounded top corners, side edges curving outward into a J
+   flare at the base (straight-slope polygon fallback for browsers without
+   clip-path: shape()). The bottom is left open so it merges into the bar. The
+   charcoal outline can't be a real border (clip-path drops borders on the
+   cut/curved edges), so it's faked with a 1px drop-shadow halo around the
+   silhouette; its bottom run lands on the divider, which is the same charcoal. */
+/* The tab is drawn as two stacked pseudo-layers so the label can stay sharp:
+   ::before is the charcoal *outline* shape (crisp outer edge), ::after is the
+   white fill laid on top inset 1px on the top/sides so only the ~1px charcoal
+   rim shows (matching the charcoal borders below). The text sits above both
+   (z-index) and is never blurred. The bottom is left open (fill runs to the
+   bottom) so the tab merges into the divider/bar. */
+.proj-tab {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  position: relative; box-sizing: border-box;
+  background: none; border: none;
+  color: var(--text); font-size: 13px; cursor: pointer;
+  /* The button box is rectangular but the visible tab is a clipped folder shape.
+     Disable hit-testing on the box so clicks on the transparent corners (and on
+     the parts tucked under an overlapping tab) fall through to the tab beneath;
+     re-enable it only on the visible fill + the label. */
+  pointer-events: none;
+}
+.proj-tab::before, .proj-tab::after, .proj-tab > * { pointer-events: auto; }
+/* Current-project tab (front of the stack): full width, sits on top. */
+.proj-current { max-width: 280px; padding: 7px 22px 9px; z-index: 2; }
+.proj-current.has-remove { padding-left: 24px; }
+/* Staggered stack: every open project is a folder tab laid out left-to-right.
+   Tabs overlap only by their flare (~16px) so each new project sits well to the
+   RIGHT of the previous one, just slightly on top of it. The active project is
+   last in the order, so it's the rightmost and on top. */
+.proj-stack-tab { margin-left: -16px; }
+.proj-stack-tab:first-child { margin-left: 0; }
+.proj-stack-tab:not(.proj-current) { max-width: 160px; padding: 7px 18px 9px; }
+/* The active tab can be dragged to reorder it among the others. */
+.proj-stack-tab.proj-current { cursor: grab; }
+.proj-stack-tab.dragging { cursor: grabbing; }
+.proj-stack-tab.dragging .proj-name { user-select: none; }
+/* Drop indicator: a vertical blue line with a soft halo, marking where the
+   dragged tab will be inserted on release. */
+.proj-drop-line {
+  position: absolute; bottom: 1px; height: 30px;
+  width: 2px; transform: translateX(-1px);
+  background: #93DBFD; border-radius: 2px;
+  box-shadow: 0 0 6px 1px rgba(147, 197, 253, 0.6), 0 0 2px rgba(147, 197, 253, 0.7);
+  z-index: 200; pointer-events: none;
+}
+/* Tabs behind the front one read as slightly recessed. */
+.proj-stack-tab:not(.proj-current)::after { background: #eef0f2; }
+.proj-stack-tab:not(.proj-current):hover::after { background: #f4f5f7; }
+/* Close button on the active tab, sitting just left of the project name. */
+.proj-current-remove {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 17px; height: 17px; margin: -2px 0 -2px -6px;
+  border-radius: 5px; color: #D11E08; font-size: 14px; line-height: 1;
+  cursor: pointer; transition: background .12s ease, color .12s ease;
+}
+.proj-current-remove:hover { background: rgba(209, 30, 8, 0.12); }
+/* Chooser tab (the dropdown trigger): narrower, behind the current tab and tucked
+   under its right edge so it just peeks out. */
+/* In-flow, right after the active tab: it takes its own slot and overlaps only by
+   the flare (like any two adjacent tabs), pushing the following tab to the right.
+   z-index 99: under the active tab (100, whose right flare laps over it) but over
+   the tab that follows. */
+.proj-chooser { padding: 7px 14px 9px; margin-left: -16px; z-index: 99; }
+/* Caret flips to point up while the menu is open — clear toggle-button feedback. */
+.proj-caret { transition: transform .18s ease; }
+.proj-caret.open { transform: rotate(180deg); }
+/* Pressed feedback so the chooser reads as a real button. */
+.proj-chooser:active .proj-caret { transform: scale(0.88); }
+.proj-chooser:active.proj-chooser .proj-caret.open { transform: rotate(180deg) scale(0.88); }
+.proj-tab::before,
+.proj-tab::after {
+  content: ""; position: absolute;
+  clip-path: polygon(16px 0, calc(100% - 16px) 0, 100% 100%, 0 100%);
+  /* Top corners are cubic: leave the top edge horizontally, arrive at the side
+     vertically — tangent-continuous, so the direction never changes abruptly. */
+  clip-path: shape(
+    from 20px 0,
+    line to calc(100% - 20px) 0,
+    curve to calc(100% - 11px) 10px with calc(100% - 15px) 0 / calc(100% - 11px) 4px,
+    curve to 100% 100% with calc(100% - 11px) 35% / calc(100% - 7px) 80%,
+    line to 0 100%,
+    curve to 11px 10px with 7px 80% / 11px 35%,
+    curve to 20px 0 with 11px 4px / 15px 0
+  );
+}
+/* Charcoal outline. A drop-shadow (applied after clip-path, so it isn't clipped)
+   feathers the dark edge *outward* into the gradient — a soft, non-stamped edge.
+   It only draws outside the opaque shape, so there's no inward groove and the
+   text is untouched. (A plain blur would spread both ways and read as carved.) */
+.proj-tab::before {
+  inset: 0; z-index: 0; background: var(--tab-line);
+  /* Slightly-cool white outline — top + two sides only (directional shadows that
+     skip the downward direction so the tab's bottom edge stays open). */
+  filter:
+    drop-shadow(0 -1px 1px var(--tab-line))
+    drop-shadow(-1px 0 1px var(--tab-line))
+    drop-shadow(1px 0 1px var(--tab-line));
+  transition: background .15s ease, filter .15s ease;
+}
+/* White fill, with its own (slightly tighter) shape so the charcoal gap — i.e.
+   the border width — tapers from ~1.5px at the top down to ~1px along the sides
+   rather than stepping at the corner. No blur: blurring the fill feathered its
+   bottom edge transparent, letting the charcoal ::before bleed through as a
+   closing line. The outer edge is already softened by ::before's drop-shadows. */
+.proj-tab::after  {
+  inset: 0; z-index: 1; background: #fff;
+  transition: background .15s ease;
+  clip-path: polygon(17px 1.5px, calc(100% - 17px) 1.5px, calc(100% - 1px) 100%, 1px 100%);
+  clip-path: shape(
+    from 21px 1.5px,
+    line to calc(100% - 21px) 1.5px,
+    curve to calc(100% - 12.5px) 11px with calc(100% - 16px) 1.5px / calc(100% - 12.5px) 5.5px,
+    curve to calc(100% - 1px) 100% with calc(100% - 12.5px) 35% / calc(100% - 8px) 80%,
+    line to 1px 100%,
+    curve to 12.5px 11px with 8px 80% / 12.5px 35%,
+    curve to 21px 1.5px with 12.5px 5.5px / 16px 1.5px
+  );
+}
+/* Label/caret above both layers, kept crisp. */
+.proj-tab > * { position: relative; z-index: 2; }
+/* Hover: keep the outline; just darken the fill slightly. */
+.proj-tab:not(.proj-current):hover::after { background: #f4f5f7; }
+.proj-name {
+  font-weight: 200; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.proj-menu {
+  position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+  z-index: 50; width: 300px; max-width: 80vw;
+  background: #fff; border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
+}
+.proj-list { max-height: 320px; overflow-y: auto; padding: 6px; }
+.proj-empty { padding: 12px; color: var(--muted); font-size: 13px; text-align: center; }
+.proj-item {
+  display: flex; align-items: center; border-radius: 8px;
+}
+.proj-item:hover { background: var(--panel-2); }
+.proj-item.active { background: rgba(59, 180, 240, 0.12); }
+.proj-item-main {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start;
+  gap: 1px; padding: 7px 10px; background: none; border: none; cursor: pointer;
+  text-align: left; color: var(--text);
+}
+.proj-item-name {
+  font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 210px;
+}
+.proj-item.active .proj-item-name { color: #0D8BC5; }
+.proj-item-meta { font-size: 11px; color: var(--muted); }
+.proj-remove {
+  flex-shrink: 0; width: 24px; height: 24px; margin-right: 6px;
+  border: none; background: none; color: var(--muted); cursor: pointer;
+  border-radius: 6px; font-size: 16px; line-height: 1;
+}
+.proj-remove:hover { background: rgba(209, 30, 8, 0.12); color: #D11E08; }
+.proj-add {
+  display: flex; padding: 8px; border-top: 1px solid var(--border);
+}
+.proj-pick-btn {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 9px 12px; border-radius: 8px; cursor: pointer;
+  border: 1px solid #3BB4F0; background: var(--grad-cool); color: #fff;
+  font-size: 13px;
+}
+.proj-pick-btn:disabled { opacity: 0.6; cursor: default; }
+.proj-error {
+  padding: 0 10px 10px; color: #D11E08; font-size: 12px;
+}
+
+.app-body { display: flex; flex: 1; min-height: 0; }
+
+/* Library sidebar */
+.library {
+  width: 300px; flex-shrink: 0;
+  display: flex; flex-direction: column; background: var(--panel-grad);
+  position: relative; /* anchors the folder-chat FAB */
+}
+.lib-nav {
+  display: flex; gap: 4px; flex-shrink: 0; margin: 0 10px 0 auto;
+}
+.chev {
+  display: flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; padding: 0; border-radius: 5px;
+  background: none; border: 1px solid #3BB4F0; color: #3BB4F0;
+  cursor: pointer;
+}
+.chev:hover:not(:disabled) { background: rgba(59, 180, 240, 0.12); }
+.chev:disabled { opacity: 0.35; cursor: default; }
+.lib-project {
+  display: flex; align-items: flex-start;
+  font-size: 12.5px; font-family: var(--mono); color: var(--text);
+  padding: 10px 12px 0;
+}
+.lib-crumbs {
+  flex: 0 1 auto; min-width: 0;
+  /* Wrap the path up to 3 lines, then ellipsize. */
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3;
+  overflow: hidden; overflow-wrap: anywhere; word-break: break-word;
+}
+.lib-count {
+  flex-shrink: 0; padding-left: 10px;
+  border-left: 1px solid var(--border); color: var(--muted); white-space: nowrap;
+}
+.crumb-sep { color: var(--muted); }
+.crumb { cursor: pointer; }
+.crumb:hover { color: var(--accent); text-decoration: underline; }
+.filter {
+  margin: 10px 12px 12px; padding: 8px 10px; border-radius: 8px;
+  background: var(--bg); border: 1px solid var(--border); color: var(--text);
+  font-size: 13px;
+}
+.filter:focus { outline: none; border-color: #3BB4F0; }
+.file-list { overflow-y: auto; flex: 1; padding: 4px 6px 12px; }
+
+.tree-row {
+  display: flex; align-items: stretch; width: 100%; height: 26px;
+  text-align: left; background: none; border: none; color: var(--text);
+  font-size: 12.5px; padding: 0; border-radius: 6px;
+}
+.tree-row.file { cursor: pointer; }
+.tree-row.file:hover { background: var(--panel-2); }
+.tree-row.file.active { background: rgba(209, 30, 8, 0.12); color: #D11E08; }
+.tree-row.folder { color: var(--muted); cursor: pointer; }
+.tree-row.folder:hover { background: var(--panel-2); color: var(--text); }
+
+.tree-label {
+  font-family: var(--mono); white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; align-self: center; flex: 1; min-width: 0;
+  padding: 0 6px 0 4px;
+}
+.mod-dot {
+  align-self: center; flex-shrink: 0; width: 7px; height: 7px;
+  border-radius: 50%; background: #3BB4F0; margin-right: 8px;
+}
+
+/* Tree guide lines (vertical pass-throughs + the └/├ elbow connector). */
+.guide { position: relative; width: 16px; flex-shrink: 0; align-self: stretch; }
+.g-vert { position: absolute; left: 8px; top: 0; bottom: 0; border-left: 1px solid var(--guide); }
+.g-elbow { position: absolute; left: 8px; top: 0; bottom: 0; border-left: 1px solid var(--guide); }
+.g-elbow.last { bottom: auto; height: 50%; }
+.g-horiz { position: absolute; left: 8px; top: 50%; width: 7px; border-top: 1px solid var(--guide); }
+
+.pad { padding: 12px; }
+
+/* Stage / viewer */
+.stage { flex: 1; min-width: 0; display: flex; background: var(--bg); }
+/* Transparent only while the welcome/collapse animation is running, so the gradient
+   backdrop shows through the opened-up area and stays visible as the viewer fills.
+   Once settled it's white, so the code panel's rounded corners don't reveal the
+   gradient behind them. */
+.stage:has(.viewer.controls-hidden) { background: transparent; }
+.empty { margin: auto; color: var(--muted); }
+.viewer { display: flex; flex-direction: column; flex: 1; min-width: 0; position: relative; }
+
+.viewer-toolbar {
+  display: flex; flex-direction: column; align-items: stretch;
+  padding: 10px 16px; background: #fff;
+  /* max-width (not flex/width) so the welcome→normal expansion animates. */
+  max-width: 100%; transition: max-width .22s ease, border-radius .22s ease;
+}
+.toolbar-top {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding-bottom: 8px; border-bottom: 1px solid transparent;
+  position: relative;
+  transition: border-bottom-color .2s ease;
+}
+/* The divider only belongs when the bottom controls are expanded; fade it in. */
+.toolbar-top.open { border-bottom-color: var(--border); }
+/* The bottom controls expand/collapse in height + opacity at the same pace as
+   the divider fade. grid-template-rows 0fr→1fr animates auto height smoothly. */
+.toolbar-bottom-wrap {
+  display: grid; grid-template-rows: 0fr; opacity: 0;
+  transition: grid-template-rows .2s ease, opacity .2s ease;
+}
+.toolbar-bottom-wrap.open { grid-template-rows: 1fr; opacity: 1; }
+.toolbar-bottom-wrap > .toolbar-bottom { overflow: hidden; min-height: 0; }
+/* Thin oval chevron toggling the bottom half. Absolutely positioned so it
+   never shifts the granularity slider (it floats over the value's right space). */
+.bottom-toggle {
+  position: absolute; right: 10px; top: calc(50% - 4px); transform: translateY(-50%);
+  display: grid; place-items: center; padding: 0;
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  transition: color .15s ease;
+}
+.bottom-toggle:hover { color: var(--text); }
+.toolbar-bottom {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+  padding-top: 10px;
+}
+.vt-file { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
+.vt-file-row { display: flex; align-items: center; gap: 10px; min-width: 0; max-width: 100%; }
+.lang-tag {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em;
+  background: var(--panel-2); border: 1px solid var(--border); color: #0D8BC5;
+  padding: 3px 8px; border-radius: 4px;
+}
+.vt-path { font-family: var(--mono); font-size: 16.25px; color: var(--text); }
+.vt-controls { display: flex; align-items: center; gap: 18px; }
+.slider-stack { display: flex; flex-direction: column; gap: 6px; }
+/* Top row: granularity slider + the highlight toggle, with a divider beneath
+   both, separating the primary controls from the secondary sliders. */
+/* Reserve room on the right for the absolutely-positioned Advanced chevron
+   (right: 10px) so the hint text doesn't run underneath it. */
+.gran-row { display: flex; align-items: center; padding-right: 30px; }
+.chunk-count {
+  font-size: 12px; color: var(--muted); white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.chunk-count b { color: var(--text); }
+.gran-hint { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.gran-divider {
+  width: 1px; align-self: stretch; margin: 2px 12px;
+  background: var(--border);
+}
+/* Granularity leads with the chunk count + divider, so no extra indent here. */
+.slider-wrap.gran { padding-left: 0; }
+.slider-wrap.gran .slider-label { font-size: 13.8px; }
+.slider-wrap { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
+.slider-label { min-width: 82px; white-space: nowrap; }
+.slider-wrap input[type="range"] {
+  width: 200px; margin: 0; -webkit-appearance: none; appearance: none;
+  background: transparent; cursor: pointer;
+}
+.slider-wrap input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 999px;
+  /* Grey overlay (on top) masks the colourful fill past the thumb. */
+  background:
+    linear-gradient(to right, transparent var(--pct, 0%), #e4eaf1 var(--pct, 0%)),
+    var(--fill-cool);
+}
+.slider-wrap input[type="range"]::-moz-range-track {
+  height: 4px; border-radius: 999px; background: #e4eaf1;
+}
+.slider-wrap input[type="range"]::-moz-range-progress {
+  height: 4px; border-radius: 999px; background: var(--fill-cool);
+}
+.slider-wrap input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; margin-top: -5px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--grad-cool); border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(59, 180, 240, 0.5);
+}
+.slider-wrap input[type="range"]::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--grad-cool); border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(59, 180, 240, 0.5);
+}
+.slider-val { color: var(--text); font-variant-numeric: tabular-nums; min-width: 62px; }
+
+/* Tick marks on the depth-spread slider (rest positions 1–5; not 0 / ∞). */
+.range-ticks-wrap { position: relative; display: inline-flex; align-items: center; }
+.range-ticks-wrap input[type="range"] { margin: 0; }
+.range-ticks { position: absolute; left: 0; top: 50%; width: 100%; height: 0; pointer-events: none; }
+.range-ticks svg { position: absolute; top: -3px; left: 0; display: block; }
+
+/* Granularity is the primary control — color it red to signal importance. */
+.slider-wrap.gran input[type="range"]::-webkit-slider-runnable-track {
+  background:
+    linear-gradient(to right, transparent var(--pct, 0%), #e4eaf1 var(--pct, 0%)),
+    var(--fill-warm);
+}
+.slider-wrap.gran input[type="range"]::-moz-range-progress { background: var(--fill-warm); }
+.slider-wrap.gran input[type="range"]::-webkit-slider-thumb {
+  background: var(--grad-warm); box-shadow: 0 0 0 1px rgba(209, 30, 8, 0.5);
+}
+.slider-wrap.gran input[type="range"]::-moz-range-thumb {
+  background: var(--grad-warm); box-shadow: 0 0 0 1px rgba(209, 30, 8, 0.5);
+}
+/* Sub-split on/off switch */
+.switch {
+  position: relative; flex-shrink: 0; width: 34px; height: 10px; padding: 0;
+  border-radius: 999px; border: 1px solid var(--border); background: var(--panel-2);
+  cursor: pointer; transition: background .15s ease, border-color .15s ease;
+}
+.switch .switch-knob {
+  position: absolute; top: 0; left: 1px; width: 8px; height: 8px;
+  border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: left .15s ease;
+}
+.switch.on { background: var(--grad-cool); border-color: #3BB4F0; }
+.switch.on .switch-knob { left: 23px; }
+.sub-val { min-width: 44px; }
+.slider-wrap input[type="range"]:disabled { cursor: default; }
+.slider-wrap input[type="range"]:disabled::-webkit-slider-runnable-track { background: #eef1f6; }
+/* Greyed thumb when the slider is off — whether disabled (sub-split) or just
+   parked at 0 but still interactive (depth spread, via `.off`). */
+.slider-wrap input[type="range"]:disabled::-webkit-slider-thumb,
+.slider-wrap input[type="range"].off::-webkit-slider-thumb {
+  background: #cbd2dc; border-color: #fff; box-shadow: none;
+}
+.slider-wrap input[type="range"]:disabled::-moz-range-track { background: #eef1f6; }
+.slider-wrap input[type="range"]:disabled::-moz-range-progress { background: #eef1f6; }
+.slider-wrap input[type="range"]:disabled::-moz-range-thumb,
+.slider-wrap input[type="range"].off::-moz-range-thumb {
+  background: #cbd2dc; border-color: #fff; box-shadow: none;
+}
+.chunk-toggle {
+  display: grid; place-items: center; width: 30px; height: 30px;
+  border-radius: 7px; border: 0.5px solid var(--border); background: #fff;
+  color: var(--muted); cursor: pointer;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.chunk-toggle:hover { background: var(--panel-2); color: var(--text); }
+.chunk-toggle.active { color: #0D8BC5; border-color: #3BB4F0; background: rgba(59, 180, 240, 0.15); }
+
+.viewer-body { flex: 1; min-height: 0; display: flex; position: relative; }
+/* The toolbar's shadow over the file content. A fixed overlay on the (non-
+   scrolling) body — so it doesn't move with the code — using inset shadows on
+   the top edge (more intense) and, when the drawer is out, the right edge (less
+   intense). The top-right radius makes the two flow continuously around the
+   file content's rounded corner. */
+.viewer-body::before {
+  content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  /* Soft white "cloud" shadow (was dark navy) — a light, diffuse veil down from
+     the top edge rather than a dark recess. */
+  box-shadow: inset 0 9px 11px -8px rgba(255, 255, 255, 0.95);
+  /* The toolbar caps the card above, so the code box sits flush beneath it —
+     keep the top-left square (rounding it carved a notch out under the toolbar). */
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  /* Match the drawer's width transition so the right-edge shadow eases in/out
+     at the same pace as the drawer slides. opacity eases the fade in when the
+     welcome collapses (see .viewer-body.locked::before) instead of popping. */
+  transition: right .2s ease, border-radius .2s ease, box-shadow .2s ease, opacity .6s ease .15s;
+}
+.viewer-body.drawer-open::before {
+  right: 50%; border-top-right-radius: 7px;
+  box-shadow:
+    inset 0 9px 11px -8px rgba(255, 255, 255, 0.95),
+    inset -9px 0 11px -8px rgba(255, 255, 255, 0.7);
+}
+/* The code box's top+left edge lines: a translucent gradient drawn only in a 1px
+   ring (mask-exclude) so it follows the rounded corners. The gradient dissolves
+   by ~mid-box, so the right + bottom edges go fully transparent (no line there —
+   the drawer supplies its own divider). A hair of backdrop blur frosts the line
+   and a very faint white halo lifts it off the surface. */
+.viewer-body::after {
+  content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none;
+  border-top-left-radius: 0; border-bottom-left-radius: 0;
+  padding: 1px;
+  background: var(--line-grad) border-box;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          mask-composite: exclude;
+  /* Softly blur the line itself (NOT a backdrop-filter — that frosted the whole
+     panel behind the ring) plus a faint white halo. */
+  filter: blur(0.4px) drop-shadow(0 0 0.7px rgba(255, 255, 255, 0.7));
+  transition: right .2s ease, border-radius .2s ease, opacity .6s ease .15s;
+}
+.viewer-body.drawer-open::after {
+  right: 50%; border-top-right-radius: 7px;
+}
+/* Charcoal arc tracing only the code box's bottom-right rounded corner. Drawn as
+   an SVG (see CodeViewer) so the stroke can taper to nothing at both ends —
+   matching how the top-right corner thins in/out. */
+.corner-arc {
+  position: absolute; bottom: 0; right: 50%; z-index: 4; pointer-events: none;
+}
+
+/* Drawer handle: the same manila-folder tab as the project picker, but stood up
+   vertically and attached to the drawer's left edge (pointing left). It's built
+   as a horizontal tab, then rotated -90deg; the tab's open edge becomes the right
+   edge that meets the drawer. `right` is set inline and animates with the drawer
+   so the tab rides the drawer's left edge open ↔ closed. */
+.drawer-handle {
+  position: absolute; top: 50%; z-index: 5;
+  width: 50px; height: 24px;
+  /* Rotated about center: translateX(13px) lands the tab's open edge exactly on
+     the drawer's left border line, with the nose protruding into the code area. */
+  transform: translate(13px, -50%) rotate(-90deg);
+  background: none; border: none; padding: 0; cursor: pointer; color: #475569;
+  transition: right .2s ease, transform .12s ease, color .15s ease;
+}
+.drawer-handle::before,
+.drawer-handle::after {
+  content: ""; position: absolute;
+  clip-path: shape(
+    from 11px 0,
+    line to calc(100% - 11px) 0,
+    curve to calc(100% - 6px) 7px with calc(100% - 8px) 0 / calc(100% - 6px) 3px,
+    curve to 100% 100% with calc(100% - 6px) 42% / calc(100% - 3px) 80%,
+    line to 0 100%,
+    curve to 6px 7px with 3px 80% / 6px 42%,
+    curve to 11px 0 with 6px 3px / 8px 0
+  );
+}
+/* Charcoal outline with the same outward feather as the project tab. */
+.drawer-handle::before {
+  inset: 0; z-index: 0; background: var(--tab-line);
+  /* Slightly-cool white outline, top+sides only (same as the project tab). */
+  filter:
+    drop-shadow(0 -1px 1px var(--tab-line))
+    drop-shadow(-1px 0 1px var(--tab-line))
+    drop-shadow(1px 0 1px var(--tab-line));
+}
+/* White fill, inset to leave the ~1px charcoal rim; open edge (toward the drawer)
+   left flush so the tab merges into the drawer. */
+.drawer-handle::after {
+  inset: 0; z-index: 1; background: #fff; transition: background .15s ease;
+  clip-path: shape(
+    from 12px 1.5px,
+    line to calc(100% - 12px) 1.5px,
+    curve to calc(100% - 7px) 8px with calc(100% - 9px) 1.5px / calc(100% - 7px) 4px,
+    curve to calc(100% - 1px) 100% with calc(100% - 7px) 42% / calc(100% - 4px) 80%,
+    line to 1px 100%,
+    curve to 7px 8px with 4px 80% / 7px 42%,
+    curve to 12px 1.5px with 7px 4px / 9px 1.5px
+  );
+}
+.drawer-handle:hover::after { background: #f4f5f7; }
+.drawer-handle:active { transform: translate(13px, -50%) rotate(-90deg) scale(0.94); }
+/* Counter-rotate the chevron so it stays upright inside the rotated tab. */
+.dh-icon {
+  position: relative; z-index: 2; display: grid; place-items: center;
+  width: 100%; height: 100%; transform: rotate(90deg);
+}
+
+/* Code area */
+.code-scroll {
+  flex: 1; overflow: auto; background: var(--bg); position: relative;
+  /* The visible top+left edge lines are a gradient-ring overlay on the (non-
+     scrolling) viewer-body::after — a real border here can't gradient and would
+     scroll with the content. Radius stays so the scrolling content is clipped to
+     the same rounded corners the ring traces. */
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  /* max-width (capped to 50% while locked) so the welcome→normal fill animates. */
+  max-width: 100%;
+  transition: border-radius .2s ease, max-width .22s ease;
+}
+/* When the drawer is out, clip the code (text + chunk highlights) to the same
+   rounded right corners as the shadow/drawer so nothing peeks past them. */
+.viewer-body.drawer-open .code-scroll {
+  border-top-right-radius: 7px;
+}
+/* Locked (top bar expanded): the code contracts to the left half and the toolbar
+   is hidden, so the right half opens up as part of the expanded top region —
+   showing the shared gradient backdrop (see .app::before). The drawer stays shut
+   and its handle is hidden until the bar collapses. */
+/* Keep the file-path header in the welcome view, but contract the toolbar to the
+   code panel's width and hide the granularity controls so the right stays gradient.
+   The toolbar now caps the card, so it carries the rounded top-right corner. */
+.viewer.locked .viewer-toolbar { max-width: 50%; border-top-right-radius: 7px; }
+.viewer.locked .toolbar-bottom-wrap { display: none; }
+/* Granularity row + toggle stay hidden until the collapse fully settles, so the
+   slider doesn't pop in mid-animation. */
+.viewer.controls-hidden .gran-row,
+.viewer.controls-hidden .bottom-toggle { display: none; }
+/* No toolbar shadow / edge line while locked — the area is continuous gradient.
+   Fade (opacity) rather than display:none so they ease in as the welcome collapses
+   instead of popping into existence mid-animation. */
+.viewer-body.locked::before, .viewer-body.locked::after { opacity: 0; }
+.viewer-body.locked { background: transparent; }
+.viewer-body.locked .code-scroll {
+  /* Capped to half via max-width (keeps flex:1) so collapsing animates the fill. */
+  max-width: 50%;
+  /* No scrolling in the welcome state — scrolling would expose the gradient
+     backdrop past the code. */
+  overflow: hidden;
+  /* All corners square — the toolbar above now caps the card's rounded top. */
+  border-radius: 0;
+}
+.viewer-body.locked .drawer-handle { display: none; }
+/* Keep the code scrollbar a constant width (don't let it fatten on hover). */
+.code-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.code-scroll::-webkit-scrollbar-track { background: transparent; }
+/* Thumb is hidden until the user scrolls; `.scrolling` (toggled in JS, cleared
+   3s after the last scroll) fades it in, then it fades back out. */
+.code-scroll::-webkit-scrollbar-thumb {
+  background: rgba(31, 41, 55, 0); border-radius: 6px;
+  transition: background .4s ease;
+}
+.code-scroll.scrolling::-webkit-scrollbar-thumb { background: rgba(31, 41, 55, 0.28); }
+.code-scroll.scrolling::-webkit-scrollbar-thumb:hover { background: rgba(31, 41, 55, 0.4); }
+/* Firefox: thin auto-hiding thumb follows the same scrolling state. */
+.code-scroll { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+.code-scroll.scrolling { scrollbar-color: rgba(31, 41, 55, 0.28) transparent; }
+.code { font-family: var(--mono); font-size: 12.5px; line-height: 17px; padding: 8px 0; }
+.code-line {
+  display: flex; align-items: flex-start; position: relative;
+  /* The code view isn't windowed, so animating the drawer (which re-wraps the code
+     pane) re-laid-out EVERY line each frame — the main source of the choppiness.
+     content-visibility lets off-screen lines skip layout/paint during the
+     animation, so per-frame cost scales with visible lines, not file size. `auto`
+     intrinsic size makes the browser remember each line's real height after first
+     paint, keeping the scroll height stable. Containment only applies while a line
+     is off-screen, so the on-screen selected-chunk glow isn't clipped. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 17px;
+}
+/* Blue margin dot on a chunk's first line when it has notes or edits. */
+.ln-dot {
+  position: absolute; left: 5px; top: 5.5px;
+  width: 6px; height: 6px; border-radius: 50%; background: #3BB4F0;
+}
+/* Colored chunk segments within a line (can start/end mid-line). */
+/* Interactive only while chunk bands are shown (i.e. in the Q&A view); otherwise
+   the code reads as plain text with no per-token affordances. */
+.code.bands .seg:not(.plain-seg) { cursor: pointer; }
+.code.bands .seg:not(.plain-seg):hover { filter: brightness(0.96); }
+/* Selected chunk: a neon, glow-in-the-dark blue halo around its segments. Raised
+   so the glow sits above neighboring segments instead of being painted over. */
+.seg.sel, .seg.sel:hover {
+  position: relative; z-index: 1; border-radius: 2px;
+  /* drop-shadow (not box-shadow) traces the segment's true silhouette, so the
+     glow also wraps the step edges created when a long line spills onto an extra
+     visual row — box-shadow skips those mid-element wrap edges. */
+  filter:
+    drop-shadow(0 0 6px rgba(105, 175, 252, 0.7))
+    drop-shadow(0 0 18px rgba(105, 175, 252, 0.4));
+}
+.ln {
+  flex-shrink: 0; width: 52px; text-align: center; padding: 0 12px;
+  color: #aab2c2; user-select: none; font-variant-numeric: tabular-nums;
+}
+.lc {
+  white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word;
+  padding-right: 24px; flex: 1; min-width: 0; tab-size: 4;
+}
+
+/* Chunk list */
+.chunk-list {
+  width: 50%; flex-shrink: 0;
+  border-radius: 7px 0 0 0; /* top-left only; bottom-left squared */
+  background: var(--panel-grad); display: flex; flex-direction: column;
+  overflow: hidden; transition: width .2s ease;
+  position: relative; /* for the centered divider line + the edge ring */
+}
+/* Drawer's top+left edge lines — same translucent gradient ring (blur + faint
+   white halo) as the code box, following the drawer's rounded-left shape. */
+.chunk-list::before {
+  content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  border-radius: 7px 0 0 0;
+  padding: 1px;
+  background: var(--line-grad) border-box;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          mask-composite: exclude;
+  /* Blur the line itself, not the backdrop (which frosted the whole drawer). */
+  filter: blur(0.4px) drop-shadow(0 0 0.7px rgba(255, 255, 255, 0.7));
+}
+.chunk-list.closed::before { display: none; }
+/* Horizontal divider between the panes (fixed as the list scrolls). Sits at the
+   pane boundary — the edit-history pane below is 25% shorter than a half (37.5%),
+   so the split lands at 62.5%. */
+.chunk-list::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 62.5%;
+  height: 1px; background: var(--border); pointer-events: none; z-index: 1;
+}
+.chunk-list.closed { width: 0; border-left: none; }
+.chunk-list.closed::after { display: none; }
+/* The two drawer panes — Edits (top) and Edit history (bottom), split by the
+   divider. The history pane is 25% shorter than half (37.5%); Edits takes the
+   rest (62.5%). */
+.cl-pane {
+  height: 62.5%; box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 10px 12px; min-width: 0;
+}
+.cl-pane.cl-history { height: 37.5%; }
+.cl-pane-head {
+  flex-shrink: 0; font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cl-pane-for { color: #0D8BC5; text-transform: none; letter-spacing: 0; }
+.cl-pane-area {
+  flex: 1; min-height: 0; resize: none;
+  border: none; background: transparent; color: var(--text);
+  padding: 2px 0; font-family: var(--mono); font-size: 12px; line-height: 1.5;
+  white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto;
+}
+.cl-pane-area:focus { outline: none; }
+.cl-pane-area:disabled { background: transparent; color: var(--muted); cursor: default; }
+
+/* Edits pane: a "reset" on the right of the header. */
+.cl-edit-head { display: flex; align-items: center; justify-content: space-between; }
+.cl-reset {
+  font-size: 10px; text-transform: none; letter-spacing: 0;
+  color: #5CC6E8; background: none; border: 1px solid rgba(59, 180, 240, 0.4);
+  border-radius: 4px; padding: 1px 7px; cursor: pointer;
+}
+.cl-reset:hover:not(:disabled) { background: rgba(59, 180, 240, 0.12); }
+.cl-reset:disabled { opacity: 0.45; cursor: default; color: var(--muted); border-color: var(--border); }
+
+/* Diff editor: a transparent textarea over a backdrop that draws the diff. They
+   share identical metrics so the visible (backdrop) text lines up under the caret. */
+.cl-edit-wrap { position: relative; flex: 1; min-height: 0; }
+.cl-edit-back, .cl-edit-ta {
+  position: absolute; inset: 0; margin: 0; box-sizing: border-box;
+  font-family: var(--mono); font-size: 12px; line-height: 1.5;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.cl-edit-back {
+  z-index: 0; overflow: hidden; pointer-events: none; color: var(--text);
+  padding: 2px 0;
+}
+.cl-edit-line { position: relative; padding-left: 14px; }
+.cl-edit-dot {
+  position: absolute; left: 2px; top: 6px;
+  width: 6px; height: 6px; border-radius: 50%; background: #D11E08;
+}
+.cl-edit-add {
+  background: rgba(80, 208, 236, 0.32); /* light, cyan-leaning blue */
+  border-radius: 2px;
+}
+.cl-edit-ta {
+  z-index: 1; resize: none; border: none; background: transparent; outline: none;
+  padding: 2px 0 2px 14px; overflow: auto; scrollbar-width: none;
+  color: transparent; -webkit-text-fill-color: transparent; caret-color: var(--text);
+}
+.cl-edit-ta::-webkit-scrollbar { width: 0; height: 0; }
+.cl-edit-ta:disabled { cursor: default; }
+
+/* Edit-history carousel (bottom pane). */
+.cl-hist-nav { display: inline-flex; gap: 4px; }
+.cl-hist-arrow {
+  width: 18px; height: 18px; display: grid; place-items: center; padding: 0;
+  font-size: 14px; line-height: 1; color: #3BB4F0; cursor: pointer;
+  background: none; border: 1px solid rgba(59, 180, 240, 0.4); border-radius: 4px;
+}
+.cl-hist-arrow:hover:not(:disabled) { background: rgba(59, 180, 240, 0.12); }
+.cl-hist-arrow:disabled { opacity: 0.4; cursor: default; color: var(--muted); border-color: var(--border); }
+.cl-hist-card {
+  flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px;
+  text-align: left; cursor: pointer; overflow: hidden;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 10px; transition: border-color .15s ease, background .15s ease;
+}
+.cl-hist-card:hover { border-color: #3BB4F0; background: #fbfdff; }
+.cl-hist-loc {
+  flex-shrink: 0; font-family: var(--mono); font-size: 11px; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cl-hist-chunk { color: #0D8BC5; }
+.cl-hist-preview {
+  flex: 1; min-height: 0; margin: 0; overflow: hidden;
+  font-family: var(--mono); font-size: 11px; line-height: 1.45; color: var(--text);
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.cl-pane-empty { flex: 1; display: grid; place-items: center; color: var(--muted); font-size: 12px; }
+
+.cl-scroll { overflow-y: auto; flex: 1; padding: 6px; }
+.cl-item {
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  background: none; border: none; color: var(--text); cursor: pointer;
+  padding: 6px 8px; border-radius: 6px; font-size: 12px;
+}
+.cl-item:hover { background: var(--panel-2); }
+.cl-item.active { background: var(--active); }
+.cl-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.cl-range { font-family: var(--mono); flex: 1; }
+.cl-size { color: var(--muted); font-size: 11px; }
+
+.viewer-loading {
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  background: var(--panel-2); border: 1px solid var(--border);
+  padding: 6px 14px; border-radius: 999px; font-size: 12px; color: var(--muted);
+}
+
+/* RAG Q&A chat — floating button + panel over the file view. Both shift left to
+   clear the chunk drawer when it's open (matches the .viewer-body offset). */
+.chat-fab {
+  position: absolute; bottom: 20px; right: 20px; z-index: 6;
+  width: 48px; height: 48px; border-radius: 50%;
+  display: grid; place-items: center; cursor: pointer;
+  color: #5CC6E8;
+  background:
+    linear-gradient(145deg, rgba(135, 214, 234, 0.42), rgba(176, 190, 248, 0.22));
+  -webkit-backdrop-filter: blur(3px) saturate(150%);
+  backdrop-filter: blur(3px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 6px 18px rgba(31, 41, 55, 0.18),
+    inset 0 1px 2px rgba(255, 255, 255, 0.9),
+    inset 0 -3px 8px rgba(255, 255, 255, 0.35);
+  transition: right .2s ease, transform .12s ease, box-shadow .2s ease, background .2s ease;
+}
+.chat-fab:hover {
+  background:
+    linear-gradient(145deg, rgba(135, 214, 234, 0.58), rgba(176, 190, 248, 0.34));
+  box-shadow:
+    0 8px 22px rgba(31, 41, 55, 0.24),
+    inset 0 1px 2px rgba(255, 255, 255, 1),
+    inset 0 -3px 8px rgba(255, 255, 255, 0.45);
+}
+.chat-fab:active { transform: scale(0.94); }
+/* When the chat is open, the panel header already has a close (×), so the FAB is
+   redundant — hide it. */
+.chat-fab.open { display: none; }
+.viewer-body.drawer-open .chat-fab,
+.viewer-body.locked .chat-fab { right: calc(50% + 20px); }
+
+.chat-panel {
+  position: absolute; bottom: 18px; right: 20px; z-index: 6;
+  width: 380px; max-width: calc(100% - 40px);
+  height: 460px; max-height: calc(100% - 110px);
+  display: flex; flex-direction: column;
+  background: #fff; border: 1px solid var(--border); border-radius: 14px;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22); overflow: hidden;
+  transition: right .2s ease;
+  /* Genie: unfurl up out of the FAB corner (bottom-right). Animate ONLY transform
+     + opacity so the whole thing stays on the GPU compositor — animating
+     border-radius/filter forces a paint every frame and looks like a flip book. */
+  transform-origin: 92% 100%;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  animation: genie-in .46s cubic-bezier(0.22, 1, 0.3, 1) both;
+}
+.chat-panel.closing {
+  animation: genie-out .34s cubic-bezier(0.6, 0, 0.78, 0) both;
+}
+@keyframes genie-in {
+  0%   { opacity: 0; transform: translate(20px, 48px) scale(0.4, 0.22) skewX(7deg); }
+  35%  { opacity: 1; }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes genie-out {
+  0%   { opacity: 1; transform: none; }
+  65%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(20px, 48px) scale(0.4, 0.22) skewX(7deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-panel, .chat-panel.closing { animation: none; }
+}
+.viewer-body.drawer-open .chat-panel,
+.viewer-body.locked .chat-panel { right: calc(50% + 20px); }
+.chat-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; border-bottom: 1px solid var(--border);
+}
+/* Folder-chat header: history chevrons + title on the left, close on the right. */
+.chat-head-left { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.chat-head-left .chat-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-title { font-size: 14px; }
+.chat-close {
+  background: none; border: none; color: var(--muted);
+  font-size: 18px; line-height: 1; cursor: pointer;
+}
+.chat-close:hover { color: var(--text); }
+.chat-context {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 14px; border-bottom: 1px solid var(--border); background: var(--panel);
+}
+.chat-ctx-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.chat-ctx-chunk { font-size: 11px; color: #0D8BC5; }
+/* Structural ancestry breadcrumb (file → … → selected node), built from the
+   stable node ids the chunks endpoint now returns. */
+.chat-ctx-path {
+  font-family: var(--mono); font-size: 10.5px; line-height: 1.5; color: var(--muted);
+}
+.chat-ctx-crumb:last-child { color: var(--text); }
+.chat-ctx-sep { color: var(--guide); }
+.chat-body { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.chat-placeholder { color: var(--muted); font-size: 13px; line-height: 1.5; }
+/* Q&A transcript: user bubbles align right (blue), assistant left (panel grey). */
+.chat-msg { display: flex; flex-direction: column; max-width: 88%; }
+.chat-msg.user { align-self: flex-end; align-items: flex-end; }
+.chat-msg.assistant { align-self: flex-start; align-items: flex-start; }
+.chat-bubble {
+  font-size: 13px; line-height: 1.5; padding: 8px 11px; border-radius: 12px;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+/* The LLM's **bold** is parsed into <strong> (see renderRich). Override the
+   global `strong { font-weight: inherit }` so emphasis actually reads as bold. */
+.chat-bubble strong { font-weight: 600; }
+/* Markdown `## heading` lines (renderRich strips the #'s) — a compact section
+   header. Kept inline (the line breaks come from the surrounding newlines, which
+   pre-wrap renders) so it doesn't double-space; just semibold + a touch larger. */
+.chat-bubble .chat-h { font-weight: 600; font-size: 13.5px; }
+/* Inline `code` (renderRich strips the backticks): monospace at a readable
+   weight (the body is ExtraLight 200, too thin for code) on a faint tint. */
+.chat-bubble code {
+  font-family: var(--mono); font-size: 0.92em; font-weight: 400;
+  background: rgba(120, 140, 170, 0.14); padding: 0.5px 4px; border-radius: 4px;
+}
+/* Fenced ```code``` blocks: a real multi-line code panel — monospace, scrollable,
+   with the backtick tint dropped (it's already on a panel). */
+.chat-bubble pre.chat-code {
+  margin: 6px 0; padding: 8px 10px; border-radius: 8px;
+  background: rgba(120, 140, 170, 0.14); border: 1px solid var(--line);
+  overflow-x: auto; white-space: pre;
+}
+.chat-bubble pre.chat-code code {
+  font-family: var(--mono); font-size: 0.86em; font-weight: 400;
+  background: none; padding: 0; border-radius: 0; white-space: pre;
+}
+/* On the blue user bubble, keep the code panel legible on the gradient. */
+.chat-msg.user .chat-bubble pre.chat-code {
+  background: rgba(255, 255, 255, 0.16); border-color: rgba(255, 255, 255, 0.28);
+}
+/* On the blue user bubble, use a translucent-white tint so it reads on the gradient. */
+.chat-msg.user .chat-bubble code { background: rgba(255, 255, 255, 0.22); }
+.chat-msg.user .chat-bubble { background: var(--grad-cool-teal); color: #fff; border-bottom-right-radius: 4px; }
+.chat-msg.assistant .chat-bubble { background: var(--panel-2); color: var(--text); border-bottom-left-radius: 4px; }
+.chat-bubble.thinking { color: var(--muted); font-style: italic; }
+.chat-msg-path {
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+  margin: 0 0 3px 2px; overflow-wrap: anywhere;
+}
+.chat-msg-error { color: #D11E08; font-size: 12px; align-self: flex-start; }
+.chat-msg-depth { font-size: 10px; color: var(--muted); margin: 2px 0 0 2px; }
+/* The "More detail" user chip reads as an action, not a typed message. */
+.chat-msg.user.deepen .chat-bubble {
+  background: none; color: #0D8BC5; border: 1px solid rgba(59, 180, 240, 0.4);
+  font-size: 11px; padding: 3px 9px;
+}
+/* Action row beneath the latest answer (More detail / Suggest edits). */
+.chat-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.chat-deepen {
+  align-self: flex-start; cursor: pointer;
+  font-size: 12px; color: #0D8BC5; padding: 5px 11px; border-radius: 999px;
+  background: rgba(59, 180, 240, 0.10); border: 1px solid rgba(59, 180, 240, 0.35);
+  transition: background .15s ease;
+}
+.chat-deepen:hover { background: rgba(59, 180, 240, 0.18); }
+/* Jump-to buttons under a folder-chat answer: one per child file/folder the
+   answer named, so you can dive straight into that file's view or that
+   subfolder's chat. Same teal pill family as the action chips above. */
+.chat-refs { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0 2px; }
+.chat-ref {
+  cursor: pointer; font-family: var(--mono); font-size: 11.5px;
+  padding: 4px 10px; border-radius: 999px; color: #0D8BC5;
+  background: rgba(59, 180, 240, 0.10); border: 1px solid rgba(59, 180, 240, 0.35);
+  transition: background .15s ease;
+}
+.chat-ref:hover { background: rgba(59, 180, 240, 0.18); }
+.chat-ref.folder::before { content: "📁"; margin-right: 5px; }
+.chat-ref.file::before { content: "📄"; margin-right: 5px; }
+/* Suggest edits: same pill shape, a greenish accent to set it apart as an action
+   that changes the code rather than the conversation. It's a toggle — `.active`
+   is the on (filled) state. */
+.chat-suggest {
+  align-self: flex-start; cursor: pointer;
+  font-size: 12px; color: #0F7B4F; padding: 5px 11px; border-radius: 999px;
+  background: rgba(16, 163, 96, 0.10); border: 1px solid rgba(16, 163, 96, 0.35);
+  transition: background .15s ease, color .15s ease;
+}
+.chat-suggest:hover { background: rgba(16, 163, 96, 0.18); }
+.chat-suggest:disabled { opacity: 0.6; cursor: default; }
+.chat-suggest.active {
+  background: #10A360; color: #fff; border-color: #0F7B4F;
+}
+.chat-suggest.active:hover { background: #0F8E54; }
+/* Compact variant for the context bar. */
+.chat-suggest.sm {
+  flex-shrink: 0; font-size: 10.5px; padding: 2px 8px; white-space: nowrap;
+}
+/* Edit mode: tint the input row green so it's clear messages now make changes. */
+.chat-input-row.editing { background: rgba(16, 163, 96, 0.07); }
+.chat-input-row.editing .chat-input::placeholder { color: #0F7B4F; }
+.chat-input-row.editing .chat-send { background: #10A360; }
+
+/* Folder chat — FAB anchored to the bottom-right of the library column, panel
+   floats up from there. Reuses the shared chat-head/body/msg/input classes. */
+/* Identical to .chat-fab (size/colors/shadow) and at the same bottom offset, so
+   the two FABs' centers line up vertically across the two columns. */
+.lib-chat-fab {
+  position: absolute; bottom: 20px; right: 20px; z-index: 7;
+  width: 48px; height: 48px; border-radius: 50%;
+  display: grid; place-items: center; cursor: pointer;
+  color: #5CC6E8;
+  background: linear-gradient(145deg, rgba(135, 214, 234, 0.42), rgba(176, 190, 248, 0.22));
+  -webkit-backdrop-filter: blur(3px) saturate(150%); backdrop-filter: blur(3px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 6px 18px rgba(31, 41, 55, 0.18),
+    inset 0 1px 2px rgba(255, 255, 255, 0.9),
+    inset 0 -3px 8px rgba(255, 255, 255, 0.35);
+  transition: transform .12s ease, background .2s ease, box-shadow .2s ease;
+}
+.lib-chat-fab:hover {
+  background: linear-gradient(145deg, rgba(135, 214, 234, 0.58), rgba(176, 190, 248, 0.34));
+  box-shadow:
+    0 8px 22px rgba(31, 41, 55, 0.24),
+    inset 0 1px 2px rgba(255, 255, 255, 1),
+    inset 0 -3px 8px rgba(255, 255, 255, 0.45);
+}
+.lib-chat-fab:active { transform: scale(0.94); }
+.lib-chat-fab.open { display: none; }
+.lib-chat-panel {
+  position: fixed; bottom: 18px; left: 14px; z-index: 8;
+  width: 380px; max-width: calc(100vw - 28px);
+  height: 460px; max-height: calc(100vh - 96px);
+  display: flex; flex-direction: column;
+  background: #fff; border: 1px solid var(--border); border-radius: 14px;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.24); overflow: hidden;
+  transform-origin: 12% 100%;
+  /* Promote to a GPU layer like .chat-panel does — without this the genie scale
+     repaints every frame and looks choppy. */
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  animation: genie-in .46s cubic-bezier(0.22, 1, 0.3, 1) both;
+}
+.lib-chat-panel.closing {
+  animation: genie-out .34s cubic-bezier(0.6, 0, 0.78, 0) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lib-chat-panel, .lib-chat-panel.closing { animation: none; }
+}
+.chat-input-row {
+  display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--border);
+  /* Keep the 📎/send buttons pinned to the bottom as the textarea grows upward. */
+  align-items: flex-end;
+}
+.chat-input {
+  flex: 1; min-width: 0; padding: 9px 12px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 13px;
+  /* Multi-line: Shift+Enter inserts a newline; the textarea auto-grows (JS) up to
+     max-height, then scrolls. No manual drag handle. */
+  resize: none; line-height: 1.4; min-height: 38px; max-height: 140px; overflow-y: auto;
+}
+.chat-input:focus { outline: none; border-color: #3BB4F0; }
+.chat-send {
+  width: 36px; height: 38px; flex-shrink: 0; border-radius: 10px; cursor: pointer;
+  border: 1px solid #3BB4F0; background: var(--grad-cool-teal); color: #fff; font-size: 15px;
+}
+.chat-send:disabled { opacity: 0.55; cursor: default; }
+/* Don't dim the whole input (it greyed the border); just the cursor. */
+.chat-input:disabled { cursor: default; }
+
+/* ── Attach-a-project-file-as-context control (📎 in the chat input row) ──────── */
+.ctx-attach { position: relative; display: flex; align-items: center; flex-shrink: 0; }
+.ctx-add {
+  width: 36px; height: 38px; flex-shrink: 0; cursor: pointer;
+  border-radius: 10px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--muted); font-size: 15px; line-height: 1;
+  transition: border-color .15s ease, color .15s ease;
+}
+.ctx-add:hover:not(:disabled) { border-color: #3BB4F0; color: #0D8BC5; }
+.ctx-add:disabled { opacity: 0.55; cursor: default; }
+/* Attached-file chip (replaces the picker once a file is chosen — limit 1). */
+.ctx-chip {
+  display: inline-flex; align-items: center; gap: 4px; max-width: 160px;
+  padding: 4px 4px 4px 9px; border-radius: 999px; font-size: 11.5px;
+  color: #0D8BC5; background: rgba(59, 180, 240, 0.10);
+  border: 1px solid rgba(59, 180, 240, 0.35);
+}
+.ctx-chip-name { font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctx-chip-x {
+  flex-shrink: 0; width: 16px; height: 16px; border: none; border-radius: 50%;
+  background: rgba(59, 180, 240, 0.18); color: #0D8BC5; cursor: pointer;
+  font-size: 12px; line-height: 1; display: grid; place-items: center;
+}
+.ctx-chip-x:hover { background: rgba(59, 180, 240, 0.32); }
+/* Searchable file picker, opening upward out of the 📎 button. */
+.ctx-menu {
+  position: absolute; bottom: calc(100% + 6px); left: 0; z-index: 9;
+  width: 300px; max-width: 70vw; display: flex; flex-direction: column;
+  background: #fff; border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.22); overflow: hidden;
+}
+.ctx-search {
+  padding: 9px 11px; border: none; border-bottom: 1px solid var(--border);
+  font-size: 12.5px; color: var(--text); background: var(--panel);
+}
+.ctx-search:focus { outline: none; }
+.ctx-list { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; }
+.ctx-item {
+  text-align: left; padding: 7px 11px; border: none; background: none; cursor: pointer;
+  font-family: var(--mono); font-size: 11.5px; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ctx-item:hover { background: rgba(59, 180, 240, 0.12); color: #0D8BC5; }
+.ctx-empty { padding: 10px 11px; color: var(--muted); font-size: 12px; }
+/* Footer shown when results are capped — the rest are reachable by searching. */
+.ctx-more {
+  padding: 7px 11px; color: var(--muted); font-size: 11px; font-style: italic;
+  border-top: 1px solid var(--border); background: var(--panel);
+}
