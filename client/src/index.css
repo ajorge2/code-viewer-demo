@@ -454,6 +454,14 @@ b, strong { font-weight: inherit; }
    gradient behind them. */
 .stage:has(.viewer.controls-hidden) { background: transparent; }
 .empty { margin: auto; color: var(--muted); }
+.empty-loading { display: flex; align-items: center; gap: 9px; }
+.empty-spinner {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--muted);
+  animation: empty-spin 0.7s linear infinite;
+}
+@keyframes empty-spin { to { transform: rotate(360deg); } }
 .viewer { display: flex; flex-direction: column; flex: 1; min-width: 0; position: relative; }
 
 .viewer-toolbar {

@@ -26,6 +26,10 @@ export default function App() {
   const [health, setHealth] = useState(null)
   const [loaded, setLoaded] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
+  // True while a project is being uploaded or switched in — i.e. it's registered
+  // on the server but its files aren't in the viewer yet. Drives a loading state
+  // in the stage so the main area isn't blank (or showing the old project).
+  const [projectLoading, setProjectLoading] = useState(false)
 
   // Per-file chunk size for the active project. Defaults to the file's original;
   // a per-file override is stored only when the user moves that file's slider.
@@ -116,9 +120,14 @@ export default function App() {
 
   const switchProject = async (id) => {
     if (id === activeProjectId) return
-    const r = await activateProject(id)
-    setProjects(r.projects)
-    await loadActiveFiles()
+    setProjectLoading(true)
+    try {
+      const r = await activateProject(id)
+      setProjects(r.projects)
+      await loadActiveFiles()
+    } finally {
+      setProjectLoading(false)
+    }
   }
 
   // Open the native folder picker and load the chosen project. Throws on
@@ -126,9 +135,14 @@ export default function App() {
   // Load a project from a browser folder upload (works in hosted deploys, where
   // the server can't read the user's filesystem).
   const handleUploadProject = async (name, files) => {
-    const r = await uploadProject(name, files)
-    setProjects(r.projects)
-    await loadActiveFiles()
+    setProjectLoading(true)
+    try {
+      const r = await uploadProject(name, files)
+      setProjects(r.projects)
+      await loadActiveFiles()
+    } finally {
+      setProjectLoading(false)
+    }
   }
 
   const handleRemoveProject = async (id) => {
@@ -188,7 +202,12 @@ export default function App() {
           onSelect={setSelectedId}
         />
         <main className="stage">
-          {selectedFile ? (
+          {projectLoading ? (
+            <div className="empty empty-loading">
+              <span className="empty-spinner" aria-hidden="true" />
+              Loading project…
+            </div>
+          ) : selectedFile ? (
             <CodeViewer
               file={selectedFile}
               files={files}
