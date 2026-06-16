@@ -228,13 +228,82 @@ export function listProjects() {
   return [...projects.values()].map(projectMeta).sort((a, b) => b.lastUsed - a.lastUsed);
 }
 
+// ── Built-in sample file (for the help / demo page) ──────────────────────────
+// Always available, independent of the active project, so the demo page works even
+// before any project is loaded. Served through the normal file endpoints via the
+// getFile() fallback below.
+const SAMPLE_RELPATH = 'sample/rate-limiter.js';
+const SAMPLE_CONTENT = `// A tiny in-memory rate limiter — a friendly file to explore how CodeArchitect
+// chunks code. Drag the granularity slider and the whole file, the class, each
+// method, and the nested blocks each become selectable units.
+
+const now = () => Date.now();
+
+class RateLimiter {
+  constructor(limit, windowMs) {
+    this.limit = limit;       // max calls allowed per window
+    this.windowMs = windowMs; // sliding window length, in ms
+    this.hits = new Map();    // key -> array of call timestamps
+  }
+
+  // Drop timestamps older than the window so the map never grows unbounded.
+  prune(key) {
+    const cutoff = now() - this.windowMs;
+    const kept = (this.hits.get(key) || []).filter((t) => t > cutoff);
+    if (kept.length) this.hits.set(key, kept);
+    else this.hits.delete(key);
+  }
+
+  // Record a call and report whether it's allowed (false once over the limit).
+  allow(key) {
+    this.prune(key);
+    const times = this.hits.get(key) || [];
+    if (times.length >= this.limit) return false;
+    times.push(now());
+    this.hits.set(key, times);
+    return true;
+  }
+
+  // How many calls remain for \`key\` in the current window.
+  remaining(key) {
+    this.prune(key);
+    return Math.max(0, this.limit - (this.hits.get(key)?.length || 0));
+  }
+}
+
+function demo() {
+  const limiter = new RateLimiter(3, 1000);
+  for (let i = 0; i < 5; i++) {
+    const ok = limiter.allow('alice');
+    console.log(\`call \${i}: \${ok ? 'allowed' : 'blocked'} (\${limiter.remaining('alice')} left)\`);
+  }
+}
+
+demo();
+`;
+const SAMPLE_ID = makeFileId(SAMPLE_RELPATH);
+const sampleFile = {
+  id: SAMPLE_ID, relPath: SAMPLE_RELPATH, absPath: null,
+  language: languageFor(SAMPLE_RELPATH),
+  content: SAMPLE_CONTENT,
+  lineCount: countLines(SAMPLE_CONTENT),
+  bytes: Buffer.byteLength(SAMPLE_CONTENT),
+};
+const samples = new Map([[SAMPLE_ID, sampleFile]]);
+
+export function sampleFileMeta() {
+  return { id: sampleFile.id, relPath: sampleFile.relPath, language: sampleFile.language };
+}
+
 // ── Active-project accessors (used by the existing file endpoints) ───────────
 function active() {
   return activeId ? projects.get(activeId) : null;
 }
 
+// Falls back to the built-in sample so the demo page's file resolves regardless of
+// which (if any) project is active.
 export function getFile(fileId) {
-  return active()?.files?.get(fileId);
+  return active()?.files?.get(fileId) || samples.get(fileId);
 }
 
 export function listFiles() {

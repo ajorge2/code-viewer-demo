@@ -46,6 +46,21 @@ export async function removeProject(id) {
   return data // { activeId, projects }
 }
 
+// Wipe the server's tree cache (disk + in-memory). Returns { ok, removed }.
+export async function clearTreeCache() {
+  const res = await fetch('/api/tree-cache', { method: 'DELETE' })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || 'Failed to clear tree cache')
+  return data
+}
+
+// Metadata for the built-in sample file shown on the help/demo page.
+export async function fetchSample() {
+  const res = await fetch('/api/sample')
+  if (!res.ok) throw new Error('Failed to load sample')
+  return res.json() // { file: { id, relPath, language } }
+}
+
 export async function fetchRaw(id) {
   const res = await fetch(`/api/files/${id}/raw`)
   if (!res.ok) throw new Error('Failed to load file')
@@ -70,11 +85,11 @@ export async function askQuestion(fileId, nodeId, question, opts = {}) {
 // Ask the LLM to propose edits to a chunk's code, using the Q&A conversation as
 // direction. Returns { code, original, path } — `code` is the full revised unit.
 export async function suggestEdits(fileId, nodeId, opts = {}) {
-  const { instruction = '', transcript = [], baseCode = '' } = opts
+  const { instruction = '', transcript = [], baseCode = '', contextFileId = null } = opts
   const res = await fetch(`/api/files/${fileId}/suggest-edits`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nodeId, instruction, transcript, baseCode }),
+    body: JSON.stringify({ nodeId, instruction, transcript, baseCode, contextFileId }),
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.error || 'Failed to suggest edits')

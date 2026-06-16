@@ -131,7 +131,7 @@ function charDiff(orig, edited) {
 
 export default function CodeViewer({
   file, files = [], chunkSize, onChunkSize, edits, setEdits, jumpTarget, onJumpConsumed, onJumpToEdit,
-  locked = false, controlsReady = true,
+  locked = false, controlsReady = true, openChatSignal = 0,
 }) {
   const [text, setText] = useState('')
   const [resp, setResp] = useState(null)
@@ -158,13 +158,32 @@ export default function CodeViewer({
   // panel mounted through its genie close animation before it unmounts.
   const [chatOpen, setChatOpen] = useState(false)
   const [chatClosing, setChatClosing] = useState(false)
+  // Briefly true after a NEW highlight (while the chat is closed) — pulses the FAB to
+  // hint that the next step is to open it. Auto-clears after a few pulses.
+  const [fabPulse, setFabPulse] = useState(false)
+  const fabPulseTimer = useRef(null)
   const chatPanelRef = useRef(null)
   const chatFabRef = useRef(null)
   // Opening the Q&A reveals the chunk highlights — the chunking is configured
   // (around your highlight) and you're ready to ask. Closing returns to the clean
   // view. The toolbar toggle still overrides while the chat is closed.
-  const openChat = () => { setChatClosing(false); setChatOpen(true); setShowChunks(true) }
+  const openChat = () => {
+    setChatClosing(false); setChatOpen(true); setShowChunks(true)
+    setFabPulse(false); clearTimeout(fabPulseTimer.current) // opened — stop nudging
+  }
   const closeChat = () => { setChatOpen(false); setChatClosing(true); setShowChunks(false) }
+  // Pulse the chat FAB to draw the eye to it after a fresh highlight. Toggling off
+  // then on replays the animation from the first pulse on every new highlight; the
+  // CSS plays exactly 3, and the trailing timer just removes the class afterward.
+  const pulseFab = () => {
+    clearTimeout(fabPulseTimer.current)
+    setFabPulse(false)
+    fabPulseTimer.current = setTimeout(() => {
+      setFabPulse(true)
+      fabPulseTimer.current = setTimeout(() => setFabPulse(false), 2900)
+    }, 30)
+  }
+  useEffect(() => () => clearTimeout(fabPulseTimer.current), [])
   // Q&A transcript for the current file: [{ role, text, path?, depth?, atBottom? }].
   const [chatLog, setChatLog] = useState([])
   const [chatInput, setChatInput] = useState('')
@@ -185,21 +204,8 @@ export default function CodeViewer({
   const [chatNodeId, setChatNodeId] = useState(null)
   const [lastQuestion, setLastQuestion] = useState('')
 
-  // Close the Q&A panel on a click anywhere outside it (the FAB handles its own
-  // toggle, so ignore clicks on it to avoid double-firing).
-  useEffect(() => {
-    if (!chatOpen) return
-    const onDown = (e) => {
-      if (chatPanelRef.current?.contains(e.target)) return
-      if (chatFabRef.current?.contains(e.target)) return
-      // Don't close just because the user opened/clicked the folder chat — the two
-      // are meant to coexist. Only true outside clicks dismiss this panel.
-      if (e.target.closest?.('.lib-chat-panel, .lib-chat-fab')) return
-      closeChat()
-    }
-    document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
-  }, [chatOpen])
+  // The Q&A panel stays open until explicitly dismissed via the × button (or the
+  // FAB toggle) — clicking elsewhere on the page no longer closes it.
   // Sub-splitter: when on, break each chunk into pieces of `subWords` words.
   // Off by default; resets whenever the granularity slider moves.
   const [subOn, setSubOn] = useState(false)
@@ -233,12 +239,15 @@ export default function CodeViewer({
   // Root-first ancestor path for a node id, kept to real structural units: drop
   // synthetic balancing groups, the file root (implied), and collapse the
   // consecutive duplicate labels JSON's key/value boxes produce.
-  const nodePath = (nodeId) => {
-    const chain = []
-    let id = nodeId
-    while (id && nodes[id]) { chain.push(nodes[id]); id = nodes[id].parent }
-    chain.reverse()
-    return chain.filter((n, i) => n.semantic && n.parent !== null && n.label !== chain[i - 1]?.label)
+  // What the user actually selected, in human terms: the file line range the chunk
+  // covers. The internal node "path" labels ("permissions ▸ allow ▸ 0 … (25)") are an
+  // implementation detail nobody outside the system cares about, so we don't show them.
+  const selectionLabel = (chunk) => {
+    if (!text || !chunk) return 'Selection'
+    const upto = (end) => (text.slice(0, Math.max(0, end)).match(/\n/g)?.length || 0) + 1
+    const a = upto(chunk.start)
+    const b = upto(Math.max(chunk.start, chunk.end - 1))
+    return a === b ? `Line ${a}` : `Lines ${a}–${b}`
   }
 
   // Displayed chunks: optionally the base chunks split further by WORD count.
@@ -353,14 +362,11 @@ export default function CodeViewer({
     runAsk({ question: lastQuestion, intent: 'deepen', userBubble: { role: 'user', text: 'More detail', deepen: true } })
   }
 
-  // Toggle "Suggest edits" mode. Turning it on opens the Edits drawer so the
-  // changes your next message makes are visible.
+  // Toggle "Suggest edits" mode. The Edits drawer is NOT opened/closed here — it
+  // opens on its own once an edit is actually requested (see runSuggest).
   const toggleEditMode = () => {
     if (!editKey) return
-    setEditMode((on) => {
-      if (!on) setDrawerOpen(true)
-      return !on
-    })
+    setEditMode((on) => !on)
   }
 
   // In edit mode, a submitted message is an instruction: the LLM revises the
@@ -375,7 +381,7 @@ export default function CodeViewer({
     const base = editBuf // revise the current draft, so edits stack across messages
     setChatLog((log) => [...log, { role: 'user', text: instruction, edit: true }])
     try {
-      const r = await suggestEdits(file.id, editNode.nodeId, { instruction, transcript, baseCode: base })
+      const r = await suggestEdits(file.id, editNode.nodeId, { instruction, transcript, baseCode: base, contextFileId: ctxFileId })
       const proposed = typeof r.code === 'string' ? r.code : ''
       if (proposed && proposed !== base) {
         setEdits((m) => {
@@ -420,12 +426,22 @@ export default function CodeViewer({
     setSelected(null)
     resetSub()
     setPendingRange(null); setManualMode(false) // new file opens as one whole-file chunk
+    // Switching files dismisses the Q&A panel — it's scoped to the previous file.
+    setChatOpen(false); setChatClosing(false); setShowChunks(false)
+    setFabPulse(false); clearTimeout(fabPulseTimer.current)
     setChatLog([]); setChatInput(''); setChatError(null); setCtxFileId(null)
     setChatDepth(0); setChatNodeId(null); setLastQuestion(''); setEditMode(false)
     setHistoryIdx(0) // restart the edit-history carousel for the new file
     fetchRaw(file.id).then((t) => !cancelled && setText(t)).catch(() => {})
     return () => { cancelled = true }
   }, [file.id])
+
+  // Open the chat when asked to (e.g. a file shortcut clicked in a folder-chat
+  // answer). Declared AFTER the file-change reset above so that when both fire on
+  // the same render (new file + signal), this opens the chat last and wins.
+  useEffect(() => {
+    if (openChatSignal) openChat()
+  }, [openChatSignal]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // (Re)chunk on any change to the chunking inputs — debounced so dragging stays
   // smooth. Three modes: highlight (chunk around the selected range), manual (the
@@ -603,13 +619,12 @@ export default function CodeViewer({
     if (!sel || sel.rangeCount === 0) return
     const r = sel.getRangeAt(0)
     if (sel.isCollapsed) {
-      // A plain click (no drag). In the clean view, clicking outside the current
-      // highlight clears it — back to nothing highlighted (whole file).
-      if (!showChunks && pendingRange) {
-        const pos = segOffset(r.startContainer, r.startOffset)
-        if (pos == null || pos < pendingRange.start || pos >= pendingRange.end) {
-          setPendingRange(null); setManualMode(false); setSelected(null)
-        }
+      // A plain click (no drag) anywhere deselects the current chunk — back to the
+      // whole file as one chunk — whether or not the chat's band view is open. You
+      // select a chunk by highlighting a region; a click clears it. This keeps the
+      // chat context ("Whole file" vs a line range) in sync with the real selection.
+      if (pendingRange || manualMode || selected != null) {
+        setPendingRange(null); setManualMode(false); setSelected(null)
       }
       return
     }
@@ -623,6 +638,29 @@ export default function CodeViewer({
     resetSub()
     setManualMode(false)
     setPendingRange({ start, end })
+    if (!chatOpen) pulseFab() // nudge: a new chunk is highlighted — open the chat to ask
+  }
+
+  // Clicking the selection label in the chat header pulses the selected chunk's lines
+  // (and scrolls them into view) so you can see exactly what you're chatting about.
+  const bulgeSelection = () => {
+    const c = selected != null ? chunks[selected] : null
+    if (!c) return
+    const startLn = lineOf(c.start)
+    const endLn = lineOf(Math.max(c.start, c.end - 1))
+    const container = scrollRef.current
+    const top = lineEls.current[startLn]
+    if (container && top) {
+      container.scrollTo({ top: Math.max(0, top.offsetTop - container.clientHeight / 2 + 40), behavior: 'smooth' })
+    }
+    for (let k = startLn; k <= endLn; k++) {
+      const ln = lineEls.current[k]
+      if (!ln) continue
+      ln.classList.remove('bulging')
+      void ln.offsetWidth // force reflow so the animation restarts on repeat clicks
+      ln.classList.add('bulging')
+      setTimeout(() => ln.classList.remove('bulging'), 650)
+    }
   }
 
   return (
@@ -633,7 +671,20 @@ export default function CodeViewer({
             <span className="vt-path">{file.relPath}</span>
           </div>
           <div className="gran-row">
-            <span className="chunk-count"><b>{chunks.length}</b> chunks</span>
+            <button
+              type="button"
+              className={`chunk-switch${showChunks ? ' active' : ''}`}
+              onClick={() => setShowChunks((s) => !s)}
+              role="switch"
+              aria-checked={showChunks}
+              title={showChunks ? 'Hide chunk highlights' : 'Show chunk highlights'}
+            >
+              <span className="chunk-switch-label">Highlights</span>
+              <span className="chunk-switch-track" aria-hidden="true">
+                <span className="chunk-switch-knob" />
+              </span>
+            </button>
+            <span className="chunk-count">Chunks: <b>{chunks.length}</b></span>
             <span className="gran-divider" aria-hidden="true" />
             <span className="gran-hint">
               {pendingRange
@@ -657,20 +708,6 @@ export default function CodeViewer({
         </div>
         <div className={`toolbar-bottom-wrap${bottomOpen ? ' open' : ''}`}>
         <div className="toolbar-bottom">
-          <button
-            className={`chunk-toggle${showChunks ? ' active' : ''}`}
-            onClick={() => setShowChunks((s) => !s)}
-            title={showChunks ? 'Hide chunk highlights' : 'Show chunk highlights'}
-            aria-label={showChunks ? 'Hide chunk highlights' : 'Show chunk highlights'}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" strokeWidth="1.3"
-                 strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="6" rx="1.5" />
-              <rect x="3" y="14" width="18" height="6" rx="1.5" />
-              {!showChunks && <line x1="3" y1="21" x2="21" y2="3" />}
-            </svg>
-          </button>
           <div className="slider-stack">
             {/* Manual granularity (Advanced fallback to highlighting). */}
             <label className="slider-wrap gran">
@@ -796,7 +833,6 @@ export default function CodeViewer({
                           className={`seg${s.ci === -1 ? ' plain-seg' : ''}${isSel ? ' sel' : ''}${s.hl ? ' user-hl' : ''}`}
                           data-cs={s.cs}
                           style={bg ? { background: bg } : undefined}
-                          onClick={(s.ci === -1 || !showChunks) ? undefined : () => setSelected(s.ci)}
                         >
                           {s.text}
                         </span>
@@ -810,7 +846,7 @@ export default function CodeViewer({
         </div>
 
         <button
-          className="drawer-handle"
+          className={`drawer-handle${(chatOpen || chatClosing) ? ' chat-hidden' : ''}`}
           style={{ right: drawerOpen ? '50%' : 0 }}
           onClick={() => { if (!locked) setDrawerOpen((o) => !o) }}
           disabled={locked}
@@ -923,43 +959,39 @@ export default function CodeViewer({
             onAnimationEnd={() => { if (chatClosing) setChatClosing(false) }}
           >
             <div className="chat-head">
-              <span className="chat-title">Ask about this file</span>
+              <span className="chat-title">
+                <span className="chat-title-name">{file.relPath.split('/').pop()}</span>
+                <span className="chat-title-dot"> • </span>
+                <button
+                  type="button"
+                  className="chat-sel"
+                  onClick={bulgeSelection}
+                  title={selected != null ? 'Show the selected code' : 'Chatting about the whole file'}
+                >
+                  {selected != null && chunks[selected]
+                    ? selectionLabel(chunks[selected])
+                    : 'Whole file'}
+                </button>
+              </span>
               <button className="chat-close" onClick={closeChat} aria-label="Close chat">×</button>
             </div>
-            {targetNodeId && (
+            {editKey && (
               <div className="chat-context">
-                <span className="chat-ctx-info">
-                  {selected != null && chunks[selected] ? (
-                    <>
-                      <span className="chat-ctx-chunk">chunk #{selected + 1} · {chunks[selected].label}</span>
-                      {nodePath(chunks[selected].nodeId).length > 0 && (
-                        <span className="chat-ctx-path">
-                          {nodePath(chunks[selected].nodeId).map((n, i, a) => (
-                            <span key={n.id} className="chat-ctx-crumb">
-                              {n.label}
-                              {i < a.length - 1 && <span className="chat-ctx-sep"> › </span>}
-                            </span>
-                          ))}
-                        </span>
-                      )}
-                    </>
-                  ) : (
-                    <span className="chat-ctx-chunk">Whole file</span>
-                  )}
-                </span>
-                {editKey && (
-                  <button
-                    type="button"
-                    className={`chat-suggest sm${editMode ? ' active' : ''}`}
-                    onClick={toggleEditMode}
-                    aria-pressed={editMode}
-                    title={editMode
-                      ? 'Turn off edit mode — back to Q&A'
-                      : (selChunk ? 'Edit this chunk by chatting' : 'Edit the whole file by chatting')}
-                  >
-                    ✎ Suggest edits · {editMode ? 'on' : 'off'}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className={`chat-suggest sm${editMode ? ' active' : ''}`}
+                  onClick={toggleEditMode}
+                  role="switch"
+                  aria-checked={editMode}
+                  title={editMode
+                    ? 'Turn off edit mode — back to Q&A'
+                    : (selChunk ? 'Edit this chunk by chatting' : 'Edit the whole file by chatting')}
+                >
+                  <span className="chat-suggest-label">Suggest edits</span>
+                  <span className="chat-suggest-track" aria-hidden="true">
+                    <span className="chat-suggest-knob" />
+                  </span>
+                </button>
               </div>
             )}
             <div className="chat-body" ref={chatScrollRef}>
@@ -994,16 +1026,15 @@ export default function CodeViewer({
               className={`chat-input-row${editMode ? ' editing' : ''}`}
               onSubmit={(e) => { e.preventDefault(); submitChat() }}
             >
-              {/* Attach another project file as context — Q&A only (edit mode has
-                  its own target). The current file is already in context, so omit it. */}
-              {!editMode && (
-                <ContextAttach
-                  files={files.filter((f) => f.id !== file.id)}
-                  value={ctxFileId}
-                  onChange={setCtxFileId}
-                  disabled={chatBusy || suggestBusy}
-                />
-              )}
+              {/* Attach another project file as context — available for both Q&A and
+                  edit mode (e.g. to compare against another file when suggesting an
+                  edit). The current file is already in context, so omit it. */}
+              <ContextAttach
+                files={files.filter((f) => f.id !== file.id)}
+                value={ctxFileId}
+                onChange={setCtxFileId}
+                disabled={chatBusy || suggestBusy}
+              />
               <textarea
                 ref={chatInputRef}
                 className="chat-input"
@@ -1030,7 +1061,7 @@ export default function CodeViewer({
         )}
         <button
           ref={chatFabRef}
-          className={`chat-fab${chatOpen ? ' open' : ''}`}
+          className={`chat-fab${chatOpen ? ' open' : ''}${fabPulse ? ' pulsing' : ''}`}
           onClick={() => (chatOpen ? closeChat() : openChat())}
           title={chatOpen ? 'Close chat' : 'Ask about this file'}
           aria-label={chatOpen ? 'Close chat' : 'Ask about this file'}

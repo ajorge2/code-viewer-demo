@@ -396,7 +396,7 @@ function stripFences(s) {
 // Propose an edited version of a chunk's code, driven by the Q&A conversation.
 // Returns { code, original, path } — `code` is the full revised unit, ready to
 // drop straight into the editor.
-export async function suggestEdits({ file, nodeId, instruction = '', transcript = [], baseCode = '' }) {
+export async function suggestEdits({ file, nodeId, instruction = '', transcript = [], baseCode = '', contextFile = null }) {
   const { nodes } = await fileNodes(file);
   if (!nodes[nodeId]) {
     const e = new Error('Unknown nodeId for this file (it may be stale — re-chunk and retry).');
@@ -436,6 +436,9 @@ export async function suggestEdits({ file, nodeId, instruction = '', transcript 
         + (path.length ? `Location: ${path.join(' › ')}\n` : '')
         + `\nWhat this unit means in context:\n${meaning}\n`
         + `\nThe code to revise:\n\`\`\`\n${snippet}\n\`\`\`\n\n`
+        + (contextFile
+          ? `The reader attached another project file as a reference to compare against — ${contextFile.relPath}. Do NOT return or edit this file; it is context only:\n\`\`\`\n${clip(contextFile.content)}\n\`\`\`\n\n`
+          : '')
         + 'Return the full revised code for this unit, and nothing else.',
     }],
   }));

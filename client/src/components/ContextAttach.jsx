@@ -1,5 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 
+// Minimal stroke paperclip, matching the app's other line icons (currentColor so
+// it inherits the button/chip colour and hover state).
+function Paperclip({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+    </svg>
+  )
+}
+
 // Attach a single project file as extra context for a chat. `value` is the
 // attached file's id (or null); `onChange(id | null)` sets or clears it. Limited
 // to one file for now: once one is attached we show a chip instead of the picker.
@@ -22,7 +33,8 @@ export default function ContextAttach({ files, value, onChange, disabled = false
     return (
       <div className="ctx-attach">
         <span className="ctx-chip" title={`Context: ${selected.relPath}`}>
-          <span className="ctx-chip-name">📎 {name}</span>
+          <Paperclip size={13} />
+          <span className="ctx-chip-name">{name}</span>
           <button
             type="button"
             className="ctx-chip-x"
@@ -50,7 +62,7 @@ export default function ContextAttach({ files, value, onChange, disabled = false
         disabled={disabled}
         title="Attach a project file as context"
         aria-label="Attach a project file as context"
-      >📎</button>
+      ><Paperclip /></button>
       {open && (
         <div className="ctx-menu">
           <input

@@ -102,6 +102,7 @@ export default function Library({
   loaded,
   selectedId,
   onSelect,
+  onOpenFileChat,
 }) {
   const [filter, setFilter] = useState('')
   // A file is "edited" if any chunk in it (the file root included) has an edit —
@@ -200,23 +201,21 @@ export default function Library({
   // genie-out (see .lib-chat-panel.closing) before React unmounts it.
   const openChat = () => { setChatClosing(false); setChatOpen(true) }
   const closeChat = () => { if (!chatOpen) return; setChatOpen(false); setChatClosing(true) }
+  // Navigating the MAIN folder view (top arrows, folder rows, breadcrumbs) dismisses
+  // the folder chat — it's scoped to the folder you were looking at. The chat's own
+  // in-head chevrons still re-scope it without closing, so they call goBack/goFwd
+  // directly rather than through these wrappers.
+  // The dismissal is INSTANT (no genie-out) — matching how the file chat vanishes on
+  // a file switch. The × button and FAB still animate out via closeChat.
+  const dropChat = () => { setChatOpen(false); setChatClosing(false) }
+  const navBack = () => { dropChat(); goBack() }
+  const navFwd = () => { dropChat(); goFwd() }
+  const navToFolder = (next) => { dropChat(); setCwd(next) }
   // Input/error are transient, not part of history — clear them when the folder
   // changes; the conversation itself is preserved in chatLogs[cwd].
   useEffect(() => { setChatInput(''); setChatError(null); setCtxFileId(null) }, [cwd])
-  // Close on a click anywhere outside the panel (the FAB toggles itself).
-  useEffect(() => {
-    if (!chatOpen) return undefined
-    const onDown = (e) => {
-      if (chatPanelRef.current?.contains(e.target)) return
-      if (chatFabRef.current?.contains(e.target)) return
-      // Don't close just because the user opened/clicked the file chat — the two
-      // are meant to coexist. Only true outside clicks dismiss this panel.
-      if (e.target.closest?.('.chat-panel, .chat-fab')) return
-      closeChat()
-    }
-    document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
-  }, [chatOpen])
+  // The panel stays open until explicitly dismissed via the × button (or the FAB
+  // toggle) — clicking elsewhere on the page no longer closes it.
   useEffect(() => {
     const el = chatScrollRef.current
     if (el) el.scrollTop = el.scrollHeight
@@ -231,7 +230,9 @@ export default function Library({
   // Jump from a chat answer to a mentioned child: open the file (closing the
   // folder chat so the file's own view/chat is visible). Subfolders just call
   // setCwd, which re-scopes this same chat to them (the cwd effect resets the log).
-  const openFileRef = (id) => { onSelect(id); setChatOpen(false) }
+  // Clicking a file shortcut in a folder-chat answer opens that file AND its file
+  // chat. The folder chat stays open — the two are meant to coexist.
+  const openFileRef = (id) => { onOpenFileChat(id) }
 
   const folderLabel = cwd ? `${rootName}/${cwd}` : rootName
   const submitFolderChat = async () => {
@@ -266,21 +267,23 @@ export default function Library({
               {i > 0 && <span className="crumb-sep">/</span>}
               <span
                 className="crumb"
-                onClick={() => setCwd(arr.slice(1, i + 1).join('/'))}
+                onClick={() => navToFolder(arr.slice(1, i + 1).join('/'))}
               >
                 {part}
               </span>
             </span>
           ))}
+          {/* Trailing slash — the folder path is written with one (matches the chat header). */}
+          <span className="crumb-sep">/</span>
         </span>
         <div className="lib-nav">
-          <button className="chev" onClick={goBack} disabled={!canBack} title="Back" aria-label="Back">
+          <button className="chev" onClick={navBack} disabled={!canBack} title="Back" aria-label="Back">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
-          <button className="chev" onClick={goFwd} disabled={!canFwd} title="Forward" aria-label="Forward">
+          <button className="chev" onClick={navFwd} disabled={!canFwd} title="Forward" aria-label="Forward">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="9 18 15 12 9 6" />
@@ -302,7 +305,7 @@ export default function Library({
             <button
               className="tree-row folder"
               key={`f-${i}`}
-              onClick={() => setCwd(cwd ? `${cwd}/${row.path}` : row.path)}
+              onClick={() => navToFolder(cwd ? `${cwd}/${row.path}` : row.path)}
               title={`Open ${row.name}/`}
             >
               <Guides depth={row.depth} prefix={row.prefix} isLast={row.isLast} />
@@ -365,7 +368,7 @@ export default function Library({
                   <polyline points="9 18 15 12 9 6" />
                 </svg>
               </button>
-              <span className="chat-title">📁 {folderLabel}</span>
+              <span className="chat-title">{folderLabel}/</span>
             </span>
             <button className="chat-close" onClick={closeChat} aria-label="Close">×</button>
           </div>

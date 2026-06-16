@@ -7,7 +7,9 @@ import { readFolderUpload } from '../lib/uploadFolder.js'
 export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload, onRemove }) {
   const [open, setOpen] = useState(false)
   const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
+  // Upload lifecycle for the picker button: '' idle, 'reading' (browser reading the
+  // chosen folder — the slow part for big trees), 'uploading' (POSTing to the server).
+  const [phase, setPhase] = useState('')
   // Fixed left-to-right order of the open folder tabs. Tabs keep their slot for
   // life — selecting one only brings it forward (z-index), it never moves. New
   // projects append to the right; removed ones drop out.
@@ -132,23 +134,28 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload
   // The user picked a folder: read it in the browser (filtered to source files)
   // and hand the contents up for upload.
   const onFolderChosen = async (e) => {
-    const fileList = e.target.files
+    // Snapshot into a real array FIRST: e.target.files is a live FileList, so the
+    // `e.target.value = ''` reset below empties the very reference we'd keep —
+    // which previously made length 0 and bailed before uploading. The File objects
+    // themselves stay readable after the reset.
+    const fileList = Array.from(e.target.files || [])
     e.target.value = '' // let the same folder be re-picked later
-    if (!fileList || !fileList.length) return
-    setBusy(true)
+    if (!fileList.length) return
     setError('')
+    setPhase('reading')
     try {
       const result = await readFolderUpload(fileList)
       if (!result || result.files.length === 0) {
         setError('No source files found in that folder.')
         return
       }
+      setPhase('uploading')
       await onUpload(result.name, result.files)
       setOpen(false)
     } catch (err) {
       setError(err.message || 'Failed to load folder')
     } finally {
-      setBusy(false)
+      setPhase('')
     }
   }
 
@@ -260,13 +267,17 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload
               className="proj-pick-btn"
               type="button"
               onClick={() => folderInputRef.current?.click()}
-              disabled={busy}
+              disabled={!!phase}
             >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-              </svg>
-              {busy ? 'Loading…' : 'Open folder…'}
+              {phase ? (
+                <span className="proj-pick-spinner" aria-hidden="true" />
+              ) : (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                </svg>
+              )}
+              {phase === 'reading' ? 'Reading files…' : phase === 'uploading' ? 'Uploading…' : 'Open folder…'}
             </button>
           </div>
           {error && <div className="proj-error">{error}</div>}

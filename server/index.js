@@ -8,13 +8,13 @@ import cors from 'cors';
 import {
   loadProject, listFiles, getFile, fileCount, getScanStats,
   registerProject, registerUploadedProject, activateProject, removeProject, listProjects,
-  activeProjectDir, activeProjectId,
+  activeProjectDir, activeProjectId, sampleFileMeta,
 } from './store.js';
 import { chunkByLines, languageFor } from './ingest/code.js';
 import { chunkJson } from './ingest/json.js';
 import { chunkCode } from './ingest/codeTree.js';
 import { chunkGeneric } from './ingest/genericTree.js';
-import { isParseable, loadTree } from './ingest/parseTree.js';
+import { isParseable, loadTree, clearTreeCache } from './ingest/parseTree.js';
 import { setProjectTree } from './ingest/projectTree.js';
 import { ask, askFolder, suggestEdits, warmProjectBares } from './llm/meaning.js';
 
@@ -56,6 +56,13 @@ app.get('/api/health', (req, res) => {
   res.json({ ok: true, projectDir: activeProjectDir(), files: fileCount(), scan: getScanStats() });
 });
 
+// Metadata for the built-in sample file used by the help/demo page. The file
+// content + chunks come through the normal /api/files/:id endpoints (getFile
+// resolves the sample regardless of the active project).
+app.get('/api/sample', (req, res) => {
+  res.json({ file: sampleFileMeta() });
+});
+
 // File tree / list (metadata only) for the active project. `scan` reports
 // anything skipped/truncated by the ingest caps so the UI can warn rather than
 // silently under-report.
@@ -66,6 +73,13 @@ app.get('/api/files', (req, res) => {
     files: listFiles(),
     scan: getScanStats(),
   });
+});
+
+// Wipe the persisted tree cache (.tree-cache/) and the in-memory memo. Next
+// chunk request re-parses every file from scratch.
+app.delete('/api/tree-cache', (req, res) => {
+  const removed = clearTreeCache();
+  res.json({ ok: true, removed });
 });
 
 // ── Project registry ────────────────────────────────────────────────────────
@@ -219,15 +233,17 @@ app.post('/api/files/:id/ask', async (req, res) => {
 app.post('/api/files/:id/suggest-edits', async (req, res) => {
   const file = getFile(req.params.id);
   if (!file) return res.status(404).json({ error: 'Not found' });
-  const { nodeId, instruction, transcript, baseCode } = req.body || {};
+  const { nodeId, instruction, transcript, baseCode, contextFileId } = req.body || {};
   if (!nodeId) return res.status(400).json({ error: 'nodeId is required' });
   try {
+    const ctx = contextFileId ? getFile(contextFileId) : null;
     const result = await suggestEdits({
       file,
       nodeId,
       instruction: typeof instruction === 'string' ? instruction : '',
       transcript: Array.isArray(transcript) ? transcript.slice(-6) : [],
       baseCode: typeof baseCode === 'string' ? baseCode : '',
+      contextFile: ctx ? { relPath: ctx.relPath, content: ctx.content } : null,
     });
     res.json(result); // { code, original, path }
   } catch (e) {
@@ -269,9 +285,28 @@ function clampInt(v, min, max, dflt) {
 // local dev this dir doesn't exist, so Vite serves the client and proxies /api here.
 const clientDist = path.join(__dirname, '..', 'client', 'dist');
 if (fs.existsSync(clientDist)) {
-  app.use(express.static(clientDist));
+  // Vite emits content-hashed files under /assets — the name changes whenever the
+  // content does, so they're safe to cache forever. index.html is NOT hashed, so it
+  // must be revalidated on every load; otherwise after a deploy the browser keeps an
+  // old index.html that points at asset hashes the new build no longer has, and the
+  // page renders blank until a hard refresh.
+  app.use(express.static(clientDist, {
+    index: false, // let "/" fall through to the no-cache index.html handler below
+    setHeaders(res, filePath) {
+      if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      } else {
+        res.setHeader('Cache-Control', 'no-cache');
+      }
+    },
+  }));
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api/')) return next();
+    // A path with a file extension is a missing static asset (e.g. a stale
+    // index-OLDHASH.js after a redeploy). 404 it rather than returning index.html,
+    // so the browser fails loudly instead of trying to run HTML as a script.
+    if (path.extname(req.path)) return res.status(404).end();
+    res.setHeader('Cache-Control', 'no-cache');
     res.sendFile(path.join(clientDist, 'index.html'));
   });
 }

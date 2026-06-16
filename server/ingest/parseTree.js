@@ -109,6 +109,23 @@ export async function parseToTree(text, language) {
 // version). Returns the cached tree on every later call / server run.
 const memCache = new Map(); // hash -> tree
 
+// Wipe both layers of the tree cache: the in-memory memo and every persisted
+// .tree-cache/*.json. Returns the number of disk files removed. Next chunk
+// request for any file re-parses from scratch.
+export function clearTreeCache() {
+  memCache.clear();
+  let removed = 0;
+  try {
+    for (const name of fs.readdirSync(CACHE_DIR)) {
+      if (!name.endsWith('.json')) continue;
+      try { fs.unlinkSync(path.join(CACHE_DIR, name)); removed += 1; } catch { /* skip */ }
+    }
+  } catch {
+    /* dir doesn't exist yet → nothing cached, nothing to remove */
+  }
+  return removed;
+}
+
 export async function loadTree(content, language) {
   if (!isParseable(language)) return null;
   const key = crypto.createHash('sha1').update(language + '\0' + content).digest('hex');

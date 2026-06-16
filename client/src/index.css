@@ -366,7 +366,13 @@ b, strong { font-weight: inherit; }
   border: 1px solid #3BB4F0; background: var(--grad-cool); color: #fff;
   font-size: 13px;
 }
-.proj-pick-btn:disabled { opacity: 0.6; cursor: default; }
+.proj-pick-btn:disabled { opacity: 0.85; cursor: default; }
+/* White spinner shown in the picker button while reading/uploading a folder. */
+.proj-pick-spinner {
+  width: 13px; height: 13px; border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.45); border-top-color: #fff;
+  animation: empty-spin 0.7s linear infinite;
+}
 .proj-error {
   padding: 0 10px 10px; color: #D11E08; font-size: 12px;
 }
@@ -453,6 +459,19 @@ b, strong { font-weight: inherit; }
    Once settled it's white, so the code panel's rounded corners don't reveal the
    gradient behind them. */
 .stage:has(.viewer.controls-hidden) { background: transparent; }
+/* No project yet, welcome state still up: reveal the gradient on the right just
+   like the locked viewer does once a project is loaded. */
+.stage.stage-bare { background: transparent; }
+/* The placeholder reads as a white card filling the left half with a rounded
+   top-right corner — the same silhouette the locked viewer card gives — so the
+   white/gradient boundary matches a loaded project instead of a hard library edge. */
+.empty-bare-card {
+  max-width: 50%; flex: 1; min-width: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px; text-align: center;
+  color: var(--muted); background: var(--bg);
+  border-top-right-radius: 7px;
+}
 .empty { margin: auto; color: var(--muted); }
 .empty-loading { display: flex; align-items: center; gap: 9px; }
 .empty-spinner {
@@ -524,6 +543,28 @@ b, strong { font-weight: inherit; }
   width: 1px; align-self: stretch; margin: 2px 12px;
   background: var(--border);
 }
+/* Chunk-highlights toggle — a compact switch (like Suggest edits) leading the row. */
+.chunk-switch {
+  cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11.5px; color: var(--muted); padding: 2px; margin-right: 12px;
+  background: none; border: none; white-space: nowrap; flex-shrink: 0;
+  transition: color .15s ease;
+}
+.chunk-switch:hover { color: var(--text); }
+.chunk-switch.active { color: #0D8BC5; }
+.chunk-switch-track {
+  position: relative; flex-shrink: 0;
+  width: 22px; height: 13px; border-radius: 999px;
+  background: var(--border); transition: background .18s ease;
+}
+.chunk-switch-knob {
+  position: absolute; top: 2px; left: 2px;
+  width: 9px; height: 9px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.3);
+  transition: transform .18s ease;
+}
+.chunk-switch.active .chunk-switch-track { background: #3BB4F0; }
+.chunk-switch.active .chunk-switch-knob { transform: translateX(9px); }
 /* Granularity leads with the chunk count + divider, so no extra indent here. */
 .slider-wrap.gran { padding-left: 0; }
 .slider-wrap.gran .slider-label { font-size: 13.8px; }
@@ -606,14 +647,6 @@ b, strong { font-weight: inherit; }
 .slider-wrap input[type="range"].off::-moz-range-thumb {
   background: #cbd2dc; border-color: #fff; box-shadow: none;
 }
-.chunk-toggle {
-  display: grid; place-items: center; width: 30px; height: 30px;
-  border-radius: 7px; border: 0.5px solid var(--border); background: #fff;
-  color: var(--muted); cursor: pointer;
-  transition: background .15s ease, color .15s ease, border-color .15s ease;
-}
-.chunk-toggle:hover { background: var(--panel-2); color: var(--text); }
-.chunk-toggle.active { color: #0D8BC5; border-color: #3BB4F0; background: rgba(59, 180, 240, 0.15); }
 
 .viewer-body { flex: 1; min-height: 0; display: flex; position: relative; }
 /* The toolbar's shadow over the file content. A fixed overlay on the (non-
@@ -682,8 +715,11 @@ b, strong { font-weight: inherit; }
      the drawer's left border line, with the nose protruding into the code area. */
   transform: translate(13px, -50%) rotate(-90deg);
   background: none; border: none; padding: 0; cursor: pointer; color: #475569;
-  transition: right .2s ease, transform .12s ease, color .15s ease;
+  transition: right .2s ease, transform .12s ease, color .15s ease, opacity .2s ease;
 }
+/* Hidden while the file chat panel is open (or animating closed) so it doesn't sit
+   under the panel; fades back in once the chat is gone. */
+.drawer-handle.chat-hidden { opacity: 0; pointer-events: none; }
 .drawer-handle::before,
 .drawer-handle::after {
   content: ""; position: absolute;
@@ -800,6 +836,17 @@ b, strong { font-weight: inherit; }
      is off-screen, so the on-screen selected-chunk glow isn't clipped. */
   content-visibility: auto;
   contain-intrinsic-size: auto 17px;
+}
+/* Pulse the selected chunk's lines when its label in the chat header is clicked. */
+.code-line.bulging {
+  animation: chunk-bulge 0.55s ease;
+  transform-origin: left center;
+  z-index: 1; /* lift the scaling line above its neighbours */
+}
+@keyframes chunk-bulge {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.05); }
+  100% { transform: scale(1); }
 }
 /* Blue margin dot on a chunk's first line when it has notes or edits. */
 .ln-dot {
@@ -988,7 +1035,13 @@ b, strong { font-weight: inherit; }
     inset 0 1px 2px rgba(255, 255, 255, 0.9),
     inset 0 -3px 8px rgba(255, 255, 255, 0.35);
   transition: right .2s ease, transform .12s ease, box-shadow .2s ease, background .2s ease;
+  /* Unlike the folder FAB — which is revealed gradually as its panel genies away to
+     the opposite corner — this FAB sits on top of its panel and would pop in at full
+     opacity the instant the chat closes. Fade it in instead so it reappears as
+     gradually as the folder one. (display:none→grid on un-hide restarts this.) */
+  animation: fab-fade-in .42s ease both;
 }
+@keyframes fab-fade-in { from { opacity: 0; } to { opacity: 1; } }
 .chat-fab:hover {
   background:
     linear-gradient(145deg, rgba(135, 214, 234, 0.58), rgba(176, 190, 248, 0.34));
@@ -998,6 +1051,19 @@ b, strong { font-weight: inherit; }
     inset 0 -3px 8px rgba(255, 255, 255, 0.45);
 }
 .chat-fab:active { transform: scale(0.94); }
+/* Attention pulse after a fresh highlight: an expanding ring radiating from the FAB
+   (on a pseudo-element, so it doesn't disturb the FAB's own fade-in animation). */
+.chat-fab.pulsing::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  pointer-events: none;
+  /* Exactly three pulses, then stop — browser-controlled so it never cuts into a
+     fourth (the JS timer only removes the class afterward). */
+  animation: fab-ping 0.95s ease-out 3;
+}
+@keyframes fab-ping {
+  0%        { box-shadow: 0 0 0 0 rgba(59, 180, 240, 0.55); }
+  70%, 100% { box-shadow: 0 0 0 13px rgba(59, 180, 240, 0); }
+}
 /* When the chat is open, the panel header already has a close (×), so the FAB is
    redundant — hide it. */
 .chat-fab.open { display: none; }
@@ -1034,10 +1100,17 @@ b, strong { font-weight: inherit; }
   100% { opacity: 0; transform: translate(20px, 48px) scale(0.4, 0.22) skewX(7deg); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .chat-panel, .chat-panel.closing { animation: none; }
+  .chat-panel, .chat-panel.closing, .chat-fab { animation: none; }
 }
 .viewer-body.drawer-open .chat-panel,
 .viewer-body.locked .chat-panel { right: calc(50% + 20px); }
+/* When the folder chat and file chat are open side by side, drop both drop-shadows
+   so the folder chat (which stacks above) doesn't cast over the file chat — they sit
+   at one even level, separated only by their borders. */
+.app-body:has(.lib-chat-panel):has(.chat-panel) .lib-chat-panel,
+.app-body:has(.lib-chat-panel):has(.chat-panel) .chat-panel {
+  box-shadow: none;
+}
 .chat-head {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 14px; border-bottom: 1px solid var(--border);
@@ -1045,15 +1118,29 @@ b, strong { font-weight: inherit; }
 /* Folder-chat header: history chevrons + title on the left, close on the right. */
 .chat-head-left { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .chat-head-left .chat-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chat-title { font-size: 14px; }
+/* Filename truncates if long; the " • selection" label always stays visible. */
+.chat-title { font-size: 14px; flex: 1; min-width: 0; display: flex; align-items: baseline; }
+.chat-title-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex-shrink: 1; }
+.chat-title-dot { color: var(--muted); flex-shrink: 0; white-space: pre; }
+.chat-sel { flex-shrink: 0; white-space: nowrap; }
+/* Selection label: thin like the file name (inherits the 200 weight), a touch
+   smaller, blue, and clickable to pulse the selected chunk in the code. */
+.chat-sel {
+  font: inherit; font-size: 12px; color: #0D8BC5;
+  background: none; border: none; padding: 0; cursor: pointer; vertical-align: baseline;
+}
+.chat-sel:hover { text-decoration: underline; }
 .chat-close {
   background: none; border: none; color: var(--muted);
   font-size: 18px; line-height: 1; cursor: pointer;
 }
 .chat-close:hover { color: var(--text); }
+/* Suggest-edits row: borderless and untinted so it reads as part of the panel. The
+   header divider above it stays (the .chat-head border-bottom), giving the file chat
+   the same head divider the folder chat has. */
 .chat-context {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  padding: 8px 14px; border-bottom: 1px solid var(--border); background: var(--panel);
+  padding: 6px 14px 8px;
 }
 .chat-ctx-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .chat-ctx-chunk { font-size: 11px; color: #0D8BC5; }
@@ -1139,26 +1226,38 @@ b, strong { font-weight: inherit; }
 }
 .chat-ref:hover { background: rgba(59, 180, 240, 0.18); }
 .chat-ref.folder::before { content: "📁"; margin-right: 5px; }
-.chat-ref.file::before { content: "📄"; margin-right: 5px; }
 /* Suggest edits: same pill shape, a greenish accent to set it apart as an action
    that changes the code rather than the conversation. It's a toggle — `.active`
    is the on (filled) state. */
+/* Label + sliding toggle switch (not a pill that fills with colour). The track
+   greys when off, turns green when on, and the knob slides across. */
 .chat-suggest {
   align-self: flex-start; cursor: pointer;
-  font-size: 12px; color: #0F7B4F; padding: 5px 11px; border-radius: 999px;
-  background: rgba(16, 163, 96, 0.10); border: 1px solid rgba(16, 163, 96, 0.35);
-  transition: background .15s ease, color .15s ease;
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12px; color: var(--muted); padding: 2px; background: none; border: none;
+  transition: color .15s ease;
 }
-.chat-suggest:hover { background: rgba(16, 163, 96, 0.18); }
+.chat-suggest:hover { color: var(--text); }
 .chat-suggest:disabled { opacity: 0.6; cursor: default; }
-.chat-suggest.active {
-  background: #10A360; color: #fff; border-color: #0F7B4F;
+.chat-suggest.active { color: #0F7B4F; }
+.chat-suggest-track {
+  position: relative; flex-shrink: 0;
+  width: 26px; height: 15px; border-radius: 999px;
+  background: var(--border); transition: background .18s ease;
 }
-.chat-suggest.active:hover { background: #0F8E54; }
+.chat-suggest-knob {
+  position: absolute; top: 2px; left: 2px;
+  width: 11px; height: 11px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.3);
+  transition: transform .18s ease;
+}
+.chat-suggest.active .chat-suggest-track { background: #10A360; }
+.chat-suggest.active .chat-suggest-knob { transform: translateX(11px); }
 /* Compact variant for the context bar. */
-.chat-suggest.sm {
-  flex-shrink: 0; font-size: 10.5px; padding: 2px 8px; white-space: nowrap;
-}
+.chat-suggest.sm { flex-shrink: 0; font-size: 10.5px; white-space: nowrap; }
+.chat-suggest.sm .chat-suggest-track { width: 22px; height: 13px; }
+.chat-suggest.sm .chat-suggest-knob { width: 9px; height: 9px; }
+.chat-suggest.sm.active .chat-suggest-knob { transform: translateX(9px); }
 /* Edit mode: tint the input row green so it's clear messages now make changes. */
 .chat-input-row.editing { background: rgba(16, 163, 96, 0.07); }
 .chat-input-row.editing .chat-input::placeholder { color: #0F7B4F; }
@@ -1236,8 +1335,9 @@ b, strong { font-weight: inherit; }
 .ctx-attach { position: relative; display: flex; align-items: center; flex-shrink: 0; }
 .ctx-add {
   width: 36px; height: 38px; flex-shrink: 0; cursor: pointer;
+  display: grid; place-items: center;
   border-radius: 10px; border: 1px solid var(--border);
-  background: var(--bg); color: var(--muted); font-size: 15px; line-height: 1;
+  background: var(--bg); color: var(--muted); line-height: 1;
   transition: border-color .15s ease, color .15s ease;
 }
 .ctx-add:hover:not(:disabled) { border-color: #3BB4F0; color: #0D8BC5; }
@@ -1281,3 +1381,34 @@ b, strong { font-weight: inherit; }
   padding: 7px 11px; color: var(--muted); font-size: 11px; font-style: italic;
   border-top: 1px solid var(--border); background: var(--panel);
 }
+
+/* ── Confirmation modal (clear tree cache, …) ───────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  display: grid; place-items: center;
+  background: rgba(20, 22, 30, 0.34);
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+  animation: modalFade .14s ease;
+}
+@keyframes modalFade { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+  width: min(420px, calc(100vw - 48px));
+  background: var(--panel); color: var(--text);
+  border: 0.5px solid var(--border); border-radius: 14px;
+  padding: 22px 22px 18px; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22);
+  animation: modalPop .16s cubic-bezier(.2, .8, .3, 1);
+}
+@keyframes modalPop { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
+.modal-title { margin: 0 0 8px; font-size: 17px; font-weight: 600; }
+.modal-body { margin: 0 0 18px; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.modal-btn {
+  padding: 8px 16px; border-radius: 9px; font-size: 13px; font-weight: 500;
+  cursor: pointer; border: 0.5px solid var(--border);
+  transition: background .15s ease, color .15s ease, opacity .15s ease;
+}
+.modal-btn:disabled { opacity: 0.6; cursor: default; }
+.modal-btn.ghost { background: var(--panel); color: var(--text); }
+.modal-btn.ghost:hover:not(:disabled) { background: var(--panel-2); }
+.modal-btn.danger { background: #d8463a; border-color: #d8463a; color: #fff; }
+.modal-btn.danger:hover:not(:disabled) { background: #c23a2f; }
