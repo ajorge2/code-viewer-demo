@@ -38,9 +38,19 @@ export default function App() {
   const [view, setView] = useState('main')
   const [sampleFile, setSampleFile] = useState(null)
   const [sampleChunk, setSampleChunk] = useState(1)
+  // Intro modal that greets you each time the chunking demo page opens. When opened
+  // via the demo-page ? button it's dismissable (× + click-out); the auto-pop on
+  // entering the demo is not (Continue only).
+  const [demoIntroOpen, setDemoIntroOpen] = useState(false)
+  const [demoIntroDismissable, setDemoIntroDismissable] = useState(false)
+  useEffect(() => { if (view === 'help') { setDemoIntroOpen(true); setDemoIntroDismissable(false) } }, [view])
+  const openDemoIntro = () => { setDemoIntroOpen(true); setDemoIntroDismissable(true) }
+  // Load the sample on mount, and retry whenever the demo page is opened (so a
+  // failed initial fetch — e.g. the server wasn't up yet — recovers without a refresh).
   useEffect(() => {
+    if (sampleFile) return
     fetchSample().then((s) => setSampleFile(s.file)).catch(() => {})
-  }, [])
+  }, [view, sampleFile])
 
   // Clear-tree-cache confirmation modal. `clearing` guards against a double-submit
   // while the DELETE is in flight.
@@ -220,35 +230,16 @@ export default function App() {
         )}
         <div className="topbar-right">
           {view === 'main' ? (
-            <>
-              <button className="reload-btn" title="Reset all chunk sizes" aria-label="Reset all chunk sizes" onClick={resetChunkSizes}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" strokeWidth="1.3"
-                     strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="23 4 23 10 17 10" />
-                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-                </svg>
-              </button>
-              <button className="reload-btn" title="Clear tree cache" aria-label="Clear tree cache" onClick={() => setConfirmClear(true)}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" strokeWidth="1.3"
-                     strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="3 6 5 6 21 6" />
-                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                  <path d="M10 11v6M14 11v6" />
-                  <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                </svg>
-              </button>
-              <button className="reload-btn" title="Open the demo page" aria-label="Open the demo page" onClick={() => setView('help')}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" strokeWidth="1.5"
-                     strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="9.5" />
-                  <path d="M9.1 9.2a3 3 0 0 1 5.8 1c0 2-3 3-3 3" />
-                  <line x1="12" y1="17" x2="12.01" y2="17" />
-                </svg>
-              </button>
-            </>
+            <button className="reload-btn" title="Clear tree cache" aria-label="Clear tree cache" onClick={() => setConfirmClear(true)}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" strokeWidth="1.3"
+                   strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                <path d="M10 11v6M14 11v6" />
+                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+              </svg>
+            </button>
           ) : (
             <button className="reload-btn" title="Back to the app" aria-label="Back to the app" onClick={() => setView('main')}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -302,6 +293,7 @@ export default function App() {
               onJumpConsumed={() => setJumpTarget(null)}
               onJumpToEdit={jumpToEdit}
               openChatSignal={fileChatSignal}
+              onOpenDemo={() => setView('help')}
             />
           ) : bareEmpty ? (
             // Welcome state, no project: the message lives in a white card that
@@ -336,9 +328,33 @@ export default function App() {
                 onJumpConsumed={() => {}}
                 onJumpToEdit={() => {}}
                 openChatSignal={0}
+                demo
+                onOpenInfo={openDemoIntro}
               />
             )}
           </main>
+        </div>
+      )}
+
+      {view === 'help' && demoIntroOpen && (
+        <div className={`modal-overlay ${demoIntroDismissable ? 'dim' : 'glass'}`} onClick={demoIntroDismissable ? () => setDemoIntroOpen(false) : undefined}>
+          <div className="chunk-help demo-intro" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            {demoIntroDismissable && (
+              <button className="chunk-help-x" onClick={() => setDemoIntroOpen(false)} aria-label="Close">×</button>
+            )}
+            <h2 className="demo-intro-title">How chunking works</h2>
+            <p className="chunk-help-text">Three sliders control how this file splits into chunks:</p>
+            <ul className="demo-intro-list">
+              <li><b>Granularity</b> — how deep the splits can go.</li>
+              <li><b>Depth spread</b> — when bigger chunks split first, how far apart their depths can land.</li>
+              <li><b>Sub-split</b> — how much a chunk breaks down further once it passes a word-count cap.</li>
+            </ul>
+            <p className="chunk-help-text">
+              Every possible chunk maps to exactly one chunking path, so cached results
+              stay valid no matter how you move the sliders.
+            </p>
+            <button className="chunk-help-demo" onClick={() => setDemoIntroOpen(false)}><span>Continue</span></button>
+          </div>
         </div>
       )}
 

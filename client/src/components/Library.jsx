@@ -375,9 +375,14 @@ export default function Library({
           <div className="chat-body" ref={chatScrollRef}>
             {chatLog.map((m, i) => {
               const refs = m.role === 'assistant' ? mentionedRefs(m.text, directChildren) : []
+              // Make the same file/folder names clickable inline, where they appear.
+              const mentions = m.role === 'assistant' ? [
+                ...directChildren.files.map((f) => ({ name: f.name, onClick: () => openFileRef(f.id) })),
+                ...directChildren.folders.map((d) => ({ name: d.name, onClick: () => setCwd(d.path) })),
+              ] : undefined
               return (
                 <div key={i} className={`chat-msg ${m.role}`}>
-                  <div className="chat-bubble">{renderRich(m.text)}</div>
+                  <div className="chat-bubble">{renderRich(m.text, mentions)}</div>
                   {refs.length > 0 && (
                     <div className="chat-refs">
                       {refs.map((r) =>

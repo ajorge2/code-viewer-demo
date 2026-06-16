@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { fetchRaw, fetchChunks, fetchChunksAround, askQuestion, suggestEdits } from '../lib/api.js'
 import { renderRich } from '../lib/richText.jsx'
 import ContextAttach from './ContextAttach.jsx'
@@ -131,8 +132,9 @@ function charDiff(orig, edited) {
 
 export default function CodeViewer({
   file, files = [], chunkSize, onChunkSize, edits, setEdits, jumpTarget, onJumpConsumed, onJumpToEdit,
-  locked = false, controlsReady = true, openChatSignal = 0,
+  locked = false, controlsReady = true, openChatSignal = 0, demo = false, onOpenDemo, onOpenInfo,
 }) {
+  const [helpOpen, setHelpOpen] = useState(false) // chunking how-to modal
   const [text, setText] = useState('')
   const [resp, setResp] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -151,9 +153,6 @@ export default function CodeViewer({
   // Chunk band highlights are off by default — usually you don't need to see the
   // other chunks, just work with your highlighted target. Toggle in the toolbar.
   const [showChunks, setShowChunks] = useState(false)
-  // Show/hide the bottom half of the toolbar (toggle + depth/sub sliders).
-  // Collapsed by default — the extra controls are revealed via the chevron.
-  const [bottomOpen, setBottomOpen] = useState(false)
   // RAG Q&A chat panel (scaffold — backend wired later). `chatClosing` keeps the
   // panel mounted through its genie close animation before it unmounts.
   const [chatOpen, setChatOpen] = useState(false)
@@ -638,7 +637,10 @@ export default function CodeViewer({
     resetSub()
     setManualMode(false)
     setPendingRange({ start, end })
-    if (!chatOpen) pulseFab() // nudge: a new chunk is highlighted — open the chat to ask
+    // With the chat open, a fresh highlight re-shows the chunk bands even if you'd
+    // toggled the Highlights switch off. With it closed, nudge the FAB instead.
+    if (chatOpen) setShowChunks(true)
+    else pulseFab()
   }
 
   // Clicking the selection label in the chat header pulses the selected chunk's lines
@@ -666,7 +668,7 @@ export default function CodeViewer({
   return (
     <div className={`viewer${locked ? ' locked' : ''}${controlsReady ? '' : ' controls-hidden'}`}>
       <div className="viewer-toolbar">
-        <div className={`toolbar-top${bottomOpen ? ' open' : ''}`}>
+        <div className="toolbar-top">
           <div className="vt-file-row">
             <span className="vt-path">{file.relPath}</span>
           </div>
@@ -684,31 +686,28 @@ export default function CodeViewer({
                 <span className="chunk-switch-knob" />
               </span>
             </button>
-            <span className="chunk-count">Chunks: <b>{chunks.length}</b></span>
-            <span className="gran-divider" aria-hidden="true" />
-            <span className="gran-hint">
-              {pendingRange
-                ? 'Chunked around your highlight'
-                : (manualMode ? 'Manual chunking (Advanced)' : 'Highlight code to chunk around it')}
-            </span>
+            <button
+              type="button"
+              className="gran-help"
+              onClick={() => (demo ? onOpenInfo?.() : setHelpOpen(true))}
+              title="How chunking works"
+              aria-label="How chunking works"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9.5" />
+                <path d="M9.1 9.2a3 3 0 0 1 5.8 1c0 2-3 3-3 3" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+            </button>
           </div>
-          <button
-            type="button"
-            className="bottom-toggle"
-            onClick={() => setBottomOpen((o) => !o)}
-            title={bottomOpen ? 'Hide controls' : 'Show controls'}
-            aria-label={bottomOpen ? 'Hide controls' : 'Show controls'}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" strokeWidth="2.5"
-                 strokeLinecap="round" strokeLinejoin="round">
-              <polyline points={bottomOpen ? '6 15 12 9 18 15' : '6 9 12 15 18 9'} />
-            </svg>
-          </button>
         </div>
-        <div className={`toolbar-bottom-wrap${bottomOpen ? ' open' : ''}`}>
+        {/* The manual chunking sliders live only on the demo page now — shown in a
+            single side-by-side row. The main app chunks by highlighting. */}
+        {demo && (
+        <div className="toolbar-bottom-wrap open">
         <div className="toolbar-bottom">
-          <div className="slider-stack">
+          <div className="slider-stack slider-row">
             {/* Manual granularity (Advanced fallback to highlighting). */}
             <label className="slider-wrap gran">
               <span className="slider-label">Granularity</span>
@@ -803,6 +802,7 @@ export default function CodeViewer({
           </div>
         </div>
         </div>
+        )}
       </div>
 
       <div className={`viewer-body${drawerOpen ? ' drawer-open' : ''}${locked ? ' locked' : ''}`}>
@@ -992,6 +992,8 @@ export default function CodeViewer({
                     <span className="chat-suggest-knob" />
                   </span>
                 </button>
+                <span className="chat-ctx-sep" aria-hidden="true">•</span>
+                <span className="chat-ctx-count">Chunks: {chunks.length}</span>
               </div>
             )}
             <div className="chat-body" ref={chatScrollRef}>
@@ -1082,6 +1084,29 @@ export default function CodeViewer({
           )}
         </button>
       </div>
+
+      {/* Portaled to <body> so the overlay (and its blur) sits above the top bar
+          instead of being trapped inside the app-body's stacking context. */}
+      {helpOpen && createPortal(
+        <div className="modal-overlay dim" onClick={() => setHelpOpen(false)}>
+          <div className="chunk-help" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <button className="chunk-help-x" onClick={() => setHelpOpen(false)} aria-label="Close">×</button>
+            <p className="chunk-help-text">
+              Highlight code you would like to interrogate, and click on the chat
+              button on the bottom right to interact with the chunk around it!
+            </p>
+            {!demo && (
+              <button
+                className="chunk-help-demo"
+                onClick={() => { setHelpOpen(false); onOpenDemo?.() }}
+              >
+                <span>View a demo of how chunking works →</span>
+              </button>
+            )}
+          </div>
+        </div>,
+        document.body,
+      )}
 
       {loading && <div className="viewer-loading">chunking…</div>}
     </div>

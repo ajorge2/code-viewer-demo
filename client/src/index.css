@@ -507,13 +507,6 @@ b, strong { font-weight: inherit; }
 .toolbar-bottom-wrap > .toolbar-bottom { overflow: hidden; min-height: 0; }
 /* Thin oval chevron toggling the bottom half. Absolutely positioned so it
    never shifts the granularity slider (it floats over the value's right space). */
-.bottom-toggle {
-  position: absolute; right: 10px; top: calc(50% - 4px); transform: translateY(-50%);
-  display: grid; place-items: center; padding: 0;
-  background: none; border: none; color: var(--muted); cursor: pointer;
-  transition: color .15s ease;
-}
-.bottom-toggle:hover { color: var(--text); }
 .toolbar-bottom {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
   padding-top: 10px;
@@ -528,17 +521,26 @@ b, strong { font-weight: inherit; }
 .vt-path { font-family: var(--mono); font-size: 16.25px; color: var(--text); }
 .vt-controls { display: flex; align-items: center; gap: 18px; }
 .slider-stack { display: flex; flex-direction: column; gap: 6px; }
+/* Demo page only: the three chunking sliders sit side by side on one line. */
+.slider-stack.slider-row { flex-direction: row; align-items: center; gap: 26px; flex-wrap: wrap; }
+.slider-stack.slider-row .slider-val { min-width: 0; }
 /* Top row: granularity slider + the highlight toggle, with a divider beneath
    both, separating the primary controls from the secondary sliders. */
 /* Reserve room on the right for the absolutely-positioned Advanced chevron
    (right: 10px) so the hint text doesn't run underneath it. */
-.gran-row { display: flex; align-items: center; padding-right: 30px; }
+.gran-row { display: flex; align-items: center; }
 .chunk-count {
   font-size: 12px; color: var(--muted); white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 .chunk-count b { color: var(--text); }
 .gran-hint { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.gran-help {
+  display: inline-grid; place-items: center; margin-left: 8px; padding: 0;
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  transition: color .15s ease;
+}
+.gran-help:hover { color: #0D8BC5; }
 .gran-divider {
   width: 1px; align-self: stretch; margin: 2px 12px;
   background: var(--border);
@@ -791,10 +793,9 @@ b, strong { font-weight: inherit; }
    The toolbar now caps the card, so it carries the rounded top-right corner. */
 .viewer.locked .viewer-toolbar { max-width: 50%; border-top-right-radius: 7px; }
 .viewer.locked .toolbar-bottom-wrap { display: none; }
-/* Granularity row + toggle stay hidden until the collapse fully settles, so the
-   slider doesn't pop in mid-animation. */
-.viewer.controls-hidden .gran-row,
-.viewer.controls-hidden .bottom-toggle { display: none; }
+/* Granularity row stays hidden until the collapse fully settles, so it doesn't
+   pop in mid-animation. */
+.viewer.controls-hidden .gran-row { display: none; }
 /* No toolbar shadow / edge line while locked — the area is continuous gradient.
    Fade (opacity) rather than display:none so they ease in as the welcome collapses
    instead of popping into existence mid-animation. */
@@ -1139,8 +1140,14 @@ b, strong { font-weight: inherit; }
    header divider above it stays (the .chat-head border-bottom), giving the file chat
    the same head divider the folder chat has. */
 .chat-context {
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  display: flex; align-items: center; gap: 8px;
   padding: 6px 14px 8px;
+}
+.chat-context .chat-suggest { align-self: center; }
+.chat-ctx-sep { color: var(--muted); }
+.chat-ctx-count {
+  font-size: 11.5px; color: var(--muted); white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 .chat-ctx-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .chat-ctx-chunk { font-size: 11px; color: #0D8BC5; }
@@ -1174,6 +1181,20 @@ b, strong { font-weight: inherit; }
   font-family: var(--mono); font-size: 0.92em; font-weight: 400;
   background: rgba(120, 140, 170, 0.14); padding: 0.5px 4px; border-radius: 4px;
 }
+/* Inline clickable file/folder references inside an answer (mirrors the ref pills). */
+.chat-inline-ref {
+  background: none; border: none; padding: 0; margin: 0; cursor: pointer;
+  font: inherit; color: #0D8BC5;
+  text-decoration: underline; text-decoration-color: rgba(13, 139, 197, 0.4);
+  text-underline-offset: 2px;
+}
+.chat-inline-ref:hover { text-decoration-color: #0D8BC5; }
+.chat-inline-ref.code {
+  font-family: var(--mono); font-size: 0.92em; color: #0D8BC5;
+  background: rgba(59, 180, 240, 0.12); padding: 0.5px 4px; border-radius: 4px;
+  text-decoration: none;
+}
+.chat-inline-ref.code:hover { background: rgba(59, 180, 240, 0.22); }
 /* Fenced ```code``` blocks: a real multi-line code panel — monospace, scrollable,
    with the backtick tint dropped (it's already on a panel). */
 .chat-bubble pre.chat-code {
@@ -1399,6 +1420,60 @@ b, strong { font-weight: inherit; }
   animation: modalPop .16s cubic-bezier(.2, .8, .3, 1);
 }
 @keyframes modalPop { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
+/* Toolbar-? help modal: a plain dark scrim around the modal — no blur on the
+   surrounding background (too heavy for a quick tip). The panel itself keeps its
+   frosted-glass look (.chunk-help below). */
+.modal-overlay.dim {
+  background: rgba(20, 22, 30, 0.34);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+/* Glass how-to modal (chunking help). */
+.modal-overlay.glass {
+  background: rgba(20, 22, 30, 0.18);
+  -webkit-backdrop-filter: blur(3.5px) saturate(135%); backdrop-filter: blur(3.5px) saturate(135%);
+}
+.chunk-help {
+  position: relative; width: min(440px, calc(100vw - 48px));
+  padding: 28px 26px 24px; border-radius: 18px; color: var(--text);
+  background: rgba(255, 255, 255, 0.55);
+  -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  /* Fade in with the overlay (no transform) — animating transform on a
+     backdrop-filter + big-shadow panel recomputes the 24px blur every frame and
+     looks choppy. */
+  animation: chunk-help-in .18s ease both;
+}
+@keyframes chunk-help-in { from { opacity: 0; } to { opacity: 1; } }
+.chunk-help-x {
+  position: absolute; top: 12px; right: 14px;
+  background: none; border: none; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer;
+}
+.chunk-help-x:hover { color: var(--text); }
+.chunk-help-text { margin: 2px 0 18px; font-size: 14.5px; line-height: 1.55; }
+/* White fill with a blue-gradient border + gradient text, centered. */
+.chunk-help-demo {
+  display: flex; width: fit-content; margin: 2px auto 0;
+  align-items: center; justify-content: center; gap: 6px;
+  padding: 9px 18px; border-radius: 999px; cursor: pointer; font-size: 13px;
+  border: 1.5px solid transparent;
+  background: linear-gradient(#fff, #fff) padding-box, var(--grad-cool) border-box;
+  transition: box-shadow .15s ease;
+}
+.chunk-help-demo > span {
+  background: var(--grad-cool);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  font-weight: 600;
+}
+.chunk-help-demo:hover { box-shadow: 0 4px 14px rgba(59, 180, 240, 0.22); }
+.chunk-help.demo-intro { width: min(480px, calc(100vw - 48px)); }
+.demo-intro-title { margin: 0 0 12px; font-size: 18px; font-weight: 600; }
+.demo-intro-list {
+  margin: 0 0 14px; padding-left: 18px; font-size: 14px; line-height: 1.6; color: var(--text);
+}
+.demo-intro-list li { margin-bottom: 4px; }
+.demo-intro-list b { font-weight: 600; color: #0D8BC5; }
 .modal-title { margin: 0 0 8px; font-size: 17px; font-weight: 600; }
 .modal-body { margin: 0 0 18px; font-size: 13px; line-height: 1.5; color: var(--muted); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
