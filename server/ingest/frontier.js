@@ -140,7 +140,7 @@ function splitGap(text, a, b) {
   return boundary;
 }
 
-function assignCoverage(text, rootBox, frontier) {
+export function assignCoverage(text, rootBox, frontier) {
   const lo = rootBox.start;
   const hi = rootBox.end;
   const n = frontier.length;
@@ -162,51 +162,26 @@ function assignCoverage(text, rootBox, frontier) {
   return chunks;
 }
 
-// "Chunk around a highlighted range" — the inverse of the granularity slider.
-// Instead of a target box COUNT, the caller hands us a character range they care
-// about, and we produce the FEWEST chunks that still isolate it:
-//
-//   1. Descend to the smallest box that fully contains [start, end) — the
-//      "tightest-fit" chunk. (No semantic snapping: a synthetic balancing box is
-//      a valid chunk and still has a stable id.)
-//   2. Path-decompose: walk root → that box; at every node on the path keep each
-//      OFF-path sibling subtree as one whole chunk, and only descend along the
-//      path. The result `{target} ∪ {off-path siblings at each level}` is a
-//      partition of the file, and it is provably the minimum-size frontier that
-//      contains `target` (any coarser cut would have to merge target with a
-//      sibling).
-//
-// Runs on the already balanced + identified tree, so ids match every other
-// chunking of the file.
-function frontierAround(root, rawStart, rawEnd) {
+// "Chunk around a highlighted range": find the SMALLEST box fully containing the
+// range — the tightest-fit chunk — and return just that. Nothing else is computed:
+// the highlight only needs its own box (the answer is about that box alone), so the
+// rest of the file is left unchunked. A box contains [s,e) iff box.start <= s &&
+// box.end >= e; if the range straddles a gap between two children, no child contains
+// it and the current node is the tightest fit. Runs on the already balanced +
+// identified tree, so the box's id matches every other chunking of the file.
+function tightestBox(root, rawStart, rawEnd) {
   let s = Math.min(rawStart, rawEnd);
   let e = Math.max(rawStart, rawEnd);
   if (e <= s) e = s + 1; // collapsed caret → a 1-char range so containment holds
   s = Math.max(root.start, Math.min(s, root.end - 1));
   e = Math.max(s + 1, Math.min(e, root.end));
-
-  // 1. Smallest box fully containing the range. A box contains [s,e) iff
-  //    box.start <= s && box.end >= e. If the range straddles a gap between two
-  //    children, no child contains it and the current node is the tightest fit.
   let target = root;
   while (target.children && target.children.length) {
     const next = target.children.find((c) => c.start <= s && c.end >= e);
     if (!next) break;
     target = next;
   }
-
-  // 2. Path decomposition: emit every off-path sibling whole, descend the path.
-  const path = [];
-  for (let cur = target; cur; cur = cur.parent) path.push(cur);
-  path.reverse(); // [root, …, target]
-  const frontier = [];
-  for (let i = 0; i < path.length - 1; i++) {
-    for (const child of path[i].children) {
-      if (child !== path[i + 1]) frontier.push(child);
-    }
-  }
-  frontier.push(target);
-  return { frontier, targetBox: target };
+  return target;
 }
 
 // Granularity = target box count. The tree is balanced first so each crack
@@ -215,9 +190,9 @@ function frontierAround(root, rawStart, rawEnd) {
 // target. Small cracks mean granularity ≈ chunk count (smooth) AND depth-spread
 // shapes every step (even breadth at D=0 → deep dives at D=∞).
 //
-// Alternatively, pass `around: { start, end }` to chunk around a highlighted
-// range (see frontierAround) instead of by count — granularity/depthSpread are
-// then ignored.
+// Alternatively, pass `around: { start, end }` to get just the tightest box around
+// a highlighted range (see tightestBox) instead of a count — granularity/depthSpread
+// are then ignored and no surrounding chunks are produced.
 // Build the identified box tree from a raw box tree: balance branching, set
 // depths, assign stable ids/hashes (a SHA over every node's text). This is a pure
 // function of (text, tree shape) — granularity/depth/around never reshape the
@@ -234,31 +209,39 @@ export function buildTree(text, root) {
 // is a local array; coverage/collect only read the nodes), so one cached built
 // tree can serve any number of cuts at different settings.
 export function cutTree(text, { root, maxBoxes }, { granularity = 1, depthSpread = 0, around = null } = {}) {
-  let frontier;
-  let targetBox = null;
+  // Highlight mode: just the tightest box around the range, on its own — the rest
+  // of the file is intentionally left unchunked. (The answer only ever uses this
+  // one box's id; surrounding chunks were only ever a display partition.)
   if (around) {
-    ({ frontier, targetBox } = frontierAround(root, around.start, around.end));
-  } else {
-    const target = Math.max(1, Math.min(granularity, maxBoxes));
-    frontier = [root];
-    while (frontier.length < target) {
-      const splittable = frontier.filter((b) => b.kind === 'container' && b.children && b.children.length);
-      if (!splittable.length) break;
-      const minDepth = Math.min(...splittable.map((b) => b.depth));
-      const limit = depthSpread === Infinity ? Infinity : minDepth + depthSpread;
-      const eligible = splittable.filter((b) => b.depth <= limit);
-      if (!eligible.length) break;
-      // Among eligible boxes: lower `rank` (split type, e.g. braces before colons)
-      // wins first; size is only the tiebreaker. rank defaults to 0.
-      let pick = eligible[0];
-      for (const b of eligible) {
-        const rb = b.rank ?? 0;
-        const rp = pick.rank ?? 0;
-        if (rb < rp || (rb === rp && b.end - b.start > pick.end - pick.start)) pick = b;
-      }
-      const at = frontier.indexOf(pick);
-      frontier.splice(at, 1, ...pick.children);
+    const target = tightestBox(root, around.start, around.end);
+    return {
+      maxBoxes,
+      chunks: [{ index: 0, start: target.start, end: target.end, label: target.label, depth: target.depth, nodeId: target.id }],
+      nodes: collectNodes([target]),
+      targetNodeId: target.id,
+    };
+  }
+
+  // Granularity mode: split toward a target box count.
+  const target = Math.max(1, Math.min(granularity, maxBoxes));
+  const frontier = [root];
+  while (frontier.length < target) {
+    const splittable = frontier.filter((b) => b.kind === 'container' && b.children && b.children.length);
+    if (!splittable.length) break;
+    const minDepth = Math.min(...splittable.map((b) => b.depth));
+    const limit = depthSpread === Infinity ? Infinity : minDepth + depthSpread;
+    const eligible = splittable.filter((b) => b.depth <= limit);
+    if (!eligible.length) break;
+    // Among eligible boxes: lower `rank` (split type, e.g. braces before colons)
+    // wins first; size is only the tiebreaker. rank defaults to 0.
+    let pick = eligible[0];
+    for (const b of eligible) {
+      const rb = b.rank ?? 0;
+      const rp = pick.rank ?? 0;
+      if (rb < rp || (rb === rp && b.end - b.start > pick.end - pick.start)) pick = b;
     }
+    const at = frontier.indexOf(pick);
+    frontier.splice(at, 1, ...pick.children);
   }
 
   frontier.sort((a, b) => a.start - b.start);
@@ -266,7 +249,7 @@ export function cutTree(text, { root, maxBoxes }, { granularity = 1, depthSpread
     maxBoxes,
     chunks: assignCoverage(text, root, frontier),
     nodes: collectNodes(frontier),
-    targetNodeId: targetBox ? targetBox.id : null,
+    targetNodeId: null,
   };
 }
 

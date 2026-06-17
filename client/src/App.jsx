@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   fetchHealth, fetchFiles, fetchProjects,
   uploadProject, activateProject, removeProject, clearTreeCache, fetchSample,
+  setProjectBareWindow,
 } from './lib/api.js'
 import Library from './components/Library.jsx'
 import CodeViewer from './components/CodeViewer.jsx'
@@ -43,8 +45,10 @@ export default function App() {
   // entering the demo is not (Continue only).
   const [demoIntroOpen, setDemoIntroOpen] = useState(false)
   const [demoIntroDismissable, setDemoIntroDismissable] = useState(false)
-  useEffect(() => { if (view === 'help') { setDemoIntroOpen(true); setDemoIntroDismissable(false) } }, [view])
-  const openDemoIntro = () => { setDemoIntroOpen(true); setDemoIntroDismissable(true) }
+  const [demoIntroPage, setDemoIntroPage] = useState(0) // 0=sliders, 1=highlight, 2=context
+  const [cachingOpen, setCachingOpen] = useState(false) // "how caching works" modal (opened from two places)
+  useEffect(() => { if (view === 'help') { setDemoIntroOpen(true); setDemoIntroDismissable(false); setDemoIntroPage(0) } }, [view])
+  const openDemoIntro = () => { setDemoIntroOpen(true); setDemoIntroDismissable(true); setDemoIntroPage(0) }
   // Load the sample on mount, and retry whenever the demo page is opened (so a
   // failed initial fetch — e.g. the server wasn't up yet — recovers without a refresh).
   useEffect(() => {
@@ -65,6 +69,25 @@ export default function App() {
       /* surfaced below would be nicer; for now keep the modal open on failure */
     } finally {
       setClearing(false)
+    }
+  }
+
+  // Per-project bare-window size change. The slider commits a pending value; we
+  // confirm (it re-summarizes the project) before applying.
+  const [pendingWindow, setPendingWindow] = useState(null) // chars awaiting confirm
+  const [applyingWindow, setApplyingWindow] = useState(false)
+  const handleBareWindow = (chars) => setPendingWindow(chars)
+  const confirmBareWindow = async () => {
+    if (pendingWindow == null || !activeProjectId) return
+    setApplyingWindow(true)
+    try {
+      const r = await setProjectBareWindow(activeProjectId, pendingWindow)
+      if (r.projects) setProjects(r.projects)
+      setPendingWindow(null)
+    } catch {
+      /* keep the modal open on failure */
+    } finally {
+      setApplyingWindow(false)
     }
   }
 
@@ -123,6 +146,13 @@ export default function App() {
     setSelectedId(entry.fileId)
     if (entry.gran != null) setChunkSizes((m) => ({ ...m, [entry.fileId]: entry.gran }))
     setJumpTarget({ ...entry })
+  }
+
+  // Open a reference result: switch to its file and scroll to the offset (the viewer
+  // applies the offset jump once that file's text renders).
+  const openReference = (fileId, offset) => {
+    setSelectedId(fileId)
+    setJumpTarget({ fileId, offset })
   }
 
   const selectedFile = files.find((f) => f.id === selectedId) || null
@@ -226,11 +256,16 @@ export default function App() {
             onSwitch={switchProject}
             onUpload={handleUploadProject}
             onRemove={handleRemoveProject}
+            onBareWindow={handleBareWindow}
+            welcome={topbarBig}
+            onExitWelcome={collapseWelcome}
           />
         )}
         <div className="topbar-right">
           {view === 'main' ? (
-            <button className="reload-btn" title="Clear tree cache" aria-label="Clear tree cache" onClick={() => setConfirmClear(true)}>
+            // Only meaningful once a project is loaded — there's nothing to clear otherwise.
+            projects.length > 0 && (
+            <button className="reload-btn" title="Clear cache" aria-label="Clear cache" onClick={() => setConfirmClear(true)}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                    stroke="currentColor" strokeWidth="1.3"
                    strokeLinecap="round" strokeLinejoin="round">
@@ -240,6 +275,7 @@ export default function App() {
                 <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
               </svg>
             </button>
+            )
           ) : (
             <button className="reload-btn" title="Back to the app" aria-label="Back to the app" onClick={() => setView('main')}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -253,14 +289,21 @@ export default function App() {
         </div>
         {/* Greeting shown only while the bar is expanded (right after refresh). */}
         {view === 'main' && (
-          <div className="topbar-welcome" aria-hidden={!topbarBig}>Welcome Back!</div>
+          <div className="topbar-welcome" aria-hidden={!topbarBig}>
+            {projects.length === 0 ? 'Welcome!' : 'Welcome Back!'}
+          </div>
         )}
       </header>
 
       {view === 'main' ? (
         // Clicking anywhere in the content below collapses the welcome state
         // (one-way — it can only be re-expanded by refreshing the page).
-        <div className="app-body" onClick={collapseWelcome}>
+        <div className={`app-body${viewerLocked ? ' welcome' : ''}`} onClick={collapseWelcome}>
+        {/* Centered call-to-action over the blank welcome card; fades out as the
+            welcome state collapses (driven by the .welcome class above). */}
+        <div className="welcome-cta" aria-hidden={!viewerLocked}>
+          {projects.length === 0 ? 'Click here to start' : 'Click here to resume'}
+        </div>
         <Library
           files={files}
           projectDir={projectDir}
@@ -269,6 +312,7 @@ export default function App() {
           selectedId={selectedId}
           onSelect={setSelectedId}
           onOpenFileChat={openFileWithChat}
+          noProject={projects.length === 0}
         />
         {/* In the welcome state with no project loaded, drop the stage's opaque
             white so the gradient backdrop shows through on the right — matching
@@ -294,18 +338,21 @@ export default function App() {
               onJumpToEdit={jumpToEdit}
               openChatSignal={fileChatSignal}
               onOpenDemo={() => setView('help')}
+              onOpenCaching={() => setCachingOpen(true)}
+              onOpenReference={openReference}
             />
           ) : bareEmpty ? (
-            // Welcome state, no project: the message lives in a white card that
-            // mirrors the locked viewer (left half, rounded top-right) so the
-            // white/gradient split matches a loaded project instead of leaving a
-            // bare 300px library edge against the gradient.
-            <div className="empty-bare-card">
-              {loaded ? 'No source files found in this project.' : 'Loading…'}
-            </div>
+            // Welcome state, no project: a blank white card that mirrors the locked
+            // viewer (left half, rounded top-right) so the white/gradient split
+            // matches a loaded project instead of leaving a bare 300px library edge
+            // against the gradient. No message — the welcome card stays empty; the
+            // "no source files" text shows once the welcome collapses (.empty below).
+            <div className="empty-bare-card" />
           ) : (
             <div className="empty">
-              {loaded ? 'No source files found in this project.' : 'Loading…'}
+              {/* With no project uploaded at all, show nothing here — the library's
+                  upload prompt is the only message. */}
+              {projects.length === 0 ? '' : loaded ? 'No source files found in this folder' : 'Loading…'}
             </div>
           )}
         </main>
@@ -342,18 +389,63 @@ export default function App() {
             {demoIntroDismissable && (
               <button className="chunk-help-x" onClick={() => setDemoIntroOpen(false)} aria-label="Close">×</button>
             )}
-            <h2 className="demo-intro-title">How chunking works</h2>
-            <p className="chunk-help-text">Three sliders control how this file splits into chunks:</p>
-            <ul className="demo-intro-list">
-              <li><b>Granularity</b> — how deep the splits can go.</li>
-              <li><b>Depth spread</b> — when bigger chunks split first, how far apart their depths can land.</li>
-              <li><b>Sub-split</b> — how much a chunk breaks down further once it passes a word-count cap.</li>
-            </ul>
-            <p className="chunk-help-text">
-              Every possible chunk maps to exactly one chunking path, so cached results
-              stay valid no matter how you move the sliders.
-            </p>
-            <button className="chunk-help-demo" onClick={() => setDemoIntroOpen(false)}><span>Continue</span></button>
+
+            {demoIntroPage === 0 && (
+              <>
+                <h2 className="demo-intro-title">How chunking works</h2>
+                <p className="chunk-help-text">Two sliders control how this file splits into chunks:</p>
+                <ul className="demo-intro-list">
+                  <li><b>Granularity</b> — how deep the splits can go.</li>
+                  <li><b>Depth spread</b> — when bigger chunks split first, how far apart their depths can land.</li>
+                </ul>
+                <p className="chunk-help-text">
+                  Both just move a cut through the same fixed tree, so every chunk is a real
+                  node with exactly one chunking path — cached results stay valid no matter
+                  how you move the sliders.
+                  <button
+                    className="caching-q"
+                    onClick={() => setCachingOpen(true)}
+                    title="How caching works"
+                    aria-label="How caching works"
+                  >?</button>
+                </p>
+              </>
+            )}
+
+            {demoIntroPage === 1 && (
+              <>
+                <h2 className="demo-intro-title">Chunking around a highlight</h2>
+                <p className="chunk-help-text">
+                  Highlight code and the system picks your chunk for you — the <b>tightest</b> piece
+                  that still wraps your whole selection. There's always exactly one.
+                </p>
+              </>
+            )}
+
+            {demoIntroPage === 2 && (
+              <>
+                <h2 className="demo-intro-title">Finding the right context</h2>
+                <p className="chunk-help-text">
+                  To answer, the system reads your chunk against the <b>fewest chunks that still
+                  reach everything you've highlighted</b> — fine where you've looked, broad
+                  elsewhere. It's the same two dials, set by your highlights for the richest context.
+                </p>
+              </>
+            )}
+
+            <div className="demo-intro-nav">
+              {demoIntroPage > 0 && (
+                <button className="demo-intro-back" onClick={() => setDemoIntroPage((p) => p - 1)}>← Back</button>
+              )}
+              <span className="demo-intro-dots" aria-hidden="true">
+                {[0, 1, 2].map((i) => <span key={i} className={`demo-intro-dot${i === demoIntroPage ? ' on' : ''}`} />)}
+              </span>
+              {demoIntroPage < 2 ? (
+                <button className="chunk-help-demo" onClick={() => setDemoIntroPage((p) => p + 1)}><span>Next →</span></button>
+              ) : (
+                <button className="chunk-help-demo" onClick={() => setDemoIntroOpen(false)}><span>Got it</span></button>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -370,11 +462,11 @@ export default function App() {
             aria-labelledby="clear-cache-title"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 id="clear-cache-title" className="modal-title">Clear tree cache?</h2>
+            <h2 id="clear-cache-title" className="modal-title">Clear the cache?</h2>
             <p className="modal-body">
-              This deletes every parsed tree on the server. The next time each file
-              is viewed it will be re-parsed from scratch — safe, just slower for a
-              moment.
+              This resets the finer, in-context read of each chunk in this project — the
+              part answers are built from. It rebuilds the next time you ask. The structure
+              and base summaries stay, so it's quick — totally safe.
             </p>
             <div className="modal-actions">
               <button
@@ -394,6 +486,74 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {pendingWindow != null && (
+        <div
+          className="modal-overlay"
+          onClick={() => { if (!applyingWindow) setPendingWindow(null) }}
+        >
+          <div
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="window-size-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="window-size-title" className="modal-title">Change context detail?</h2>
+            <p className="modal-body">
+              This re-summarizes {projects.find((p) => p.id === activeProjectId)?.name || 'this project'} from
+              scratch at the new window size (~{Math.round(pendingWindow / 1000)}k). Each
+              file is re-analyzed in the background — safe, just slower for a moment.
+            </p>
+            <div className="modal-actions">
+              <button
+                className="modal-btn ghost"
+                onClick={() => setPendingWindow(null)}
+                disabled={applyingWindow}
+              >
+                Cancel
+              </button>
+              <button
+                className="modal-btn danger"
+                onClick={confirmBareWindow}
+                disabled={applyingWindow}
+              >
+                {applyingWindow ? 'Applying…' : 'Apply'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* "How caching works" — opened from the demo intro's ? and from the help
+          modal's link. Portaled to body and layered above both. */}
+      {cachingOpen && createPortal(
+        <div className="modal-overlay dim caching-overlay" onClick={() => setCachingOpen(false)}>
+          <div className="chunk-help demo-intro" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <button className="chunk-help-x" onClick={() => setCachingOpen(false)} aria-label="Close">×</button>
+            <h2 className="demo-intro-title">How caching works</h2>
+            <p className="chunk-help-text">Answers run on two different kinds of summary:</p>
+            <ul className="demo-intro-list">
+              <li>
+                <b>Gists</b> <i>— cheap, done up front.</i> Every piece of code gets a quick
+                standalone summary, computed once for the whole project on a fast model and
+                reused anywhere that exact code appears.
+              </li>
+              <li>
+                <b>In context</b> <i>— heavier, on demand.</i> When you ask, a piece's gist is
+                folded together — on a stronger model — with the gists of the pieces your
+                highlights pull in around it. This is what the answer is actually built from.
+              </li>
+            </ul>
+            <p className="chunk-help-text">
+              Both are saved by the exact code they describe. So the cheap gists are computed
+              once across the whole project, and the heavier in-context reads are only redone
+              when your highlights change what's nearby.
+            </p>
+          </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

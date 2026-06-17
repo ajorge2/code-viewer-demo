@@ -33,28 +33,18 @@ function isSource(name) {
   return SOURCE_EXT.has(name.slice(dot + 1).toLowerCase())
 }
 
-// `fileList` is the FileList from a webkitdirectory input. Each File carries a
-// `webkitRelativePath` like "<chosen-folder>/src/App.jsx".
-export async function readFolderUpload(fileList) {
-  const all = Array.from(fileList || [])
-  if (!all.length) return null
+// A relative path (split into segments) + size is worth keeping iff it's a source
+// file, not under a skipped dir, and within the per-file size cap.
+function keepFile(segs, size) {
+  if (segs.some((s) => SKIP_DIRS.has(s))) return false
+  if (!isSource(segs[segs.length - 1])) return false
+  return size <= MAX_FILE_BYTES
+}
 
-  const top = (all[0].webkitRelativePath || all[0].name).split('/')[0] || 'project'
-
-  const picked = []
-  for (const f of all) {
-    const rel = f.webkitRelativePath || f.name
-    const segs = rel.split('/')
-    if (segs.some((s) => SKIP_DIRS.has(s))) continue
-    const base = segs[segs.length - 1]
-    if (!isSource(base)) continue
-    if (f.size > MAX_FILE_BYTES) continue
-    // Strip the chosen-folder prefix so paths are relative to the project root
-    // (matching how a server-side disk scan returns them).
-    picked.push({ file: f, relPath: segs.slice(1).join('/') || base })
-  }
+// Sort the candidates, read their text up to the count/byte caps, and return the
+// upload-endpoint shape. Shared by all three pick paths below.
+async function assemble(top, picked) {
   picked.sort((a, b) => a.relPath.localeCompare(b.relPath))
-
   const files = []
   let total = 0
   let truncated = false
@@ -66,6 +56,80 @@ export async function readFolderUpload(fileList) {
     total += file.size
     files.push({ relPath, content })
   }
+  return { name: top || 'project', files, truncated }
+}
 
-  return { name: top, files, truncated }
+// (1) webkitdirectory input fallback. `fileList`'s File objects carry a
+// `webkitRelativePath` like "<chosen-folder>/src/App.jsx"; strip the chosen-folder
+// prefix so paths are relative to the project root (matching a server disk scan).
+export async function readFolderUpload(fileList) {
+  const all = Array.from(fileList || [])
+  if (!all.length) return null
+  const top = (all[0].webkitRelativePath || all[0].name).split('/')[0] || 'project'
+  const picked = []
+  for (const f of all) {
+    const segs = (f.webkitRelativePath || f.name).split('/')
+    if (!keepFile(segs, f.size)) continue
+    picked.push({ file: f, relPath: segs.slice(1).join('/') || segs[segs.length - 1] })
+  }
+  return assemble(top, picked)
+}
+
+// (2) File System Access API. `dirHandle` (from showDirectoryPicker) IS the project
+// root, so paths are relative to it. Skipped dirs are pruned during the walk.
+async function collectHandle(dirHandle, prefix, picked) {
+  for await (const entry of dirHandle.values()) {
+    const rel = prefix ? `${prefix}/${entry.name}` : entry.name
+    if (entry.kind === 'directory') {
+      if (SKIP_DIRS.has(entry.name)) continue
+      await collectHandle(entry, rel, picked)
+    } else {
+      let file
+      try { file = await entry.getFile() } catch { continue }
+      if (keepFile(rel.split('/'), file.size)) picked.push({ file, relPath: rel })
+    }
+    if (picked.length >= MAX_FILES * 3) break // guard before the read-time cap
+  }
+}
+export async function readDirectoryHandle(dirHandle) {
+  const picked = []
+  await collectHandle(dirHandle, '', picked)
+  return assemble(dirHandle.name, picked)
+}
+
+// (3) Drag-and-drop. The dropped items use the older FileSystem Entries API
+// (webkitGetAsEntry). `entries` must be captured SYNCHRONOUSLY in the drop handler
+// (the DataTransferItemList is invalid afterwards) and passed in here.
+const readEntries = (reader) => new Promise((res, rej) => reader.readEntries(res, rej))
+const entryFile = (e) => new Promise((res, rej) => e.file(res, rej))
+async function collectEntry(entry, prefix, picked) {
+  const rel = prefix ? `${prefix}/${entry.name}` : entry.name
+  if (entry.isDirectory) {
+    if (SKIP_DIRS.has(entry.name)) return
+    const reader = entry.createReader()
+    let batch // readEntries returns ≤~100 per call — loop until empty
+    do { batch = await readEntries(reader); for (const c of batch) await collectEntry(c, rel, picked) }
+    while (batch.length)
+  } else if (entry.isFile) {
+    let file
+    try { file = await entryFile(entry) } catch { return }
+    if (keepFile(rel.split('/'), file.size)) picked.push({ file, relPath: rel })
+  }
+}
+export async function readDroppedEntries(entries) {
+  const list = (entries || []).filter(Boolean)
+  if (!list.length) return null
+  const dirs = list.filter((e) => e.isDirectory)
+  const picked = []
+  if (dirs.length === 1 && list.length === 1) {
+    // The common case: one folder dropped → its children are the project root.
+    const reader = dirs[0].createReader()
+    let batch
+    do { batch = await readEntries(reader); for (const c of batch) await collectEntry(c, '', picked) }
+    while (batch.length)
+    return assemble(dirs[0].name, picked)
+  }
+  // Multiple items (or loose files) → keep each under its own name.
+  for (const e of list) await collectEntry(e, '', picked)
+  return assemble(dirs[0]?.name || 'dropped-files', picked)
 }

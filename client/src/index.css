@@ -167,6 +167,9 @@ b, strong { font-weight: inherit; }
   opacity: 1; transition: opacity .2s ease .12s;
 }
 .topbar.big .topbar-right { opacity: 0; pointer-events: none; transition: opacity 0s; }
+/* No button to show (e.g. no project loaded) → drop the divider + padding so a lone
+   vertical line isn't left floating. */
+.topbar-right:empty { border-left: none; padding: 0; }
 /* "Welcome" centered in the expanded top bar; hidden once it collapses. */
 .topbar-welcome {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
@@ -226,6 +229,37 @@ b, strong { font-weight: inherit; }
 /* Current-project tab (front of the stack): full width, sits on top. */
 .proj-current { max-width: 280px; padding: 7px 22px 9px; z-index: 2; }
 .proj-current.has-remove { padding-left: 24px; }
+/* Welcome state: a clean, empty placeholder tab at a fixed width — no project
+   name, no × remove control. */
+.proj-tab-welcome {
+  width: 260px; max-width: 260px; padding: 7px 22px 9px; cursor: default;
+  /* Pure-white outline so the tab blends into the white folder card (the default
+     cool off-white reads as a visible border here). */
+  --tab-line: #fff;
+}
+.proj-tab-welcome .proj-name,
+.proj-tab-welcome .proj-current-remove { display: none; }
+/* In the welcome view, pin the tab flush to the LEFT viewport edge so the folder
+   card's top edge runs continuously from the left (like a manila folder's tab —
+   no left flare, only the right one). The topbar's 20px left padding is countered
+   with left:-20px so the tab's left edge lands on the true viewport edge. */
+.topbar.big .proj-switch {
+  position: absolute; left: -20px; bottom: -13px; margin: 0; z-index: 5;
+}
+/* Drop the left flare: a straight vertical left edge at x=0, keeping only the
+   right flare that descends into the card top. Both pseudo-layers are white here
+   (--tab-line: #fff), so a single shared silhouette reads as one clean shape. */
+.proj-tab-welcome::before,
+.proj-tab-welcome::after {
+  clip-path: shape(
+    from 0 0,
+    line to calc(100% - 20px) 0,
+    curve to calc(100% - 11px) 10px with calc(100% - 15px) 0 / calc(100% - 11px) 4px,
+    curve to 100% 100% with calc(100% - 11px) 35% / calc(100% - 7px) 80%,
+    line to 0 100%,
+    close
+  );
+}
 /* Staggered stack: every open project is a folder tab laid out left-to-right.
    Tabs overlap only by their flare (~16px) so each new project sits well to the
    RIGHT of the previous one, just slightly on top of it. The active project is
@@ -333,6 +367,13 @@ b, strong { font-weight: inherit; }
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
   overflow: hidden;
 }
+/* The active project's window-size slider popover (reuses .proj-menu's box). */
+.proj-settings { padding: 14px 16px 16px; overflow: visible; }
+.proj-settings-title { font-size: 13px; font-weight: 600; color: var(--text, #0f172a); margin-bottom: 6px; }
+.proj-settings-hint { font-size: 12px; line-height: 1.5; color: var(--muted); margin: 0 0 12px; }
+.proj-settings .slider-wrap { gap: 12px; }
+.proj-settings .slider-val { min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+
 .proj-list { max-height: 320px; overflow-y: auto; padding: 6px; }
 .proj-empty { padding: 12px; color: var(--muted); font-size: 13px; text-align: center; }
 .proj-item {
@@ -358,8 +399,21 @@ b, strong { font-weight: inherit; }
 }
 .proj-remove:hover { background: rgba(209, 30, 8, 0.12); color: #D11E08; }
 .proj-add {
-  display: flex; padding: 8px; border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 8px; padding: 10px;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 12px 12px; transition: background .15s ease, box-shadow .15s ease;
 }
+/* Folder dropzone: a dashed inset that lights up while a folder is dragged over it. */
+.proj-add.drag-over {
+  background: rgba(59, 180, 240, 0.1);
+  box-shadow: inset 0 0 0 2px #3BB4F0;
+}
+.proj-add.disabled { opacity: 0.6; }
+.proj-drop-hint {
+  text-align: center; font-size: 11.5px; color: var(--muted);
+  border: 1px dashed var(--border); border-radius: 8px; padding: 9px 8px;
+}
+.proj-add.drag-over .proj-drop-hint { color: #0D8BC5; border-color: #3BB4F0; }
 .proj-pick-btn {
   flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
   padding: 9px 12px; border-radius: 8px; cursor: pointer;
@@ -378,6 +432,21 @@ b, strong { font-weight: inherit; }
 }
 
 .app-body { display: flex; flex: 1; min-height: 0; }
+
+/* Welcome call-to-action: centered over the blank card, fades in/out with the
+   welcome state. pointer-events: none so the click still falls through to the
+   app-body handler that collapses the welcome view. */
+.welcome-cta {
+  /* Span just the white folder card (library 300px + the viewer's left-half), so
+     the text centers within the card, not the full viewport. Card right edge sits
+     at (viewport + 300px)/2, i.e. right: calc(50% - 150px). */
+  position: absolute; top: 0; bottom: 0; left: 0; right: calc(50% - 150px); z-index: 6;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+  font-size: 30px; font-weight: 500; letter-spacing: 0.01em; color: var(--muted);
+  opacity: 0; transition: opacity 0.4s ease;
+}
+.app-body.welcome .welcome-cta { opacity: 1; }
 
 /* Library sidebar */
 .library {
@@ -421,6 +490,24 @@ b, strong { font-weight: inherit; }
 }
 .filter:focus { outline: none; border-color: #3BB4F0; }
 .file-list { overflow-y: auto; flex: 1; padding: 4px 6px 12px; }
+
+/* No-project library: a single centered prompt to upload via the "+" tab. */
+.lib-empty {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 24px; text-align: center; color: var(--muted); font-size: 13.5px;
+}
+
+/* Welcome state: the library reads as a blank white card — none of the
+   file/folder content is visible. It fades back in as the welcome collapses. */
+.lib-project, .filter, .file-list { transition: opacity 0.4s ease; }
+.app-body.welcome .library { background: var(--bg); }
+.app-body.welcome .lib-project,
+.app-body.welcome .filter,
+.app-body.welcome .lib-empty,
+.app-body.welcome .file-list { opacity: 0; pointer-events: none; }
+/* No chat FABs in the welcome state — the card is fully blank. */
+.app-body.welcome .lib-chat-fab,
+.app-body.welcome .chat-fab { display: none; }
 
 .tree-row {
   display: flex; align-items: stretch; width: 100%; height: 26px;
@@ -811,6 +898,11 @@ b, strong { font-weight: inherit; }
   border-radius: 0;
 }
 .viewer-body.locked .drawer-handle { display: none; }
+/* Welcome state: blank the card entirely — hide the filename and the code so the
+   whole viewer reads as empty white. Both fade back in as the welcome collapses. */
+.vt-path, .code { transition: opacity 0.4s ease; }
+.viewer.locked .vt-path { opacity: 0; }
+.viewer-body.locked .code { opacity: 0; pointer-events: none; }
 /* Keep the code scrollbar a constant width (don't let it fatten on hover). */
 .code-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
 .code-scroll::-webkit-scrollbar-track { background: transparent; }
@@ -1018,6 +1110,8 @@ b, strong { font-weight: inherit; }
   background: var(--panel-2); border: 1px solid var(--border);
   padding: 6px 14px; border-radius: 999px; font-size: 12px; color: var(--muted);
 }
+/* No "chunking…" pill in the welcome state — the card stays blank. */
+.viewer.locked .viewer-loading { display: none; }
 
 /* RAG Q&A chat — floating button + panel over the file view. Both shift left to
    clear the chunk drawer when it's open (matches the .viewer-body offset). */
@@ -1227,14 +1321,24 @@ b, strong { font-weight: inherit; }
   font-size: 11px; padding: 3px 9px;
 }
 /* Action row beneath the latest answer (More detail / Suggest edits). */
-.chat-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.chat-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 10px; margin-top: 2px; }
 .chat-deepen {
   align-self: flex-start; cursor: pointer;
   font-size: 12px; color: #0D8BC5; padding: 5px 11px; border-radius: 999px;
   background: rgba(59, 180, 240, 0.10); border: 1px solid rgba(59, 180, 240, 0.35);
-  transition: background .15s ease;
+  transition: background .15s ease, border-color .15s ease;
 }
 .chat-deepen:hover { background: rgba(59, 180, 240, 0.18); }
+/* Lit up while the reader has part of an answer highlighted — the button will focus there. */
+.chat-deepen.focused { background: rgba(59, 180, 240, 0.22); border-color: rgba(59, 180, 240, 0.65); }
+/* The always-present nudge that highlighting an answer focuses "More detail". */
+.chat-deepen-hint {
+  flex: 1 1 130px; min-width: 0;
+  font-size: 11px; line-height: 1.3; color: var(--muted);
+}
+.chat-deepen-hint-mark {
+  color: #0D8BC5; border-bottom: 1px dashed rgba(59, 180, 240, 0.55); padding-bottom: 0.5px;
+}
 /* Jump-to buttons under a folder-chat answer: one per child file/folder the
    answer named, so you can dive straight into that file's view or that
    subfolder's chat. Same teal pill family as the action chips above. */
@@ -1246,7 +1350,6 @@ b, strong { font-weight: inherit; }
   transition: background .15s ease;
 }
 .chat-ref:hover { background: rgba(59, 180, 240, 0.18); }
-.chat-ref.folder::before { content: "📁"; margin-right: 5px; }
 /* Suggest edits: same pill shape, a greenish accent to set it apart as an action
    that changes the code rather than the conversation. It's a toggle — `.active`
    is the on (filled) state. */
@@ -1474,6 +1577,67 @@ b, strong { font-weight: inherit; }
 }
 .demo-intro-list li { margin-bottom: 4px; }
 .demo-intro-list b { font-weight: 600; color: #0D8BC5; }
+/* Multi-page nav: Back (left), page dots (center), Next/Got it (right). */
+.demo-intro-nav { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-top: 18px; }
+.demo-intro-nav .chunk-help-demo { justify-self: end; margin: 0; }
+.demo-intro-back {
+  justify-self: start; background: none; border: none; cursor: pointer;
+  font-size: 13px; color: var(--muted); padding: 6px 2px; transition: color .15s ease;
+}
+.demo-intro-back:hover { color: var(--text); }
+.demo-intro-dots { justify-self: center; display: inline-flex; gap: 6px; }
+.demo-intro-dot { width: 6px; height: 6px; border-radius: 50%; background: #d4dbe4; transition: background .15s ease; }
+.demo-intro-dot.on { background: #3bb4f0; }
+/* The caching sub-modal layers above the demo intro / help modal (both z-index 100). */
+.caching-overlay { z-index: 110; }
+/* Small inline ? that opens the caching modal from the demo intro's cached-results line. */
+.caching-q {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 17px; height: 17px; margin-left: 7px; padding: 0; vertical-align: middle;
+  border-radius: 50%; border: 1.3px solid #3bb4f0; background: none;
+  color: #0D8BC5; font-size: 11px; font-weight: 700; line-height: 1; cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+.caching-q:hover { background: #3bb4f0; color: #fff; }
+/* "Curious about how caching works?" link under the demo button in the help modal. */
+.chunk-help-caching {
+  display: block; margin: 10px auto 0; padding: 4px; background: none; border: none;
+  color: #0D8BC5; font-size: 12.5px; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.chunk-help-caching:hover { color: #0a6b99; }
+
+/* "Find references" peek card (opened by clicking a code symbol in the file chat). */
+.refs-peek {
+  position: relative; width: min(580px, calc(100vw - 48px));
+  max-height: min(72vh, 640px); display: flex; flex-direction: column;
+  background: #fff; color: var(--text); border: 0.5px solid var(--border);
+  border-radius: 14px; padding: 16px 18px 12px; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22);
+  animation: modalPop .16s cubic-bezier(.2, .8, .3, 1);
+}
+.refs-peek-head { display: flex; align-items: baseline; gap: 10px; padding-right: 22px; margin-bottom: 10px; }
+.refs-peek-name { font-size: 14px; font-weight: 600; color: #0D8BC5; background: rgba(59,180,240,.1); padding: 1px 7px; border-radius: 6px; }
+.refs-peek-meta { font-size: 12px; color: var(--muted); }
+.refs-peek-empty { font-size: 13px; color: var(--muted); padding: 14px 2px; }
+.refs-peek-list { overflow-y: auto; margin: 0 -6px; padding: 0 6px; }
+.refs-peek-file { margin-bottom: 8px; }
+.refs-peek-path { font-size: 11.5px; color: var(--muted); font-weight: 600; padding: 4px 2px; position: sticky; top: 0; background: #fff; }
+.refs-peek-here { color: #3bb4f0; font-weight: 500; }
+.refs-peek-row {
+  display: grid; grid-template-columns: 64px 30px 1fr; align-items: center; gap: 8px;
+  width: 100%; text-align: left; background: none; border: none; cursor: pointer;
+  padding: 4px 6px; border-radius: 6px; font-family: inherit;
+}
+.refs-peek-row:hover { background: #f1f5f9; }
+.refs-kind { font-size: 9.5px; text-transform: uppercase; letter-spacing: .03em; text-align: center;
+  padding: 2px 0; border-radius: 4px; font-weight: 700; color: #64748b; background: #eef2f6; }
+.refs-kind.definition { color: #166534; background: #dcfce7; }
+.refs-kind.call { color: #1e40af; background: #dbeafe; }
+.refs-kind.import { color: #92400e; background: #fef3c7; }
+.refs-kind.text { color: #6b7280; background: #f3f4f6; }
+.refs-peek-ln { font-size: 11px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.refs-peek-code { font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.refs-peek-foot { font-size: 11px; color: var(--muted); padding: 10px 2px 2px; border-top: 1px solid var(--border); margin-top: 8px; }
 .modal-title { margin: 0 0 8px; font-size: 17px; font-weight: 600; }
 .modal-body { margin: 0 0 18px; font-size: 13px; line-height: 1.5; color: var(--muted); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }

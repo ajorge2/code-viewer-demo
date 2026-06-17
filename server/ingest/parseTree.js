@@ -126,6 +126,23 @@ export function clearTreeCache() {
   return removed;
 }
 
+// The cache key for a file's parsed tree (must match loadTree's keying).
+export function treeCacheKey(content, language) {
+  return crypto.createHash('sha1').update(`${language}\0${content}`).digest('hex');
+}
+
+// Clear only the parse trees for the given keys (a specific project's files) — both
+// the in-memory memo and the persisted .tree-cache/<key>.json. Returns how many disk
+// files were removed.
+export function clearTreeCacheForKeys(keys) {
+  let removed = 0;
+  for (const key of keys) {
+    memCache.delete(key);
+    try { fs.unlinkSync(path.join(CACHE_DIR, `${key}.json`)); removed += 1; } catch { /* not on disk */ }
+  }
+  return removed;
+}
+
 export async function loadTree(content, language) {
   if (!isParseable(language)) return null;
   const key = crypto.createHash('sha1').update(language + '\0' + content).digest('hex');

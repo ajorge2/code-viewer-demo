@@ -18,8 +18,10 @@ const dirOf = (rel) => (rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) :
 
 let current = null; // { root, nodes: Map<path, node> }
 
-// Build (and store) the folder tree from files: [{ relPath, content }].
-export function setProjectTree(rootName, files) {
+// Build the folder tree from files: [{ relPath, content }] — a PURE function (does not
+// touch the active tree). Hashes depend only on content + structure, not the root name,
+// so this can also rebuild a background project's tree to compute its cache hashes.
+export function buildProjectTree(rootName, files) {
   const root = { kind: 'dir', path: '', name: rootName || '(project)', children: [] };
   const dirs = new Map([['', root]]);
   const ensureDir = (dirPath) => {
@@ -48,31 +50,36 @@ export function setProjectTree(rootName, files) {
   const nodes = new Map();
   const index = (n) => { nodes.set(n.path, n); if (n.children) n.children.forEach(index); };
   index(root);
-  current = { root, nodes };
+  return { root, nodes };
+}
+
+// Build (and store) the ACTIVE project's folder tree.
+export function setProjectTree(rootName, files) {
+  current = buildProjectTree(rootName, files);
   return current;
 }
 
 export function getProjectTree() { return current; }
 
-// Folder chain root → directory-of(relPath), inclusive — the folders whose
-// context a FILE (and its chunks) inherits. Empty if no tree is built.
-export function folderChainTo(relPath) {
-  return chainToDir(dirOf(norm(relPath)));
+// Folder chain root → directory-of(relPath), inclusive — the folders whose context a
+// FILE (and its chunks) inherits. `tree` defaults to the active tree. Empty if none.
+export function folderChainTo(relPath, tree = current) {
+  return chainToDir(dirOf(norm(relPath)), tree);
 }
 
-// Folder chain root → the directory itself, inclusive — for chatting ABOUT a
-// folder (the path IS the folder, not a file inside it).
-export function folderChainToDir(dirPath) {
-  return chainToDir(norm(dirPath).replace(/\/$/, ''));
+// Folder chain root → the directory itself, inclusive — for chatting ABOUT a folder
+// (the path IS the folder, not a file inside it).
+export function folderChainToDir(dirPath, tree = current) {
+  return chainToDir(norm(dirPath).replace(/\/$/, ''), tree);
 }
 
-function chainToDir(dirPath) {
-  if (!current) return [];
-  const chain = [current.nodes.get('')]; // project root
+function chainToDir(dirPath, tree = current) {
+  if (!tree) return [];
+  const chain = [tree.nodes.get('')]; // project root
   let acc = '';
   for (const seg of dirPath.split('/').filter(Boolean)) {
     acc = acc ? `${acc}/${seg}` : seg;
-    const n = current.nodes.get(acc);
+    const n = tree.nodes.get(acc);
     if (n) chain.push(n);
   }
   return chain;

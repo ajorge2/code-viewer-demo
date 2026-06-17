@@ -87,3 +87,54 @@ export function maxSemanticDepth(nodes, idx, id) {
   for (const k of kids) m = Math.max(m, maxSemanticDepth(nodes, idx, k));
   return 1 + m;
 }
+
+// All proper ancestors of a node (raw parent chain, synthetic groups included).
+function properAncestors(nodes, id) {
+  const out = [];
+  let p = nodes[id]?.parent;
+  while (p && nodes[p]) { out.push(p); p = nodes[p].parent; }
+  return out;
+}
+
+// The MINIMAL frontier that contains a set of marked boxes. A frontier is a tiling
+// antichain — boxes that cover the whole file end-to-end, none an ancestor of
+// another. Given the marks the user has asked about, this returns the coarsest such
+// tiling in which every mark still appears as its own box, so each marked box is
+// isolated and every mark-free stretch stays as one big box. It's the inverse of the
+// per-highlight tightest-box descent: that finds one box, this fills the rest of the
+// file around a SET of them with as few boxes as possible.
+//
+//   • Synthetic balancing groups carry no standalone meaning, so a mark on one
+//     resolves UP to its nearest real (semantic) box — same rule as semanticParentId.
+//   • Stale marks (ids from an older file version, absent from `nodes`) are dropped.
+//   • Finer wins: if one mark properly contains another, the coarser one is split
+//     open rather than kept whole, so only the deepest (antichain) marks are members.
+//
+// Returns frontier node ids sorted by source position. Zero/all-stale marks → [root].
+export function minimalFrontier(nodes, idx, rootId, markIds) {
+  // 1. Resolve each mark to its nearest semantic box; drop stale ids.
+  const resolved = new Set();
+  for (const raw of markIds) {
+    let cur = raw;
+    while (cur && nodes[cur] && !nodes[cur].semantic) cur = nodes[cur].parent;
+    if (cur && nodes[cur]) resolved.add(cur);
+  }
+  // 2. Finer wins: keep only marks that aren't a proper ancestor of another mark.
+  const ancestorUnion = new Set();
+  for (const id of resolved) for (const a of properAncestors(nodes, id)) ancestorUnion.add(a);
+  const effective = [...resolved].filter((id) => !ancestorUnion.has(id));
+  // 3. The boxes that must be cracked open to expose a mark = ancestors of effectives.
+  const splitThrough = new Set();
+  for (const id of effective) for (const a of properAncestors(nodes, id)) splitThrough.add(a);
+  // 4. Emit top-down: keep a box whole unless it must be split through to reach a mark.
+  const frontier = [];
+  const expand = (id) => {
+    const kids = idx.get(id) || [];
+    if (splitThrough.has(id) && kids.length) { for (const c of kids) expand(c); }
+    else frontier.push(id);
+  };
+  expand(rootId);
+  // 5. Source order.
+  frontier.sort((a, b) => nodes[a].start - nodes[b].start);
+  return frontier;
+}

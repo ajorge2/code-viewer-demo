@@ -21,18 +21,19 @@ function linkifyMentions(text, keyPrefix, mentions) {
   const names = [...new Set(mentions.map((m) => m.name))]
     .sort((a, b) => b.length - a.length)
     .map(escapeRe)
-  const re = new RegExp(`(?<![\\w-])(${names.join('|')})(?![\\w-])`, 'gi')
+  // The optional trailing "/" lets a folder mention ("ingest/") render as one
+  // clickable ref; for a path ("ingest/code.js") it backtracks so each part links.
+  const re = new RegExp(`(?<![\\w-])(${names.join('|')})(\\/?)(?![\\w-])`, 'gi')
   const out = []
   let last = 0
   let i = 0
   let mm
   while ((mm = re.exec(text)) !== null) {
     if (mm.index > last) out.push(text.slice(last, mm.index))
-    const matched = mm[1]
-    const mention = mentions.find((x) => x.name.toLowerCase() === matched.toLowerCase())
+    const mention = mentions.find((x) => x.name.toLowerCase() === mm[1].toLowerCase())
     out.push(
       <button key={`${keyPrefix}m${i}`} type="button" className="chat-inline-ref" onClick={mention.onClick}>
-        {matched}
+        {mm[1] + (mm[2] || '')}
       </button>,
     )
     last = re.lastIndex
@@ -43,21 +44,26 @@ function linkifyMentions(text, keyPrefix, mentions) {
 }
 
 // Inline pass: turn **…** and `…` spans within a single line into <strong>/<code>;
-// link any mention names in the plain text (and in a `code` span that is itself a
-// mention). A single split with an alternation keeps **/` mutually exclusive.
-function inlineFmt(text, keyPrefix, mentions) {
+// link any mention names in the plain text (folder chat). A `code` span becomes a
+// clickable ref if it's a known mention OR `linkCode(content)` returns a handler
+// (file chat: jump to that symbol in the open file). A single split with an
+// alternation keeps **/` mutually exclusive.
+function inlineFmt(text, keyPrefix, mentions, linkCode) {
   return String(text)
     .split(/(\*\*[\s\S]+?\*\*|`[^`]+?`)/g)
     .flatMap((part, i) => {
       if (/^\*\*[\s\S]+\*\*$/.test(part)) {
-        return [<strong key={`${keyPrefix}b${i}`}>{inlineFmt(part.slice(2, -2), `${keyPrefix}b${i}`, mentions)}</strong>]
+        return [<strong key={`${keyPrefix}b${i}`}>{inlineFmt(part.slice(2, -2), `${keyPrefix}b${i}`, mentions, linkCode)}</strong>]
       }
       if (/^`[^`]+`$/.test(part)) {
         const content = part.slice(1, -1)
-        const mention = mentions?.find((x) => x.name.toLowerCase() === content.toLowerCase())
-        if (mention) {
+        // A folder is often written `like/` — strip a trailing slash so it matches
+        // the mention name (which is the bare basename).
+        const lookup = content.replace(/\/+$/, '')
+        const onClick = mentions?.find((x) => x.name.toLowerCase() === lookup.toLowerCase())?.onClick || linkCode?.(content)
+        if (onClick) {
           return [
-            <button key={`${keyPrefix}c${i}`} type="button" className="chat-inline-ref code" onClick={mention.onClick}>
+            <button key={`${keyPrefix}c${i}`} type="button" className="chat-inline-ref code" onClick={onClick}>
               {content}
             </button>,
           ]
@@ -72,7 +78,7 @@ function inlineFmt(text, keyPrefix, mentions) {
 // get the inline treatment. Lines are rejoined with explicit "\n" so pre-wrap
 // preserves the original line breaks. Edge newlines are trimmed so prose sitting
 // next to a code block doesn't leave a blank gap.
-function renderProse(segment, keyPrefix, mentions) {
+function renderProse(segment, keyPrefix, mentions, linkCode) {
   const cleaned = segment.replace(/^\n+/, '').replace(/\n+$/, '')
   if (!cleaned) return []
   const lines = cleaned.split('\n')
@@ -82,11 +88,11 @@ function renderProse(segment, keyPrefix, mentions) {
     if (h) {
       out.push(
         <span key={`${keyPrefix}h${i}`} className="chat-h" data-level={h[1].length}>
-          {inlineFmt(h[2], `${keyPrefix}h${i}`, mentions)}
+          {inlineFmt(h[2], `${keyPrefix}h${i}`, mentions, linkCode)}
         </span>,
       )
     } else {
-      out.push(<span key={`${keyPrefix}l${i}`}>{inlineFmt(line, `${keyPrefix}l${i}`, mentions)}</span>)
+      out.push(<span key={`${keyPrefix}l${i}`}>{inlineFmt(line, `${keyPrefix}l${i}`, mentions, linkCode)}</span>)
     }
     if (i < lines.length - 1) out.push('\n')
   })
@@ -95,7 +101,7 @@ function renderProse(segment, keyPrefix, mentions) {
 
 // Top pass: peel off ```fenced``` code blocks (rendered verbatim in a <pre>), and
 // hand the prose between them to renderProse.
-export function renderRich(text, mentions) {
+export function renderRich(text, mentions, linkCode) {
   const src = String(text)
   const fenceRe = /```[ \t]*(\w*)\n?([\s\S]*?)```/g
   const out = []
@@ -103,7 +109,7 @@ export function renderRich(text, mentions) {
   let key = 0
   let m
   while ((m = fenceRe.exec(src)) !== null) {
-    if (m.index > lastIndex) out.push(...renderProse(src.slice(lastIndex, m.index), `p${key}`, mentions))
+    if (m.index > lastIndex) out.push(...renderProse(src.slice(lastIndex, m.index), `p${key}`, mentions, linkCode))
     const code = m[2].replace(/\n$/, '')
     out.push(
       <pre key={`code${key}`} className="chat-code">
@@ -113,6 +119,6 @@ export function renderRich(text, mentions) {
     lastIndex = fenceRe.lastIndex
     key += 1
   }
-  if (lastIndex < src.length) out.push(...renderProse(src.slice(lastIndex), `p${key}`, mentions))
+  if (lastIndex < src.length) out.push(...renderProse(src.slice(lastIndex), `p${key}`, mentions, linkCode))
   return out
 }

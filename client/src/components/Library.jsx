@@ -72,27 +72,25 @@ function Guides({ depth, prefix, isLast }) {
 // Escape a string for literal use inside a RegExp.
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-// Which direct children (files/folders of the current folder) did the assistant
-// name in its answer? Each becomes a one-click "jump to" button. Matching uses
-// identifier boundaries so "tree.js" doesn't match inside "codeTree.js" and the
-// folder "lib" doesn't match "library.js"; it's case-insensitive, and a "/" on
-// either side is allowed so a path mention ("server/store.js") still resolves.
-// Hits are returned in order of first appearance for natural reading order.
-function mentionedRefs(text, directChildren) {
-  const firstAt = (name) => {
-    const m = new RegExp(`(?<![\\w-])${escapeRe(name)}(?![\\w-])`, 'i').exec(text)
-    return m ? m.index : -1
+// Which of `refs` (each { name, kind, ... }) did the assistant name in its answer?
+// Each becomes a one-click "jump to" button. Matching uses identifier boundaries so
+// "tree.js" doesn't match inside "codeTree.js" and the folder "lib" doesn't match
+// "library.js"; it's case-insensitive, and a "/" on either side is allowed so a path
+// mention ("server/store.js") resolves to its basename. One combined regex scans the
+// text once (refs can be the whole project tree). Returned in first-appearance order.
+function refsInText(text, refs) {
+  if (!refs.length) return []
+  const byName = new Map(refs.map((r) => [r.name.toLowerCase(), r]))
+  const names = refs.map((r) => r.name).sort((a, b) => b.length - a.length).map(escapeRe)
+  const re = new RegExp(`(?<![\\w-])(${names.join('|')})(?![\\w-])`, 'gi')
+  const seen = new Set()
+  const out = []
+  let m
+  while ((m = re.exec(text)) !== null) {
+    const r = byName.get(m[1].toLowerCase())
+    if (r && !seen.has(r.name)) { seen.add(r.name); out.push(r) }
   }
-  const hits = []
-  for (const f of directChildren.files) {
-    const at = firstAt(f.name)
-    if (at >= 0) hits.push({ kind: 'file', name: f.name, id: f.id, at })
-  }
-  for (const d of directChildren.folders) {
-    const at = firstAt(d.name)
-    if (at >= 0) hits.push({ kind: 'folder', name: d.name, path: d.path, at })
-  }
-  return hits.sort((a, b) => a.at - b.at)
+  return out
 }
 
 export default function Library({
@@ -103,6 +101,7 @@ export default function Library({
   selectedId,
   onSelect,
   onOpenFileChat,
+  noProject = false,
 }) {
   const [filter, setFilter] = useState('')
   // A file is "edited" if any chunk in it (the file root included) has an edit —
@@ -144,21 +143,33 @@ export default function Library({
 
   // Direct children of the current folder (files in it + immediate subfolders),
   // the candidate targets for a chat answer's jump-to buttons.
-  const directChildren = useMemo(() => {
-    const prefix = cwd ? `${cwd}/` : ''
+  // Every file + folder in the WHOLE project tree, keyed by basename — so any file
+  // referenced in an answer is clickable, not just the current folder's direct
+  // children. A name that's ambiguous (same basename in two places) resolves to the
+  // target closest to the folder you're chatting in.
+  const projectRefs = useMemo(() => {
+    const cwdParts = cwd ? cwd.split('/') : []
+    const closeness = (p) => {
+      const a = p.split('/')
+      let n = 0
+      while (n < a.length && n < cwdParts.length && a[n] === cwdParts[n]) n += 1
+      return n
+    }
+    const best = new Map() // basename -> { name, kind, id?, path?, score }
+    const consider = (e) => {
+      const prev = best.get(e.name)
+      if (!prev || e.score > prev.score) best.set(e.name, e)
+    }
     const folders = new Set()
-    const filesOut = []
     for (const f of files) {
-      if (prefix && !f.relPath.startsWith(prefix)) continue
-      const rest = f.relPath.slice(prefix.length)
-      const slash = rest.indexOf('/')
-      if (slash === -1) filesOut.push({ name: rest, id: f.id })
-      else folders.add(rest.slice(0, slash))
+      consider({ name: f.relPath.split('/').pop(), kind: 'file', id: f.id, score: closeness(f.relPath) })
+      const parts = f.relPath.split('/')
+      for (let i = 1; i < parts.length; i += 1) folders.add(parts.slice(0, i).join('/'))
     }
-    return {
-      files: filesOut,
-      folders: [...folders].map((name) => ({ name, path: cwd ? `${cwd}/${name}` : name })),
+    for (const p of folders) {
+      consider({ name: p.split('/').pop(), kind: 'folder', path: p, score: closeness(p) })
     }
+    return [...best.values()]
   }, [files, cwd])
 
   const rows = useMemo(() => {
@@ -256,6 +267,16 @@ export default function Library({
     } finally {
       setBusyDir((d) => (d === dir ? null : d))
     }
+  }
+
+  // No project uploaded yet: the library is just a prompt to add one — no crumbs,
+  // filter, file list, or folder-chat. The user adds a project via the "+" tab.
+  if (noProject) {
+    return (
+      <aside className="library">
+        <div className="lib-empty">Click “+” above to upload a project</div>
+      </aside>
+    )
   }
 
   return (
@@ -374,12 +395,12 @@ export default function Library({
           </div>
           <div className="chat-body" ref={chatScrollRef}>
             {chatLog.map((m, i) => {
-              const refs = m.role === 'assistant' ? mentionedRefs(m.text, directChildren) : []
+              const refClick = (r) => (r.kind === 'file' ? () => openFileRef(r.id) : () => setCwd(r.path))
+              const refs = m.role === 'assistant' ? refsInText(m.text, projectRefs) : []
               // Make the same file/folder names clickable inline, where they appear.
-              const mentions = m.role === 'assistant' ? [
-                ...directChildren.files.map((f) => ({ name: f.name, onClick: () => openFileRef(f.id) })),
-                ...directChildren.folders.map((d) => ({ name: d.name, onClick: () => setCwd(d.path) })),
-              ] : undefined
+              const mentions = m.role === 'assistant'
+                ? projectRefs.map((r) => ({ name: r.name, onClick: refClick(r) }))
+                : undefined
               return (
                 <div key={i} className={`chat-msg ${m.role}`}>
                   <div className="chat-bubble">{renderRich(m.text, mentions)}</div>

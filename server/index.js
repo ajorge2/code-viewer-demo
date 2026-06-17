@@ -9,14 +9,17 @@ import {
   loadProject, listFiles, getFile, fileCount, getScanStats,
   registerProject, registerUploadedProject, activateProject, removeProject, listProjects,
   activeProjectDir, activeProjectId, sampleFileMeta,
+  getBareWindow, setBareWindow, getProjectFiles,
 } from './store.js';
 import { chunkByLines, languageFor } from './ingest/code.js';
 import { chunkJson } from './ingest/json.js';
 import { chunkCode } from './ingest/codeTree.js';
 import { chunkGeneric } from './ingest/genericTree.js';
-import { isParseable, loadTree, clearTreeCache } from './ingest/parseTree.js';
-import { setProjectTree } from './ingest/projectTree.js';
-import { ask, askFolder, suggestEdits, warmProjectBares } from './llm/meaning.js';
+import { isParseable, loadTree, clearTreeCache, treeCacheKey, clearTreeCacheForKeys } from './ingest/parseTree.js';
+import { setProjectTree, getProjectTree, buildProjectTree } from './ingest/projectTree.js';
+import { ask, askFolder, suggestEdits, warmProjectBares, fileFrontier, frontierChunks, projectCacheHashes } from './llm/meaning.js';
+import { cacheDropByFileHash } from './llm/cache.js';
+import { findReferences } from './ingest/references.js';
 
 // Build the active project's folder tree and kick off the eager bottom-up bare
 // pass in the BACKGROUND (don't block the response on thousands of model calls).
@@ -29,8 +32,35 @@ function warmActiveProject() {
       .map((f) => ({ relPath: f.relPath, content: f.content }));
     const name = (activeProjectDir() || '').split('/').filter(Boolean).pop() || '(project)';
     setProjectTree(name, files);
-    warmProjectBares(files).catch(() => {}); // detached
+    warmProjectBares(files, getBareWindow(activeProjectId())).catch(() => {}); // detached
   } catch { /* non-fatal: questions still work via lazy compute */ }
+}
+
+// Meaning-cache kinds: the bare summaries (expensive building blocks) vs. the
+// contextual reads folded off them. "Clear cache" drops the contextual reads + parse
+// trees but keeps bares; closing a project drops everything.
+const CTX_KINDS = new Set(['ctx', 'ctxpeers', 'dirctx']);
+
+// Clear a project's cached analysis. Two modes:
+//   • full=false ("clear cache") — drop ONLY the per-chunk in-context summaries (the
+//     contextual reads). The parse trees and bare summaries stay; they're the durable,
+//     expensive building blocks and only the contextual fold is re-derived (on next ask).
+//   • full=true (closing the project) — also drop the parse trees AND every bare.
+// `tree` supplies the folder tree the cache hashes derive from: the active project's
+// (getProjectTree) or a background one rebuilt via buildProjectTree.
+function clearProjectAnalysis(files, tree, { full }) {
+  if (!files || !files.length) return { trees: 0, meanings: 0 };
+  let trees = 0;
+  if (full) {
+    const treeKeys = new Set();
+    for (const f of files) {
+      const lang = languageFor(f.relPath);
+      if (isParseable(lang)) treeKeys.add(treeCacheKey(f.content, lang));
+    }
+    trees = clearTreeCacheForKeys(treeKeys);
+  }
+  const meanings = cacheDropByFileHash(projectCacheHashes(files, tree), full ? null : CTX_KINDS);
+  return { trees, meanings };
 }
 
 // Tree is parsed at most once ever (memoized + persisted to .tree-cache/),
@@ -75,11 +105,16 @@ app.get('/api/files', (req, res) => {
   });
 });
 
-// Wipe the persisted tree cache (.tree-cache/) and the in-memory memo. Next
-// chunk request re-parses every file from scratch.
+// "Clear cache" for the ACTIVE project: drop ONLY the per-chunk in-context summaries
+// (the contextual reads answers are built from). The parse trees and the bare summaries
+// stay — they're the durable building blocks. The next question just re-folds context
+// off the kept bares. Parse + bares are wiped only when the project is closed (the ×
+// handler below) or its window size changes.
 app.delete('/api/tree-cache', (req, res) => {
-  const removed = clearTreeCache();
-  res.json({ ok: true, removed });
+  const id = activeProjectId();
+  const files = id ? getProjectFiles(id) : null;
+  if (!files) return res.json({ ok: true, trees: 0, meanings: 0 });
+  res.json({ ok: true, ...clearProjectAnalysis(files, getProjectTree(), { full: false }) });
 });
 
 // ── Project registry ────────────────────────────────────────────────────────
@@ -130,11 +165,40 @@ app.post('/api/projects/:id/activate', async (req, res) => {
   }
 });
 
-// Unregister a project.
+// Unregister a project. Closing it fully wipes its cache — parse trees AND every bare
+// summary — since they're no longer needed. Works for a background project too: its
+// cache hashes derive from its folder tree, which we rebuild from its files (hashes are
+// name-independent) when it isn't the active one. (An evicted project whose files aren't
+// resident can't be hashed; its content-addressed entries age out, harmless and reused.)
 app.delete('/api/projects/:id', (req, res) => {
-  const ok = removeProject(req.params.id);
+  const id = req.params.id;
+  const files = getProjectFiles(id);
+  if (files) {
+    const tree = id === activeProjectId() ? getProjectTree() : buildProjectTree('', files);
+    clearProjectAnalysis(files, tree, { full: true });
+  }
+  const ok = removeProject(id);
   if (!ok) return res.status(404).json({ error: 'Unknown project.' });
   res.json({ activeId: activeProjectId(), projects: listProjects() });
+});
+
+// Set a project's bare-window size (the char budget above which a unit's summary is
+// computed by map-reduce over windows). Resets that project's meaning cache — the
+// per-node summaries it folds were built at the old size — then re-warms in the
+// background. Operates on the active project (the slider lives on the active tab).
+app.put('/api/projects/:id/bare-window', (req, res) => {
+  const { id } = req.params;
+  if (id !== activeProjectId()) {
+    return res.status(409).json({ error: 'Switch to this project before changing its window size.' });
+  }
+  const chars = Number((req.body || {}).chars);
+  if (!Number.isFinite(chars)) return res.status(400).json({ error: 'chars (a number) is required' });
+  const applied = setBareWindow(id, chars);
+  if (applied == null) return res.status(404).json({ error: 'Unknown project.' });
+  const files = getProjectFiles(id) || [];
+  const dropped = cacheDropByFileHash(projectCacheHashes(files));
+  warmProjectBares(files.map((f) => ({ relPath: f.relPath, content: f.content })), applied).catch(() => {}); // detached re-warm
+  res.json({ ok: true, bareWindow: applied, dropped, projects: listProjects() });
 });
 
 // Raw source text for the viewer to render.
@@ -167,6 +231,17 @@ app.get('/api/files/:id/chunks', async (req, res) => {
     : null;
   const opts = around ? { around } : { granularity, depthSpread };
   const meta = { fileId: file.id, relPath: file.relPath, granularity, depthSpread };
+
+  // Highlight mode → the marks-driven minimal frontier (the current ctx distribution),
+  // with the highlight's tightest box as the target. The whole distribution is returned
+  // so the viewer band-highlights and counts it; it refines as more questions are asked.
+  if (around) {
+    try {
+      return res.json({ ...meta, ...(await frontierChunks(file, around)) });
+    } catch (e) {
+      // Frontier build failed → fall through to structural chunking below.
+    }
+  }
 
   // JSON files chunk structurally (hand-rolled key/value box model).
   if (lang === 'json') {
@@ -201,13 +276,44 @@ app.get('/api/files/:id/chunks', async (req, res) => {
   }
 });
 
+// Debug / demo: the file's current highlight-derived marks and the minimal
+// frontier they produce. Read-only, no LLM calls — used to verify the
+// frontier-peers context and to drive the demo visualization.
+app.get('/api/files/:id/frontier', async (req, res) => {
+  const file = getFile(req.params.id);
+  if (!file) return res.status(404).json({ error: 'Not found' });
+  try {
+    res.json(await fileFrontier(file));
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message || 'Failed to derive frontier' });
+  }
+});
+
+// Find references: where a code symbol (named in a chat answer) is defined/used across
+// the whole active project. Search-based (tree-sitter identifier match + text fallback),
+// like IDE/GitHub code navigation without a language server. `from` orders the origin file first.
+app.get('/api/references', async (req, res) => {
+  const name = (req.query.name || '').toString();
+  const fromId = req.query.from ? req.query.from.toString() : null;
+  if (!name || name.length < 2) return res.status(400).json({ error: 'name (2+ chars) is required' });
+  try {
+    const files = listFiles().map((f) => {
+      const file = getFile(f.id);
+      return { id: f.id, relPath: f.relPath, content: file?.content ?? '', language: f.language };
+    });
+    res.json(await findReferences(name, files, fromId));
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message || 'Failed to find references' });
+  }
+});
+
 // RAG Q&A: answer a question about a selected chunk. The chunk is referenced by
 // its stable `nodeId` (from the chunks endpoint), so the server reconstructs the
 // node + its ancestor chain from file content alone — no chunking params needed.
 app.post('/api/files/:id/ask', async (req, res) => {
   const file = getFile(req.params.id);
   if (!file) return res.status(404).json({ error: 'Not found' });
-  const { nodeId, question, depth, intent, transcript, contextFileId } = req.body || {};
+  const { nodeId, question, depth, intent, transcript, contextFileId, focus, highlight } = req.body || {};
   if (!nodeId || !question || !String(question).trim()) {
     return res.status(400).json({ error: 'nodeId and a non-empty question are required' });
   }
@@ -221,6 +327,9 @@ app.post('/api/files/:id/ask', async (req, res) => {
       intent: intent === 'deepen' ? 'deepen' : 'infer',
       transcript: Array.isArray(transcript) ? transcript.slice(-6) : [],
       contextFile: ctx ? { relPath: ctx.relPath, content: ctx.content } : null,
+      bareWindow: getBareWindow(activeProjectId()),
+      focus: typeof focus === 'string' ? focus : '',
+      highlight: typeof highlight === 'string' ? highlight : '',
     });
     res.json(result); // { answer, meaning, path, depth, atBottom, maxDepth }
   } catch (e) {
@@ -244,6 +353,7 @@ app.post('/api/files/:id/suggest-edits', async (req, res) => {
       transcript: Array.isArray(transcript) ? transcript.slice(-6) : [],
       baseCode: typeof baseCode === 'string' ? baseCode : '',
       contextFile: ctx ? { relPath: ctx.relPath, content: ctx.content } : null,
+      bareWindow: getBareWindow(activeProjectId()),
     });
     res.json(result); // { code, original, path }
   } catch (e) {

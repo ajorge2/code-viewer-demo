@@ -1,15 +1,25 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
-import { readFolderUpload } from '../lib/uploadFolder.js'
+import { readFolderUpload, readDirectoryHandle, readDroppedEntries } from '../lib/uploadFolder.js'
+
+// Bare-window slider bounds (chars). The server clamps to a wider [4k, 200k]; the UI
+// exposes the useful middle band.
+const WIN_MIN = 8000
+const WIN_MAX = 128000
+const WIN_STEP = 8000
 
 // Top-bar control: shows the active project and a dropdown to switch between
 // registered projects or add a new one by picking a folder from your machine
-// (read in the browser and uploaded — works locally and in hosted deploys).
-export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload, onRemove }) {
-  const [open, setOpen] = useState(false)
+// (read in the browser and uploaded — works locally and in hosted deploys). Clicking
+// the tab you're already on opens a per-project "context detail" slider instead.
+export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload, onRemove, onBareWindow, welcome, onExitWelcome }) {
+  const [open, setOpen] = useState(false)         // the management menu (switch/add/remove)
+  const [settingsOpen, setSettingsOpen] = useState(false) // the active project's window-size slider
+  const [winLocal, setWinLocal] = useState(WIN_MIN) // live slider value while dragging
   const [error, setError] = useState('')
   // Upload lifecycle for the picker button: '' idle, 'reading' (browser reading the
   // chosen folder — the slow part for big trees), 'uploading' (POSTing to the server).
   const [phase, setPhase] = useState('')
+  const [dragOver, setDragOver] = useState(false) // a folder is being dragged over the dropzone
   // Fixed left-to-right order of the open folder tabs. Tabs keep their slot for
   // life — selecting one only brings it forward (z-index), it never moves. New
   // projects append to the right; removed ones drop out.
@@ -33,8 +43,24 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload
     })
   }, [projects])
 
-  const stackTabs = order.map((id) => projects.find((p) => p.id === id)).filter(Boolean)
+  // In the welcome state, collapse to a single tab (just the active project) and
+  // drop the "+" chooser — the bar is a clean greeting, not a workspace yet.
+  const allTabs = order.map((id) => projects.find((p) => p.id === id)).filter(Boolean)
+  const stackTabs = welcome ? allTabs.filter((p) => p.id === activeId) : allTabs
   const activeIndex = stackTabs.findIndex((p) => p.id === activeId)
+
+  // The active project's current bare-window size; the slider reflects it whenever the
+  // popover opens or the stored value changes (after a confirmed change reloads it).
+  const activeProj = projects.find((p) => p.id === activeId)
+  const bareWindow = activeProj?.bareWindow ?? 48000
+  useEffect(() => { setWinLocal(bareWindow) }, [bareWindow, settingsOpen])
+
+  // Commit on release: if the size changed, hand it up (App confirms + applies);
+  // either way close the popover so a cancelled change doesn't leave a stale slider.
+  const commitWin = () => {
+    setSettingsOpen(false)
+    if (winLocal !== bareWindow) onBareWindow?.(winLocal)
+  }
 
   // The "+" chooser, rendered in-flow so it takes its own slot and pushes the
   // following tab to the right (a normal tab-to-tab overlap) rather than covering
@@ -42,10 +68,13 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload
   // of 4 open projects — you can't add a 5th until one is removed.
   const MAX_PROJECTS = 4
   const canAdd = stackTabs.length < MAX_PROJECTS
-  const chooser = canAdd ? (
+  // Always rendered (even at the cap) so the management menu stays reachable now that
+  // the active-tab click is taken over by the window-size slider; adding is disabled
+  // at the cap. The caret rotates when its menu is open.
+  const chooser = (
     <button
       className="proj-tab proj-chooser"
-      onClick={() => setOpen((o) => !o)}
+      onClick={() => { setOpen((o) => !o); setSettingsOpen(false) }}
       title="Choose project"
       aria-label="Choose project"
       aria-expanded={open}
@@ -56,7 +85,7 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload
         <line x1="5" y1="12" x2="19" y2="12" />
       </svg>
     </button>
-  ) : null
+  )
 
   // --- Drag-to-reorder the active tab ---------------------------------------
   // Only the tab you're on is draggable. Nothing actually moves during the drag:
@@ -64,6 +93,7 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload
   // commit the reorder on release. The "+" chooser is rendered right after the
   // active tab, so it follows the tab to its new spot after the drop.
   const onTabPointerDown = (e, id) => {
+    if (welcome) return // no dragging/reordering while the welcome bar is up
     if (id !== activeId || (e.button != null && e.button !== 0)) return
     if (e.target.closest('.proj-current-remove')) return // let the × do its thing
     dragRef.current = { id, startX: e.clientX, boundary: null }
@@ -121,51 +151,72 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload
     })
   }
 
-  // Close the dropdown on an outside click.
+  // Close either popover on an outside click.
   useEffect(() => {
-    if (!open) return
+    if (!open && !settingsOpen) return
     const onDoc = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+      if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setSettingsOpen(false) }
     }
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
-  }, [open])
+  }, [open, settingsOpen])
 
-  // The user picked a folder: read it in the browser (filtered to source files)
-  // and hand the contents up for upload.
+  // Shared tail for all three pick paths: read produced { name, files }, hand it up.
+  const finishUpload = async (result) => {
+    if (!result || result.files.length === 0) { setError('No source files found in that folder.'); setPhase(''); return }
+    setPhase('uploading')
+    try { await onUpload(result.name, result.files); setOpen(false) }
+    catch (err) { setError(err.message || 'Failed to load folder') }
+    finally { setPhase('') }
+  }
+
+  // The webkitdirectory <input> fallback (Firefox/Safari, or no FS Access). Snapshot
+  // e.target.files FIRST — it's a live FileList that the `value=''` reset empties.
   const onFolderChosen = async (e) => {
-    // Snapshot into a real array FIRST: e.target.files is a live FileList, so the
-    // `e.target.value = ''` reset below empties the very reference we'd keep —
-    // which previously made length 0 and bailed before uploading. The File objects
-    // themselves stay readable after the reset.
     const fileList = Array.from(e.target.files || [])
     e.target.value = '' // let the same folder be re-picked later
     if (!fileList.length) return
-    setError('')
-    setPhase('reading')
-    try {
-      const result = await readFolderUpload(fileList)
-      if (!result || result.files.length === 0) {
-        setError('No source files found in that folder.')
-        return
-      }
-      setPhase('uploading')
-      await onUpload(result.name, result.files)
-      setOpen(false)
-    } catch (err) {
-      setError(err.message || 'Failed to load folder')
-    } finally {
-      setPhase('')
-    }
+    setError(''); setPhase('reading')
+    try { await finishUpload(await readFolderUpload(fileList)) }
+    catch (err) { setError(err.message || 'Failed to load folder'); setPhase('') }
+  }
+
+  // Primary pick button: the File System Access API where supported (a light "view
+  // files?" prompt, no "Upload N files to this site?" dialog), else the input fallback.
+  const canFSA = typeof window !== 'undefined' && 'showDirectoryPicker' in window
+    && (() => { try { return window.self === window.top } catch { return false } })()
+  const openFolderPick = async () => {
+    if (!canFSA) { folderInputRef.current?.click(); return }
+    let handle
+    try { handle = await window.showDirectoryPicker({ mode: 'read' }) }
+    catch (err) { if (err?.name !== 'AbortError') setError(err.message || 'Could not open folder'); return }
+    setError(''); setPhase('reading')
+    try { await finishUpload(await readDirectoryHandle(handle)) }
+    catch (err) { setError(err.message || 'Failed to read folder'); setPhase('') }
+  }
+
+  // Drag-and-drop a folder — no browser dialog at all. Entries must be captured
+  // SYNCHRONOUSLY (the DataTransferItemList is invalid once this handler returns).
+  const onFolderDrop = async (e) => {
+    e.preventDefault()
+    setDragOver(false)
+    const entries = Array.from(e.dataTransfer?.items || [])
+      .map((it) => (it.kind === 'file' ? it.webkitGetAsEntry?.() : null))
+      .filter(Boolean)
+    if (!entries.length) return
+    setError(''); setPhase('reading')
+    try { await finishUpload(await readDroppedEntries(entries)) }
+    catch (err) { setError(err.message || 'Failed to read folder'); setPhase('') }
   }
 
   return (
     <div className="proj-switch" ref={ref}>
-      {stackTabs.length === 0 && (
+      {/* No projects: in the welcome view this is the blank placeholder tab; once
+          collapsed it's dropped entirely so only the "+" chooser remains. */}
+      {stackTabs.length === 0 && welcome && (
         <button
-          className="proj-tab proj-current"
-          onClick={() => setOpen((o) => !o)}
-          title="No project"
+          className="proj-tab proj-current proj-tab-welcome"
+          onClick={() => onExitWelcome?.()}
         >
           <span className="proj-name">No project</span>
         </button>
@@ -180,16 +231,19 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload
           <Fragment key={p.id}>
             <button
               ref={(el) => { tabEls.current[p.id] = el }}
-              className={`proj-tab proj-stack-tab${isActive ? ' proj-current has-remove' : ''}${draggingId === p.id ? ' dragging' : ''}`}
+              className={`proj-tab proj-stack-tab${isActive ? ' proj-current has-remove' : ''}${draggingId === p.id ? ' dragging' : ''}${welcome ? ' proj-tab-welcome' : ''}`}
               style={{ zIndex: isActive ? 100 : 2 + i }}
               onPointerDown={(e) => onTabPointerDown(e, p.id)}
               onPointerMove={onTabPointerMove}
               onPointerUp={endDrag}
               onPointerCancel={endDrag}
               onClick={() => {
+                // In the welcome view the tab is just a greeting placeholder —
+                // a click only dismisses the welcome state, nothing else.
+                if (welcome) { onExitWelcome?.(); return }
                 if (!isActive) { onSwitch(p.id); return }
                 if (suppressClick.current) { suppressClick.current = false; return }
-                setOpen((o) => !o)
+                setSettingsOpen((o) => !o); setOpen(false)
               }}
               title={p.absPath}
             >
@@ -208,13 +262,13 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload
               )}
               <span className="proj-name">{p.name}</span>
             </button>
-            {isActive && chooser}
+            {isActive && !welcome && chooser}
           </Fragment>
         )
       })}
       {/* When nothing is active (no projects, or active not in the stack), trail
           the chooser at the end. */}
-      {activeIndex === -1 && chooser}
+      {activeIndex === -1 && !welcome && chooser}
 
       {/* Insertion indicator shown while dragging: a blue line at the gap where the
           dragged tab will land on release. Rendered last (and absolutely
@@ -250,7 +304,12 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload
             ))}
           </div>
 
-          <div className="proj-add">
+          <div
+            className={`proj-add${dragOver ? ' drag-over' : ''}${!canAdd ? ' disabled' : ''}`}
+            onDragOver={(e) => { if (canAdd && !phase) { e.preventDefault(); setDragOver(true) } }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => { if (canAdd && !phase) onFolderDrop(e); else e.preventDefault() }}
+          >
             <input
               type="file"
               multiple
@@ -263,11 +322,15 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload
               }}
               onChange={onFolderChosen}
             />
+            {canAdd && (
+              <div className="proj-drop-hint">{dragOver ? 'Drop to open this folder' : 'Drag a folder here, or'}</div>
+            )}
             <button
               className="proj-pick-btn"
               type="button"
-              onClick={() => folderInputRef.current?.click()}
-              disabled={!!phase}
+              onClick={openFolderPick}
+              disabled={!!phase || !canAdd}
+              title={!canAdd ? `At most ${MAX_PROJECTS} projects — remove one to add another.` : undefined}
             >
               {phase ? (
                 <span className="proj-pick-spinner" aria-hidden="true" />
@@ -277,10 +340,35 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload
                   <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                 </svg>
               )}
-              {phase === 'reading' ? 'Reading files…' : phase === 'uploading' ? 'Uploading…' : 'Open folder…'}
+              {!canAdd ? `Max ${MAX_PROJECTS} projects` : phase === 'reading' ? 'Reading files…' : phase === 'uploading' ? 'Uploading…' : 'Open folder…'}
             </button>
           </div>
           {error && <div className="proj-error">{error}</div>}
+        </div>
+      )}
+
+      {settingsOpen && (
+        <div className="proj-menu proj-settings">
+          <div className="proj-settings-title">Context detail</div>
+          <p className="proj-settings-hint">
+            How finely large files are summarized for the chat. Smaller windows mean
+            more, finer passes over big files. Changing this re-summarizes this project.
+          </p>
+          <label className="slider-wrap">
+            <span className="slider-label">Window</span>
+            <input
+              type="range"
+              min={WIN_MIN}
+              max={WIN_MAX}
+              step={WIN_STEP}
+              value={Math.max(WIN_MIN, Math.min(WIN_MAX, winLocal))}
+              style={{ '--pct': `${((Math.max(WIN_MIN, Math.min(WIN_MAX, winLocal)) - WIN_MIN) / (WIN_MAX - WIN_MIN)) * 100}%` }}
+              onChange={(e) => setWinLocal(Number(e.target.value))}
+              onPointerUp={commitWin}
+              onKeyUp={(e) => { if (e.key.startsWith('Arrow')) commitWin() }}
+            />
+            <span className="slider-val">{Math.round(winLocal / 1000)}k</span>
+          </label>
         </div>
       )}
     </div>

@@ -48,3 +48,30 @@ export function cacheSet(key, value, meta = {}) {
     fs.appendFileSync(FILE, `${JSON.stringify({ k: key, v: value, f: meta.fileHash, t: meta.kind })}\n`);
   } catch { /* keep serving from memory */ }
 }
+
+// Drop cached entries belonging to a project (fileHash `f` in `hashSet`). `dropKinds`,
+// if given, restricts the drop to those kinds (`t`) — so "clear cache" can wipe the
+// contextual reads while keeping the bare summaries, while "close project" passes null
+// to drop everything. Rewrites the JSONL without the matching lines (temp + rename for
+// atomicity) and deletes them from memory. Returns how many distinct keys were dropped.
+export function cacheDropByFileHash(hashSet, dropKinds = null) {
+  load();
+  if (!hashSet || !hashSet.size) return 0;
+  const droppedKeys = new Set();
+  try {
+    const raw = fs.readFileSync(FILE, 'utf8');
+    const kept = [];
+    for (const line of raw.split('\n')) {
+      if (!line) continue;
+      let e;
+      try { e = JSON.parse(line); } catch { kept.push(line); continue; }
+      if (e && e.k && hashSet.has(e.f) && (!dropKinds || dropKinds.has(e.t))) { droppedKeys.add(e.k); continue; }
+      kept.push(line);
+    }
+    for (const k of droppedKeys) mem.delete(k);
+    const tmp = `${FILE}.tmp`;
+    fs.writeFileSync(tmp, kept.length ? `${kept.join('\n')}\n` : '');
+    fs.renameSync(tmp, FILE);
+  } catch { /* no file yet / IO error: nothing persisted to drop */ }
+  return droppedKeys.size;
+}

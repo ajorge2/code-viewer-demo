@@ -54,6 +54,30 @@ export async function clearTreeCache() {
   return data
 }
 
+// Find where a code symbol is defined/used across the active project (search-based).
+// Returns { name, count, truncated, definitions, files: [{ fileId, relPath, hits }] }.
+export async function fetchReferences(name, fromFileId) {
+  const q = new URLSearchParams({ name })
+  if (fromFileId) q.set('from', fromFileId)
+  const res = await fetch(`/api/references?${q.toString()}`)
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || 'Failed to find references')
+  return data
+}
+
+// Set a project's bare-window size (chars). Resets that project's meaning cache and
+// re-warms it server-side. Returns { ok, bareWindow, dropped, projects }.
+export async function setProjectBareWindow(id, chars) {
+  const res = await fetch(`/api/projects/${id}/bare-window`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ chars }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || 'Failed to set window size')
+  return data
+}
+
 // Metadata for the built-in sample file shown on the help/demo page.
 export async function fetchSample() {
   const res = await fetch('/api/sample')
@@ -71,11 +95,11 @@ export async function fetchRaw(id) {
 // per-line drill state: { depth, intent: 'infer'|'deepen', transcript }.
 // Returns { answer, meaning, path, depth, atBottom, maxDepth }.
 export async function askQuestion(fileId, nodeId, question, opts = {}) {
-  const { depth = 0, intent = 'infer', transcript = [], contextFileId = null } = opts
+  const { depth = 0, intent = 'infer', transcript = [], contextFileId = null, focus = '', highlight = '' } = opts
   const res = await fetch(`/api/files/${fileId}/ask`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nodeId, question, depth, intent, transcript, contextFileId }),
+    body: JSON.stringify({ nodeId, question, depth, intent, transcript, contextFileId, focus, highlight }),
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.error || 'Failed to get an answer')
@@ -120,8 +144,9 @@ export async function fetchChunks(id, value, depthSpread = 0) {
 }
 
 // Highlight-mode chunking: chunk the file around a character range [start, end).
-// The server returns the fewest chunks that isolate the smallest box containing
-// the range, plus `targetNodeId` (that tightest-fit chunk's stable id).
+// The server returns the current ctx distribution — the minimal frontier of the marks
+// asked about so far plus this highlight's tightest box — as a full set of chunks, with
+// `targetNodeId` being the band the highlight lands in.
 export async function fetchChunksAround(id, start, end) {
   const res = await fetch(
     `/api/files/${id}/chunks?rangeStart=${start}&rangeEnd=${end}`,

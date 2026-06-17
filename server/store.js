@@ -14,6 +14,14 @@ import {
 const MAX_RESIDENT = 3;   // projects kept resident in memory at once (LRU)
 const MAX_PROJECTS = 50;  // registry cap (metadata only; cheap)
 
+// Per-project bare-window size: the char budget above which a unit's bare summary
+// is computed by map-reduce over windows instead of one call (see meaning.js). Set
+// via the active project's tab slider; in-memory (resets on restart). Env override
+// is the default for new projects / the sample.
+const DEFAULT_BARE_WINDOW = Number(process.env.BARE_WINDOW_CHARS) || 48000;
+const BARE_WINDOW_MIN = 4000;
+const BARE_WINDOW_MAX = 200000;
+
 const EMPTY_SCAN = {
   count: 0, skipped: 0, totalBytes: 0, truncatedByCount: false, truncatedByBytes: false,
 };
@@ -149,6 +157,7 @@ function projectMeta(p) {
     fileCount: p.files ? p.files.size : (p.scan ? p.scan.count : null),
     lastUsed: p.lastUsed,
     scan: p.scan,
+    bareWindow: p.bareWindow ?? DEFAULT_BARE_WINDOW,
   };
 }
 
@@ -163,7 +172,7 @@ export async function registerProject(inputPath) {
   }
   const id = makeProjectId(absPath);
   if (!projects.has(id)) {
-    projects.set(id, { id, absPath, name: path.basename(absPath) || absPath, files: null, scan: null, lastUsed: 0 });
+    projects.set(id, { id, absPath, name: path.basename(absPath) || absPath, files: null, scan: null, lastUsed: 0, bareWindow: DEFAULT_BARE_WINDOW });
     enforceRegistryCap();
   }
   return activateProject(id);
@@ -181,7 +190,7 @@ export function registerUploadedProject(name, entries) {
     .digest('hex').slice(0, 8);
   const slug = safeName.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'project';
   const id = `upload-${slug}-${fp}`;
-  projects.set(id, { id, absPath: safeName, name: safeName, files, scan, lastUsed: Date.now(), uploaded: true });
+  projects.set(id, { id, absPath: safeName, name: safeName, files, scan, lastUsed: Date.now(), uploaded: true, bareWindow: DEFAULT_BARE_WINDOW });
   enforceRegistryCap();
   activeId = id;
   evictLRU();
@@ -329,6 +338,29 @@ export function activeProjectDir() {
 
 export function activeProjectId() {
   return activeId;
+}
+
+// Per-project bare-window size (chars). Unknown/sample → the default.
+export function getBareWindow(id) {
+  return projects.get(id)?.bareWindow ?? DEFAULT_BARE_WINDOW;
+}
+
+// Set + clamp a project's bare-window size; returns the clamped value (or null if
+// the project doesn't exist).
+export function setBareWindow(id, chars) {
+  const p = projects.get(id);
+  if (!p) return null;
+  const n = Math.round(Number(chars));
+  p.bareWindow = Number.isFinite(n) ? Math.max(BARE_WINDOW_MIN, Math.min(BARE_WINDOW_MAX, n)) : DEFAULT_BARE_WINDOW;
+  return p.bareWindow;
+}
+
+// A project's resident files as { relPath, content } (null if not resident). Used to
+// re-warm and to compute its cache-invalidation hash set on a window-size change.
+export function getProjectFiles(id) {
+  const p = projects.get(id);
+  if (!p?.files) return null;
+  return [...p.files.values()].map((f) => ({ relPath: f.relPath, content: f.content }));
 }
 
 // Backward-compatible startup loader: register + activate the initial dir.

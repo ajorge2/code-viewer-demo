@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { fetchRaw, fetchChunks, fetchChunksAround, askQuestion, suggestEdits } from '../lib/api.js'
+import { fetchRaw, fetchChunks, fetchChunksAround, askQuestion, suggestEdits, fetchReferences } from '../lib/api.js'
 import { renderRich } from '../lib/richText.jsx'
 import ContextAttach from './ContextAttach.jsx'
 
@@ -59,11 +59,6 @@ const DOT_GRADS = [
   'linear-gradient(135deg, #d3bd86, #a8893f)', // sand
 ]
 const dotGradFor = (i) => DOT_GRADS[i % DOT_GRADS.length]
-
-// A "word" is a maximal run of word-characters (letters, digits, underscore, $).
-// Every other character (whitespace, punctuation, brackets, …) is a boundary.
-const WORD_CHAR = /[\p{L}\p{N}_$]/u
-const isWordChar = (ch) => ch !== undefined && WORD_CHAR.test(ch)
 
 // An edit entry is { text, gran, depthSpread, … } (legacy entries were a bare
 // string); pull the edited text out of either shape.
@@ -132,9 +127,12 @@ function charDiff(orig, edited) {
 
 export default function CodeViewer({
   file, files = [], chunkSize, onChunkSize, edits, setEdits, jumpTarget, onJumpConsumed, onJumpToEdit,
-  locked = false, controlsReady = true, openChatSignal = 0, demo = false, onOpenDemo, onOpenInfo,
+  locked = false, controlsReady = true, openChatSignal = 0, demo = false, onOpenDemo, onOpenInfo, onOpenCaching, onOpenReference,
 }) {
   const [helpOpen, setHelpOpen] = useState(false) // chunking how-to modal
+  // "Find references" peek: null (closed) or { name, loading, data, error }.
+  const [refsPeek, setRefsPeek] = useState(null)
+  const pendingOffsetRef = useRef(null) // char offset to scroll to once a jumped-to file renders
   const [text, setText] = useState('')
   const [resp, setResp] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -144,9 +142,12 @@ export default function CodeViewer({
   // slider → `manualMode` drives the granularity/depth chunking. Last action wins.
   const [pendingRange, setPendingRange] = useState(null) // { start, end } | null
   const [manualMode, setManualMode] = useState(false)
+  // Bumped after each answered question. Asking records a mark server-side, refining the
+  // ctx distribution; this re-triggers the chunk fetch so the bands + count keep up.
+  const [marksVersion, setMarksVersion] = useState(0)
   // edits are lifted to App (shared with the Library dot + history); keyed by
-  // `${fileId}::${nodeId}`. Each value is { text, gran, depthSpread, subOn,
-  // subWords, fileId, relPath, nodeId, label, ts } — config captured at edit time.
+  // `${fileId}::${nodeId}`. Each value is { text, gran, depthSpread, fileId,
+  // relPath, nodeId, label, ts } — config captured at edit time.
   const [historyIdx, setHistoryIdx] = useState(0) // edit-history carousel position
   const pendingJumpRef = useRef(null) // nodeId to select once chunks reflect a jump
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -183,8 +184,14 @@ export default function CodeViewer({
     }, 30)
   }
   useEffect(() => () => clearTimeout(fabPulseTimer.current), [])
-  // Q&A transcript for the current file: [{ role, text, path?, depth?, atBottom? }].
-  const [chatLog, setChatLog] = useState([])
+  // Q&A transcripts kept PER FILE so switching away and back restores the
+  // conversation instead of starting over. Keyed by file id.
+  const [chatLogs, setChatLogs] = useState({})
+  const chatLog = chatLogs[file.id] || []
+  const setChatLog = (updater) => setChatLogs((all) => {
+    const cur = all[file.id] || []
+    return { ...all, [file.id]: typeof updater === 'function' ? updater(cur) : updater }
+  })
   const [chatInput, setChatInput] = useState('')
   const [chatBusy, setChatBusy] = useState(false)
   const [chatError, setChatError] = useState(null)
@@ -205,10 +212,6 @@ export default function CodeViewer({
 
   // The Q&A panel stays open until explicitly dismissed via the × button (or the
   // FAB toggle) — clicking elsewhere on the page no longer closes it.
-  // Sub-splitter: when on, break each chunk into pieces of `subWords` words.
-  // Off by default; resets whenever the granularity slider moves.
-  const [subOn, setSubOn] = useState(false)
-  const [subWords, setSubWords] = useState(500)
   // Depth-spread tolerance D for JSON frontier expansion: 0 = even depth, up to
   // 5, and 6 on the slider = ∞ (pure largest-first / size priority).
   const [depthSpread, setDepthSpread] = useState(1)
@@ -249,37 +252,9 @@ export default function CodeViewer({
     return a === b ? `Line ${a}` : `Lines ${a}–${b}`
   }
 
-  // Displayed chunks: optionally the base chunks split further by WORD count.
-  // Words are counted (runs of word-chars); the non-word characters between them
-  // stay part of the chunk but don't add to the count. Cuts fall at word starts
-  // so coverage stays contiguous.
-  const chunks = useMemo(() => {
-    if (!subOn) return baseChunks
-    const out = []
-    let idx = 0
-    for (const c of baseChunks) {
-      // Offsets where a word begins within this chunk.
-      const wordStarts = []
-      for (let p = c.start; p < c.end; p++) {
-        if (isWordChar(text[p]) && (p === c.start || !isWordChar(text[p - 1]))) wordStarts.push(p)
-      }
-      const numWords = wordStarts.length
-      // Sub-chunks are sub-regions of one box node, so they all inherit its
-      // nodeId — their structural ancestry (and cached meaning) is the node's.
-      if (numWords <= subWords) {
-        out.push({ index: idx++, start: c.start, end: c.end, label: c.label, nodeId: c.nodeId })
-        continue
-      }
-      const total = Math.ceil(numWords / subWords)
-      const bounds = [c.start]
-      for (let k = subWords; k < numWords; k += subWords) bounds.push(wordStarts[k])
-      bounds.push(c.end)
-      for (let i = 0; i < bounds.length - 1; i++) {
-        out.push({ index: idx++, start: bounds[i], end: bounds[i + 1], label: `${c.label} (${i + 1}/${total})`, nodeId: c.nodeId })
-      }
-    }
-    return out
-  }, [baseChunks, subOn, subWords, text])
+  // Displayed chunks are exactly the boxes the server returned — every chunk is a
+  // real tree node with one stable nodeId and one structural path through the file.
+  const chunks = baseChunks
 
   // The node a question targets: the selected chunk, or the whole file (root) when
   // nothing is selected. At granularity 1 the only chunk IS the root, so selecting
@@ -316,15 +291,13 @@ export default function CodeViewer({
   const histIdx = editHistory.length ? Math.min(historyIdx, editHistory.length - 1) : 0
   const histEntry = editHistory[histIdx]
 
-  // Reset the sub-splitter (called when granularity changes or the file changes).
-  const resetSub = () => { setSubOn(false); setSubWords(500) }
   // Switch to manual (Advanced-slider) chunking, leaving highlight mode.
   const enterManual = () => { setManualMode(true); setPendingRange(null) }
 
   // Ask about the selected chunk. Sends its stable nodeId (resolves regardless of
   // granularity) plus the per-line drill state. A selection change vs. the line's
   // node is a hard reset (depth 0, no carried transcript).
-  const runAsk = async ({ question, intent, userBubble }) => {
+  const runAsk = async ({ question, intent, userBubble, focus = '' }) => {
     if (!targetNodeId || chatBusy) return
     const sameNode = targetNodeId === chatNodeId
     const depth = sameNode ? chatDepth : 0
@@ -332,14 +305,21 @@ export default function CodeViewer({
     setChatError(null)
     setChatBusy(true)
     if (userBubble) setChatLog((log) => [...log, userBubble])
+    // The exact chars highlighted in the code (not the resolved box). Sent only when
+    // short so the answer can be specific about them; the server re-checks the cap.
+    const rawHl = pendingRange ? text.slice(pendingRange.start, pendingRange.end) : ''
+    const highlight = rawHl && rawHl.length <= 200 ? rawHl : ''
     try {
-      const r = await askQuestion(file.id, targetNodeId, question, { depth, intent, transcript, contextFileId: ctxFileId })
+      const r = await askQuestion(file.id, targetNodeId, question, { depth, intent, transcript, contextFileId: ctxFileId, focus, highlight })
       setChatDepth(r.depth ?? 0)
       setChatNodeId(targetNodeId)
       setLastQuestion(question)
       setChatLog((log) => [...log, {
         role: 'assistant', text: r.answer, path: r.path, depth: r.depth ?? 0, atBottom: !!r.atBottom,
       }])
+      // This question recorded a new mark server-side → re-derive the distribution so
+      // the bands + chunk count reflect the refined frontier.
+      setMarksVersion((v) => v + 1)
     } catch (e) {
       setChatError(e.message || 'Something went wrong')
     } finally {
@@ -355,10 +335,42 @@ export default function CodeViewer({
     else runAsk({ question: q, intent: 'infer', userBubble: { role: 'user', text: q } })
   }
 
-  // "More detail": re-ask the last question one level deeper (deterministic).
+  // Text the user highlighted inside a chat ANSWER (not the code, not the input) — lets
+  // "More detail" target a specific part of the previous answer instead of just drilling
+  // deeper generically.
+  const selectedAnswerText = () => {
+    const sel = window.getSelection?.()
+    if (!sel || sel.isCollapsed) return ''
+    const t = sel.toString().trim()
+    if (!t) return ''
+    const node = sel.anchorNode
+    const el = node && (node.nodeType === 3 ? node.parentElement : node)
+    return el?.closest?.('.chat-msg.assistant') ? t : ''
+  }
+  // Captured on the button's mousedown (preventDefault keeps the selection from collapsing
+  // before the click fires).
+  const deepenFocusRef = useRef('')
+  const captureDeepenFocus = (e) => { e.preventDefault(); deepenFocusRef.current = selectedAnswerText() }
+  // Live mirror of the above, for UI feedback only: non-empty whenever the reader has
+  // highlighted part of an answer, so "More detail" can show it'll focus on that. A no-op
+  // setState when unchanged (React bails on equal strings), so the doc-wide listener is cheap.
+  const [answerFocus, setAnswerFocus] = useState('')
+  useEffect(() => {
+    if (!chatOpen) return undefined
+    const onSel = () => setAnswerFocus(selectedAnswerText())
+    document.addEventListener('selectionchange', onSel)
+    return () => document.removeEventListener('selectionchange', onSel)
+  }, [chatOpen]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // "More detail": re-ask the last question one level deeper. If the reader highlighted
+  // part of the last answer, center the elaboration on exactly that.
   const deepen = () => {
     if (!lastQuestion || chatBusy) return
-    runAsk({ question: lastQuestion, intent: 'deepen', userBubble: { role: 'user', text: 'More detail', deepen: true } })
+    const focus = deepenFocusRef.current
+    deepenFocusRef.current = ''
+    if (focus) window.getSelection?.()?.removeAllRanges?.()
+    const text = focus ? `More detail on “${focus.length > 80 ? `${focus.slice(0, 80)}…` : focus}”` : 'More detail'
+    runAsk({ question: lastQuestion, intent: 'deepen', focus, userBubble: { role: 'user', text, deepen: true } })
   }
 
   // Toggle "Suggest edits" mode. The Edits drawer is NOT opened/closed here — it
@@ -388,7 +400,7 @@ export default function CodeViewer({
           if (proposed === selCode) delete c[editKey] // back to the original → no edit
           else c[editKey] = {
             text: proposed,
-            around: pendingRange, gran: chunkSize, depthSpread, subOn, subWords,
+            around: pendingRange, gran: chunkSize, depthSpread,
             fileId: file.id, relPath: file.relPath, nodeId: editNode.nodeId, label: editNode.label,
             ts: Date.now(),
           }
@@ -423,12 +435,13 @@ export default function CodeViewer({
     let cancelled = false
     setLoading(true)
     setSelected(null)
-    resetSub()
     setPendingRange(null); setManualMode(false) // new file opens as one whole-file chunk
-    // Switching files dismisses the Q&A panel — it's scoped to the previous file.
+    // Switching files dismisses the Q&A panel, but the per-file transcript is kept
+    // (chatLog is derived from chatLogs[file.id]) so returning restores it.
     setChatOpen(false); setChatClosing(false); setShowChunks(false)
     setFabPulse(false); clearTimeout(fabPulseTimer.current)
-    setChatLog([]); setChatInput(''); setChatError(null); setCtxFileId(null)
+    setChatBusy(false); setSuggestBusy(false) // don't carry an in-flight indicator across files
+    setChatInput(''); setChatError(null); setCtxFileId(null)
     setChatDepth(0); setChatNodeId(null); setLastQuestion(''); setEditMode(false)
     setHistoryIdx(0) // restart the edit-history carousel for the new file
     fetchRaw(file.id).then((t) => !cancelled && setText(t)).catch(() => {})
@@ -465,24 +478,27 @@ export default function CodeViewer({
         .catch(() => !cancelled && setLoading(false))
     }, 80)
     return () => { cancelled = true; clearTimeout(t) }
-  }, [file.id, pendingRange, manualMode, chunkSize, depthSpread])
+  }, [file.id, pendingRange, manualMode, chunkSize, depthSpread, marksVersion])
 
   // Edit-history jump: restore the chunking that produced the edit, then remember
   // the nodeId to select once the re-chunk lands. (Runs after the file-load effect
   // above, so it wins over the reset on a switch.) Highlight-mode edits carry an
-  // `around` range; older edits carry gran/depth/sub (legacy manual fallback).
+  // `around` range; older edits carry gran/depth (legacy manual fallback).
   useEffect(() => {
     if (!jumpTarget || jumpTarget.fileId !== file.id) return
+    // A reference jump carries a raw char offset; scroll there once the file renders.
+    if (jumpTarget.offset != null) {
+      pendingOffsetRef.current = jumpTarget.offset
+      onJumpConsumed?.()
+      return
+    }
     if (jumpTarget.around) {
       setManualMode(false)
-      resetSub()
       setPendingRange(jumpTarget.around)
     } else {
       setManualMode(true)
       setPendingRange(null)
       setDepthSpread(jumpTarget.depthSpread ?? 1)
-      setSubOn(!!jumpTarget.subOn)
-      setSubWords(jumpTarget.subWords ?? 500)
     }
     pendingJumpRef.current = jumpTarget.nodeId
     onJumpConsumed?.()
@@ -502,6 +518,16 @@ export default function CodeViewer({
     const idx = chunks.findIndex((c) => c.nodeId === pendingJumpRef.current)
     if (idx >= 0) setSelected(idx)
   }, [chunks, loading]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Apply a pending reference jump (a raw offset) once the switched-to file's text has
+  // rendered (so the line elements exist for jumpToOffset to scroll to).
+  useEffect(() => {
+    if (pendingOffsetRef.current == null || !text || loading) return
+    const off = pendingOffsetRef.current
+    pendingOffsetRef.current = null
+    const t = setTimeout(() => jumpToOffset(off), 80)
+    return () => clearTimeout(t)
+  }, [text, loading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const lines = useMemo(() => text.split('\n'), [text])
 
@@ -524,9 +550,9 @@ export default function CodeViewer({
   }
 
   // char index -> chunk index (or -1 if it belongs to no chunk). Chunks are a
-  // flat, sorted, non-overlapping cover of the file (tree boxes / their contiguous
-  // sub-splits), so a binary search over [start, end) intervals answers this
-  // without allocating and filling a per-character array across the whole file.
+  // flat, sorted, non-overlapping cover of the file (tree boxes), so a binary
+  // search over [start, end) intervals answers this without allocating and
+  // filling a per-character array across the whole file.
   const chunkAt = useMemo(() => {
     const ivs = chunks
       .map((c) => ({ start: c.start, end: c.end, index: c.index }))
@@ -543,11 +569,10 @@ export default function CodeViewer({
     }
   }, [chunks])
 
-  // Only render the lines the chunks actually cover (drop leading/trailing slack).
-  const firstLine = chunks.length ? lineOf(chunks[0].start) : 0
-  const lastLine = chunks.length
-    ? lineOf(Math.max(chunks[0].start, chunks[chunks.length - 1].end - 1))
-    : -1
+  // Render the whole file. (Every mode now tiles it — whole-file/granularity chunks, or
+  // the highlight-mode frontier distribution — so we always render all lines.)
+  const firstLine = 0
+  const lastLine = lines.length - 1
 
   // Line numbers whose chunk has a real edit → blue margin dot.
   const annotatedLines = new Set()
@@ -634,7 +659,6 @@ export default function CodeViewer({
     let end = b == null ? a : b
     if (end < start) { const tmp = start; start = end; end = tmp }
     sel.removeAllRanges() // drop the native blue selection; the chunk band replaces it
-    resetSub()
     setManualMode(false)
     setPendingRange({ start, end })
     // With the chat open, a fresh highlight re-shows the chunk bands even if you'd
@@ -663,6 +687,42 @@ export default function CodeViewer({
       ln.classList.add('bulging')
       setTimeout(() => ln.classList.remove('bulging'), 650)
     }
+  }
+
+  // Scroll a file offset into view and flash its line.
+  const jumpToOffset = (off) => {
+    const el = lineEls.current[lineOf(off)]
+    const container = scrollRef.current
+    if (container && el) {
+      container.scrollTo({ top: Math.max(0, el.offsetTop - container.clientHeight / 2 + 40), behavior: 'smooth' })
+      el.classList.remove('bulging')
+      void el.offsetWidth
+      el.classList.add('bulging')
+      setTimeout(() => el.classList.remove('bulging'), 700)
+    }
+  }
+  // Clicking a `code` symbol in a file-chat answer opens a "find references" peek —
+  // everywhere that symbol is defined/used across the project (IDE-style). Skip trivial
+  // spans (operators, tiny tokens) that aren't identifiers.
+  const openRefs = (name) => {
+    setRefsPeek({ name, loading: true, data: null, error: null })
+    fetchReferences(name, file.id)
+      .then((data) => setRefsPeek((p) => (p && p.name === name ? { ...p, loading: false, data } : p)))
+      .catch((e) => setRefsPeek((p) => (p && p.name === name ? { ...p, loading: false, error: e.message } : p)))
+  }
+  // Only a clean single identifier is clickable — `getFile`, `ctxNS`, `BARE_MODEL`. Spans
+  // with parens/dots/colons (`bare(node)`, `this.hits.get(key)`, `b:<hash>`) are notation,
+  // not a symbol to look up, so they stay plain text.
+  const linkCode = (content) => {
+    if (!content || content.length < 2 || !/^[A-Za-z_$][\w$]*$/.test(content)) return null
+    return () => openRefs(content)
+  }
+  // Navigate to a reference result: in the open file, scroll there now; elsewhere, hand
+  // off to App to switch files (the offset jump lands once that file renders).
+  const gotoRef = (fileId, offset) => {
+    setRefsPeek(null)
+    if (fileId === file.id) jumpToOffset(offset)
+    else onOpenReference?.(fileId, offset)
   }
 
   return (
@@ -722,7 +782,6 @@ export default function CodeViewer({
                   enterManual()
                   onChunkSize(Number(e.target.value))
                   setShowChunks(true)
-                  resetSub()
                   setSelected(null)
                 }}
               />
@@ -763,42 +822,6 @@ export default function CodeViewer({
                 <span className="slider-val">{shownDepth >= 6 ? '∞' : shownDepth}</span>
               </label>
             )}
-            <label className="slider-wrap sub">
-              <button
-                type="button"
-                role="switch"
-                aria-checked={subOn}
-                className={`switch${subOn ? ' on' : ''}`}
-                onClick={() => {
-                  enterManual()
-                  if (subOn) { setSubOn(false); setSubWords(500) } // park at the off position
-                  else setSubOn(true)
-                  setSelected(null)
-                }}
-                title={subOn ? 'Disable word sub-splitting' : 'Enable word sub-splitting'}
-              >
-                <span className="switch-knob" />
-              </button>
-              <span className="slider-label">Sub-split</span>
-              <input
-                type="range"
-                min="1"
-                max="500"
-                step="1"
-                /* Inverted: left = 500 words, right = 1. The DOM value is the
-                   mirror (501 - subWords); we map back on change. */
-                value={501 - subWords}
-                className={!subOn ? 'off' : ''}
-                style={{ '--pct': `${((500 - subWords) / 499) * 100}%` }}
-                onChange={(e) => {
-                  enterManual()
-                  setSubWords(501 - Number(e.target.value))
-                  if (!subOn) setSubOn(true) // sliding turns it on (500 stays on)
-                  setSelected(null)
-                }}
-              />
-              <span className="slider-val sub-val">{subOn ? `${subWords} w` : 'off'}</span>
-            </label>
           </div>
         </div>
         </div>
@@ -900,7 +923,7 @@ export default function CodeViewer({
                   if (e.target.value === selCode) delete c[editKey]
                   else c[editKey] = {
                     text: e.target.value,
-                    around: pendingRange, gran: chunkSize, depthSpread, subOn, subWords,
+                    around: pendingRange, gran: chunkSize, depthSpread,
                     fileId: file.id, relPath: file.relPath, nodeId: editNode.nodeId, label: editNode.label,
                     ts: Date.now(),
                   }
@@ -1002,7 +1025,7 @@ export default function CodeViewer({
                   {m.role === 'assistant' && m.path?.length > 0 && (
                     <div className="chat-msg-path">{m.path.join(' › ')}</div>
                   )}
-                  <div className="chat-bubble">{renderRich(m.text)}</div>
+                  <div className="chat-bubble">{renderRich(m.text, undefined, linkCode)}</div>
                   {m.role === 'assistant' && m.depth > 0 && (
                     <div className="chat-msg-depth">detail level {m.depth}{m.atBottom ? ' · deepest' : ''}</div>
                   )}
@@ -1020,7 +1043,20 @@ export default function CodeViewer({
                 && !chatLog[chatLog.length - 1].atBottom
                 && targetNodeId && targetNodeId === chatNodeId && (
                 <div className="chat-actions">
-                  <button type="button" className="chat-deepen" onClick={deepen}>↡ More detail</button>
+                  <button
+                    type="button"
+                    className={`chat-deepen${answerFocus ? ' focused' : ''}`}
+                    onMouseDown={captureDeepenFocus}
+                    onClick={deepen}
+                    title="Highlight part of the answer first to go deeper on just that"
+                  >
+                    ↡ {answerFocus ? 'More detail on this' : 'More detail'}
+                  </button>
+                  <span className="chat-deepen-hint">
+                    {answerFocus
+                      ? <>focusing on “{answerFocus.length > 44 ? `${answerFocus.slice(0, 44)}…` : answerFocus}”</>
+                      : <><span className="chat-deepen-hint-mark">highlight</span> any part of the answer to dig into just that</>}
+                  </span>
                 </div>
               )}
             </div>
@@ -1102,6 +1138,47 @@ export default function CodeViewer({
               >
                 <span>View a demo of how chunking works →</span>
               </button>
+            )}
+            <button className="chunk-help-caching" onClick={() => onOpenCaching?.()}>
+              Curious about how caching works?
+            </button>
+          </div>
+        </div>,
+        document.body,
+      )}
+
+      {refsPeek && createPortal(
+        <div className="modal-overlay dim" onClick={() => setRefsPeek(null)}>
+          <div className="refs-peek" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <button className="chunk-help-x" onClick={() => setRefsPeek(null)} aria-label="Close">×</button>
+            <div className="refs-peek-head">
+              <code className="refs-peek-name">{refsPeek.name}</code>
+              <span className="refs-peek-meta">
+                {refsPeek.loading ? 'searching the project…'
+                  : refsPeek.error ? refsPeek.error
+                  : `${refsPeek.data.count}${refsPeek.data.truncated ? '+' : ''} ${refsPeek.data.count === 1 ? 'reference' : 'references'} in ${refsPeek.data.files.length} ${refsPeek.data.files.length === 1 ? 'file' : 'files'}`}
+              </span>
+            </div>
+            {!refsPeek.loading && !refsPeek.error && refsPeek.data.count === 0 && (
+              <div className="refs-peek-empty">No references found across the project.</div>
+            )}
+            {!refsPeek.loading && !refsPeek.error && refsPeek.data.count > 0 && (
+              <div className="refs-peek-list">
+                {refsPeek.data.files.map((g) => (
+                  <div key={g.fileId} className="refs-peek-file">
+                    <div className="refs-peek-path">
+                      {g.relPath}{g.fileId === file.id && <span className="refs-peek-here"> · this file</span>}
+                    </div>
+                    {g.hits.map((h, i) => (
+                      <button key={i} type="button" className="refs-peek-row" onClick={() => gotoRef(g.fileId, h.offset)}>
+                        <span className={`refs-kind ${h.kind}`}>{h.kind}</span>
+                        <span className="refs-peek-ln">{h.line}</span>
+                        <code className="refs-peek-code">{h.lineText}</code>
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>,
