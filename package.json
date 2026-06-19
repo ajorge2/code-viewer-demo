@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Visible code chunking — point it at a codebase, see how it chunks, tune chunk size live. Phase 1 of a code-architecture understanding tool.",
+  "license": "MIT",
   "scripts": {
     "dev": "concurrently -n server,client -c blue,green \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "node --watch server/index.js",
