@@ -5,8 +5,6 @@
 > piece by folding a recursively-cached, content-addressed "meaning" out of the
 > code around it. No vector database, no daemon.
 
-By Andrew Jorge.
-
 ---
 
 **This document is the implementation-level reference, not a user guide.** It is
