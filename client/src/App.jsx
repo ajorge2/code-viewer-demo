@@ -246,7 +246,6 @@ export default function App() {
           </span>
           <div>
             <h1>CodeArchitect</h1>
-            <p className="byline">By Andrew Jorge</p>
           </div>
         </div>
         {view === 'main' && (
