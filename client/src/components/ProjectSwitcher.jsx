@@ -1,5 +1,6 @@
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { readFolderUpload, readDirectoryHandle, readDroppedEntries } from '../lib/uploadFolder.js'
+import { humanizeError } from '../lib/humanizeError.js'
 
 // Bare-window slider bounds (chars). The server clamps to a wider [4k, 200k]; the UI
 // exposes the useful middle band.
@@ -11,7 +12,7 @@ const WIN_STEP = 8000
 // registered projects or add a new one by picking a folder from your machine
 // (read in the browser and uploaded — works locally and in hosted deploys). Clicking
 // the tab you're already on opens a per-project "context detail" slider instead.
-export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload, onRemove, onBareWindow, welcome, onExitWelcome }) {
+const ProjectSwitcher = forwardRef(function ProjectSwitcher({ projects, activeId, onSwitch, onUpload, onRemove, onBareWindow, welcome, onExitWelcome }, forwardedRef) {
   const [open, setOpen] = useState(false)         // the management menu (switch/add/remove)
   const [settingsOpen, setSettingsOpen] = useState(false) // the active project's window-size slider
   const [winLocal, setWinLocal] = useState(WIN_MIN) // live slider value while dragging
@@ -20,6 +21,7 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload
   // chosen folder — the slow part for big trees), 'uploading' (POSTing to the server).
   const [phase, setPhase] = useState('')
   const [dragOver, setDragOver] = useState(false) // a folder is being dragged over the dropzone
+  const [pendingUpload, setPendingUpload] = useState(null)
   // Fixed left-to-right order of the open folder tabs. Tabs keep their slot for
   // life — selecting one only brings it forward (z-index), it never moves. New
   // projects append to the right; removed ones drop out.
@@ -84,6 +86,20 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload
         <line x1="12" y1="5" x2="12" y2="19" />
         <line x1="5" y1="12" x2="19" y2="12" />
       </svg>
+      <span className="proj-chooser-label">{projects.length ? 'Add' : 'Open project'}</span>
+    </button>
+  )
+
+  const settingsTrigger = activeProj && (
+    <button
+      type="button"
+      className={`proj-context-btn${settingsOpen ? ' active' : ''}`}
+      onClick={() => { setSettingsOpen((value) => !value); setOpen(false) }}
+      aria-expanded={settingsOpen}
+      title="Project context settings"
+    >
+      <span aria-hidden="true">◎</span>
+      <span>Context</span>
     </button>
   )
 
@@ -164,10 +180,39 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload
   // Shared tail for all three pick paths: read produced { name, files }, hand it up.
   const finishUpload = async (result) => {
     if (!result || result.files.length === 0) { setError('No source files found in that folder.'); setPhase(''); return }
+    setPhase('')
+    setPendingUpload(result)
+    setOpen(true)
+  }
+
+  const uploadPreview = useMemo(() => {
+    if (!pendingUpload) return null
+    const totalBytes = pendingUpload.files.reduce((total, file) => total + new Blob([file.content]).size, 0)
+    const languages = new Map()
+    for (const file of pendingUpload.files) {
+      const ext = file.relPath.includes('.') ? file.relPath.split('.').pop().toLowerCase() : 'other'
+      languages.set(ext, (languages.get(ext) || 0) + 1)
+    }
+    return {
+      totalBytes,
+      typeCount: languages.size,
+      languages: [...languages.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5),
+    }
+  }, [pendingUpload])
+
+  const confirmUpload = async () => {
+    if (!pendingUpload || phase) return
+    setError('')
     setPhase('uploading')
-    try { await onUpload(result.name, result.files); setOpen(false) }
-    catch (err) { setError(err.message || 'Failed to load folder') }
-    finally { setPhase('') }
+    try {
+      await onUpload(pendingUpload.name, pendingUpload.files, { truncated: !!pendingUpload.truncated })
+      setPendingUpload(null)
+      setOpen(false)
+    } catch (err) {
+      setError(humanizeError(err, 'Failed to open folder'))
+    } finally {
+      setPhase('')
+    }
   }
 
   // The webkitdirectory <input> fallback (Firefox/Safari, or no FS Access). Snapshot
@@ -178,7 +223,7 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload
     if (!fileList.length) return
     setError(''); setPhase('reading')
     try { await finishUpload(await readFolderUpload(fileList)) }
-    catch (err) { setError(err.message || 'Failed to load folder'); setPhase('') }
+    catch (err) { setError(humanizeError(err, 'Failed to load folder')); setPhase('') }
   }
 
   // Primary pick button: the File System Access API where supported (a light "view
@@ -189,10 +234,10 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload
     if (!canFSA) { folderInputRef.current?.click(); return }
     let handle
     try { handle = await window.showDirectoryPicker({ mode: 'read' }) }
-    catch (err) { if (err?.name !== 'AbortError') setError(err.message || 'Could not open folder'); return }
+    catch (err) { if (err?.name !== 'AbortError') setError(humanizeError(err, 'Could not open folder')); return }
     setError(''); setPhase('reading')
     try { await finishUpload(await readDirectoryHandle(handle)) }
-    catch (err) { setError(err.message || 'Failed to read folder'); setPhase('') }
+    catch (err) { setError(humanizeError(err, 'Failed to read folder')); setPhase('') }
   }
 
   // Drag-and-drop a folder — no browser dialog at all. Entries must be captured
@@ -206,8 +251,18 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload
     if (!entries.length) return
     setError(''); setPhase('reading')
     try { await finishUpload(await readDroppedEntries(entries)) }
-    catch (err) { setError(err.message || 'Failed to read folder'); setPhase('') }
+    catch (err) { setError(humanizeError(err, 'Failed to read folder')); setPhase('') }
   }
+
+  // The explicit empty-state CTA reuses this exact flow. Calling the picker from
+  // the exposed method preserves the original user gesture required by browsers.
+  useImperativeHandle(forwardedRef, () => ({
+    openFolder: () => {
+      setOpen(true)
+      setSettingsOpen(false)
+      openFolderPick()
+    },
+  }))
 
   return (
     <div className="proj-switch" ref={ref}>
@@ -243,7 +298,7 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload
                 if (welcome) { onExitWelcome?.(); return }
                 if (!isActive) { onSwitch(p.id); return }
                 if (suppressClick.current) { suppressClick.current = false; return }
-                setSettingsOpen((o) => !o); setOpen(false)
+                setOpen((value) => !value); setSettingsOpen(false)
               }}
               title={p.absPath}
             >
@@ -262,7 +317,7 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload
               )}
               <span className="proj-name">{p.name}</span>
             </button>
-            {isActive && !welcome && chooser}
+            {isActive && !welcome && <>{chooser}{settingsTrigger}</>}
           </Fragment>
         )
       })}
@@ -277,6 +332,42 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload
 
       {open && (
         <div className="proj-menu">
+          {pendingUpload ? (
+            <div className="proj-preflight">
+              <div className="proj-preflight-kicker">Review project</div>
+              <h2>{pendingUpload.name}</h2>
+              <p>
+                CodeArchitect will index source and documentation files only. Generated
+                folders, dependencies, lockfiles, binaries, and files over 1 MB stay out.
+              </p>
+              <div className="proj-preflight-stats">
+                <span><strong>{pendingUpload.files.length}</strong> files</span>
+                <span><strong>{(uploadPreview.totalBytes / 1_000_000).toFixed(1)}</strong> MB</span>
+                <span><strong>{uploadPreview.typeCount}</strong> types</span>
+              </div>
+              <div className="proj-preflight-types">
+                {uploadPreview.languages.map(([ext, count]) => <span key={ext}>.{ext} · {count}</span>)}
+              </div>
+              {pendingUpload.truncated && (
+                <div className="proj-coverage-warning">
+                  Coverage limit reached. The first {pendingUpload.files.length} matching files will be indexed.
+                </div>
+              )}
+              <div className="proj-preflight-actions">
+                <button
+                  type="button"
+                  className="proj-preflight-cancel"
+                  onClick={() => { setPendingUpload(null); setError('') }}
+                  disabled={!!phase}
+                >
+                  Choose another
+                </button>
+                <button type="button" className="proj-preflight-confirm" onClick={confirmUpload} disabled={!!phase}>
+                  {phase === 'uploading' ? 'Opening project…' : 'Open project'}
+                </button>
+              </div>
+            </div>
+          ) : <>
           <div className="proj-list">
             {projects.length === 0 && <div className="proj-empty">No projects yet.</div>}
             {projects.map((p) => (
@@ -343,6 +434,7 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload
               {!canAdd ? `Max ${MAX_PROJECTS} projects` : phase === 'reading' ? 'Reading files…' : phase === 'uploading' ? 'Uploading…' : 'Open folder…'}
             </button>
           </div>
+          </>}
           {error && <div className="proj-error">{error}</div>}
         </div>
       )}
@@ -373,4 +465,6 @@ export default function ProjectSwitcher({ projects, activeId, onSwitch, onUpload
       )}
     </div>
   )
-}
+})
+
+export default ProjectSwitcher

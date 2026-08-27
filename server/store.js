@@ -23,7 +23,8 @@ const BARE_WINDOW_MIN = 4000;
 const BARE_WINDOW_MAX = 200000;
 
 const EMPTY_SCAN = {
-  count: 0, skipped: 0, totalBytes: 0, truncatedByCount: false, truncatedByBytes: false,
+  count: 0, skipped: 0, totalBytes: 0,
+  truncatedByCount: false, truncatedByBytes: false, truncatedByClient: false,
 };
 
 // projectId -> { id, absPath, name, files: Map|null, scan, lastUsed }
@@ -87,7 +88,7 @@ async function scanInto(absPath) {
 // Build a files Map from uploaded { relPath, content } entries (a browser folder
 // upload), honoring the same caps as a disk scan. Used by hosted deploys where the
 // server can't read the user's filesystem.
-function buildFilesFromUpload(entries) {
+function buildFilesFromUpload(entries, clientScan = {}) {
   const files = new Map();
   let skipped = 0;
   let totalBytes = 0;
@@ -112,7 +113,17 @@ function buildFilesFromUpload(entries) {
       content, lineCount: countLines(content), bytes,
     });
   }
-  return { files, scan: { count: files.size, skipped, totalBytes, truncatedByCount, truncatedByBytes } };
+  return {
+    files,
+    scan: {
+      count: files.size,
+      skipped,
+      totalBytes,
+      truncatedByCount,
+      truncatedByBytes,
+      truncatedByClient: clientScan?.truncated === true,
+    },
+  };
 }
 
 // Drop resident text from the least-recently-used projects beyond MAX_RESIDENT.
@@ -182,9 +193,9 @@ export async function registerProject(inputPath) {
 // make it active. No disk involved — the text is held in memory. The id is a
 // content fingerprint so re-uploading the same folder reuses its localStorage
 // namespace (chunk-size overrides survive).
-export function registerUploadedProject(name, entries) {
+export function registerUploadedProject(name, entries, clientScan = {}) {
   const safeName = (typeof name === 'string' && name.trim()) || 'uploaded-project';
-  const { files, scan } = buildFilesFromUpload(entries);
+  const { files, scan } = buildFilesFromUpload(entries, clientScan);
   const fp = crypto.createHash('sha1')
     .update(`${safeName}|${[...files.values()].map((f) => `${f.relPath}:${f.bytes}`).join('|')}`)
     .digest('hex').slice(0, 8);

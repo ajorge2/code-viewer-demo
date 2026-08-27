@@ -77,13 +77,21 @@ const PORT = process.env.PORT || 8799;
 const PROJECT_DIR = path.resolve(process.env.PROJECT_DIR || path.join(__dirname, '..'));
 
 const app = express();
+let startupState = { initializing: true, error: null };
 app.use(cors());
 // Folder uploads (browser-picked projects) post all file contents in one body, so
 // allow a generous limit; per-file and total caps are enforced during ingest.
 app.use(express.json({ limit: '50mb' }));
 
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, projectDir: activeProjectDir(), files: fileCount(), scan: getScanStats() });
+  res.json({
+    ok: true,
+    initializing: startupState.initializing,
+    startupError: startupState.error,
+    projectDir: activeProjectDir(),
+    files: fileCount(),
+    scan: getScanStats(),
+  });
 });
 
 // Metadata for the built-in sample file used by the help/demo page. The file
@@ -141,12 +149,12 @@ app.post('/api/projects', async (req, res) => {
 // server holds it in memory. This is how hosted deploys load a user's local code —
 // the server can't reach their filesystem, so the browser brings it the files.
 app.post('/api/projects/upload', (req, res) => {
-  const { name, files } = req.body || {};
+  const { name, files, scan } = req.body || {};
   if (!Array.isArray(files) || files.length === 0) {
     return res.status(400).json({ error: 'No files in the uploaded folder.' });
   }
   try {
-    const project = registerUploadedProject(name, files);
+    const project = registerUploadedProject(name, files, scan);
     warmActiveProject();
     res.json({ project, activeId: activeProjectId(), projects: listProjects() });
   } catch (e) {
@@ -425,11 +433,17 @@ app.listen(PORT, async () => {
   console.log(`\n  Code Viewer API  →  http://localhost:${PORT}`);
   console.log(`  Project: ${PROJECT_DIR}`);
   console.log('  Scanning source files …');
-  const s = await loadProject(PROJECT_DIR);
-  warmActiveProject(); // build folder tree + background eager bare pass
-  console.log(`  ${s.count} source file(s) ready (${(s.totalBytes / 1e6).toFixed(1)} MB).`);
-  if (s.skipped) console.log(`  ⚠ ${s.skipped} file(s) skipped (too large, >1 MB).`);
-  if (s.truncatedByCount) console.log('  ⚠ File-count cap (4000) hit — some files not loaded.');
-  if (s.truncatedByBytes) console.log('  ⚠ Total-text cap (~150 MB) hit — some files not loaded.');
-  console.log('  Tip: set PROJECT_DIR=/path/to/a/repo to inspect another codebase.\n');
+  try {
+    const s = await loadProject(PROJECT_DIR);
+    warmActiveProject(); // build folder tree + background eager bare pass
+    startupState = { initializing: false, error: null };
+    console.log(`  ${s.count} source file(s) ready (${(s.totalBytes / 1e6).toFixed(1)} MB).`);
+    if (s.skipped) console.log(`  ⚠ ${s.skipped} file(s) skipped (too large, >1 MB).`);
+    if (s.truncatedByCount) console.log('  ⚠ File-count cap (4000) hit — some files not loaded.');
+    if (s.truncatedByBytes) console.log('  ⚠ Total-text cap (~150 MB) hit — some files not loaded.');
+    console.log('  Tip: set PROJECT_DIR=/path/to/a/repo to inspect another codebase.\n');
+  } catch (error) {
+    startupState = { initializing: false, error: error?.message || 'Initial project scan failed.' };
+    console.error(`  Initial project scan failed: ${startupState.error}`);
+  }
 });

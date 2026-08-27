@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { fetchRaw, fetchChunks, fetchChunksAround, askQuestion, suggestEdits, fetchReferences } from '../lib/api.js'
 import { renderRich } from '../lib/richText.jsx'
+import { humanizeError } from '../lib/humanizeError.js'
 import ContextAttach from './ContextAttach.jsx'
 
 // Map a DOM Selection endpoint (node + offset) to an absolute file char offset.
@@ -20,19 +21,14 @@ function segOffset(node, offsetInNode) {
 // desaturated tones (dusty-plum / pine / sand) keep things calm and
 // business-formal rather than candy-bright.
 const BANDS = [
-  'rgba(138,106,142,0.22)', // dusty plum (between slate-blue and maroon)
-  'rgba(72,150,127,0.22)',  // dusty pine
-  'rgba(206,168,82,0.22)',  // sand
+  'rgba(217,155,43,0.14)',  // supporting context — amber
+  'rgba(135,147,165,0.14)', // previously inspected / broader context — slate
 ]
 const bandFor = (i) => BANDS[i % BANDS.length]
 // Selected = the same hue but VIVID — no longer dusty — and a bit brighter, so the
 // picked chunk clearly pops out of the muted unselected bands. Higher alpha lets
 // the saturated hue read through instead of washing toward grey.
-const BANDS_SELECTED = [
-  'rgba(198,108,250,0.55)', // plum → lighter + more saturated
-  'rgba(50,218,150,0.55)',  // pine → lighter + more saturated
-  'rgba(255,200,52,0.58)',  // sand → lighter + more saturated
-]
+const BANDS_SELECTED = ['rgba(107,124,147,0.22)']
 const bandSelectedFor = (i) => BANDS_SELECTED[i % BANDS_SELECTED.length]
 // The user's own highlighted range — persists (over the code, and over any chunk
 // bands) until they drag a new selection. A calm accent-blue marker.
@@ -126,7 +122,7 @@ function charDiff(orig, edited) {
 }
 
 export default function CodeViewer({
-  file, files = [], chunkSize, onChunkSize, edits, setEdits, jumpTarget, onJumpConsumed, onJumpToEdit,
+  projectId, file, files = [], chunkSize, onChunkSize, edits, setEdits, jumpTarget, onJumpConsumed, onJumpToEdit,
   locked = false, controlsReady = true, openChatSignal = 0, demo = false, onOpenDemo, onOpenInfo, onOpenCaching, onOpenReference,
 }) {
   const [helpOpen, setHelpOpen] = useState(false) // chunking how-to modal
@@ -136,6 +132,7 @@ export default function CodeViewer({
   const [text, setText] = useState('')
   const [resp, setResp] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [viewerError, setViewerError] = useState('')
   const [selected, setSelected] = useState(null)
   // Chunking mode. Default (both null/false) = whole file as one chunk. Highlight
   // a region → `pendingRange` drives "chunk around that range". Moving an Advanced
@@ -150,14 +147,24 @@ export default function CodeViewer({
   // relPath, nodeId, label, ts } — config captured at edit time.
   const [historyIdx, setHistoryIdx] = useState(0) // edit-history carousel position
   const pendingJumpRef = useRef(null) // nodeId to select once chunks reflect a jump
-  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [insightTab, setInsightTab] = useState('understand')
+  const [insightOpen, setInsightOpen] = useState(() => !demo && (typeof window === 'undefined' || window.innerWidth >= 768))
+  const [insightWidth, setInsightWidth] = useState(() => {
+    try {
+      const saved = Number(localStorage.getItem('cv:insightWidth'))
+      return Number.isFinite(saved) && saved >= 320 && saved <= 520 ? saved : 400
+    } catch {
+      return 400
+    }
+  })
+  const drawerOpen = insightOpen && insightTab === 'drafts'
   // Chunk band highlights are off by default — usually you don't need to see the
   // other chunks, just work with your highlighted target. Toggle in the toolbar.
   const [showChunks, setShowChunks] = useState(false)
   // RAG Q&A chat panel (scaffold — backend wired later). `chatClosing` keeps the
   // panel mounted through its genie close animation before it unmounts.
-  const [chatOpen, setChatOpen] = useState(false)
-  const [chatClosing, setChatClosing] = useState(false)
+  const chatOpen = insightOpen && insightTab === 'understand'
+  const chatClosing = false
   // Briefly true after a NEW highlight (while the chat is closed) — pulses the FAB to
   // hint that the next step is to open it. Auto-clears after a few pulses.
   const [fabPulse, setFabPulse] = useState(false)
@@ -168,10 +175,10 @@ export default function CodeViewer({
   // (around your highlight) and you're ready to ask. Closing returns to the clean
   // view. The toolbar toggle still overrides while the chat is closed.
   const openChat = () => {
-    setChatClosing(false); setChatOpen(true); setShowChunks(true)
+    setInsightOpen(true); setInsightTab('understand'); setShowChunks(true)
     setFabPulse(false); clearTimeout(fabPulseTimer.current) // opened — stop nudging
   }
-  const closeChat = () => { setChatOpen(false); setChatClosing(true); setShowChunks(false) }
+  const closeChat = () => setInsightOpen(false)
   // Pulse the chat FAB to draw the eye to it after a fresh highlight. Toggling off
   // then on replays the animation from the first pulse on every new highlight; the
   // CSS plays exactly 3, and the trailing timer just removes the class afterward.
@@ -187,6 +194,10 @@ export default function CodeViewer({
   // Q&A transcripts kept PER FILE so switching away and back restores the
   // conversation instead of starting over. Keyed by file id.
   const [chatLogs, setChatLogs] = useState({})
+  useEffect(() => {
+    setChatLogs({})
+    setRefsPeek(null)
+  }, [projectId])
   const chatLog = chatLogs[file.id] || []
   const setChatLog = (updater) => setChatLogs((all) => {
     const cur = all[file.id] || []
@@ -221,6 +232,26 @@ export default function CodeViewer({
   const scrollRef = useRef(null)
   const lineEls = useRef({}) // line index -> element
   const editBackRef = useRef(null) // diff backdrop behind the Edits textarea
+
+  const beginInsightResize = (event) => {
+    if (window.innerWidth < 1180) return
+    event.preventDefault()
+    const startX = event.clientX
+    const startWidth = insightWidth
+    const move = (moveEvent) => {
+      setInsightWidth(Math.max(320, Math.min(520, startWidth + startX - moveEvent.clientX)))
+    }
+    const finish = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', finish)
+      setInsightWidth((width) => {
+        try { localStorage.setItem('cv:insightWidth', String(width)) } catch { /* storage unavailable */ }
+        return width
+      })
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', finish)
+  }
 
   const onScroll = () => {
     setScrolling(true)
@@ -268,13 +299,17 @@ export default function CodeViewer({
   const editNode = selChunk
     ? { nodeId: selChunk.nodeId, label: selChunk.label, code: text.slice(selChunk.start, selChunk.end) }
     : (rootNodeId && text ? { nodeId: rootNodeId, label: 'Whole file', code: text } : null)
-  const editKey = editNode ? `${file.id}::${editNode.nodeId}` : null
+  const legacyEditKey = editNode ? `${file.id}::${editNode.nodeId}` : null
+  const editKey = editNode ? `${projectId || 'unscoped'}::${file.id}::${editNode.nodeId}` : null
   // `selCode` is the target's exact source — the starting point the Edits pane
   // falls back to.
   const selCode = editNode ? editNode.code : ''
   // Edits buffer (falls back to the original code) + its char-diff against it.
-  const editBuf = editKey ? (editTextOf(edits[editKey]) ?? selCode) : ''
-  const isEdited = editKey != null && edits[editKey] !== undefined && editTextOf(edits[editKey]) !== selCode
+  const legacyEditValue = legacyEditKey ? edits[legacyEditKey] : undefined
+  const compatibleLegacyEdit = legacyEditValue?.projectId === projectId ? legacyEditValue : undefined
+  const editValue = editKey ? (edits[editKey] ?? compatibleLegacyEdit) : undefined
+  const editBuf = editKey ? (editTextOf(editValue) ?? selCode) : ''
+  const isEdited = editKey != null && editValue !== undefined && editTextOf(editValue) !== selCode
   const editLines = useMemo(
     () => (editKey ? charDiff(selCode, editBuf) : []),
     [editKey, selCode, editBuf],
@@ -283,10 +318,11 @@ export default function CodeViewer({
   // carousel's contents. Scoped per-file so the history follows the open file.
   const editHistory = useMemo(
     () => Object.entries(edits)
-      .filter(([key]) => key.startsWith(`${file.id}::`))
+      .filter(([key, value]) => key.startsWith(`${projectId || 'unscoped'}::${file.id}::`)
+        || (key.startsWith(`${file.id}::`) && value?.projectId === projectId))
       .map(([key, v]) => (typeof v === 'string' ? { key, text: v } : { key, ...v }))
       .sort((a, b) => (b.ts || 0) - (a.ts || 0)),
-    [edits, file.id],
+    [edits, file.id, projectId],
   )
   const histIdx = editHistory.length ? Math.min(historyIdx, editHistory.length - 1) : 0
   const histEntry = editHistory[histIdx]
@@ -298,7 +334,7 @@ export default function CodeViewer({
   // granularity) plus the per-line drill state. A selection change vs. the line's
   // node is a hard reset (depth 0, no carried transcript).
   const runAsk = async ({ question, intent, userBubble, focus = '' }) => {
-    if (!targetNodeId || chatBusy) return
+    if (!targetNodeId || chatBusy || loading) return
     const sameNode = targetNodeId === chatNodeId
     const depth = sameNode ? chatDepth : 0
     const transcript = sameNode ? chatLog.slice(-4).map((m) => ({ role: m.role, text: m.text })) : []
@@ -316,12 +352,14 @@ export default function CodeViewer({
       setLastQuestion(question)
       setChatLog((log) => [...log, {
         role: 'assistant', text: r.answer, path: r.path, depth: r.depth ?? 0, atBottom: !!r.atBottom,
+        scope: selected != null && chunks[selected] ? selectionLabel(chunks[selected]) : 'Whole file',
+        nodeId: targetNodeId,
       }])
       // This question recorded a new mark server-side → re-derive the distribution so
       // the bands + chunk count reflect the refined frontier.
       setMarksVersion((v) => v + 1)
     } catch (e) {
-      setChatError(e.message || 'Something went wrong')
+      setChatError(humanizeError(e))
     } finally {
       setChatBusy(false)
     }
@@ -384,11 +422,13 @@ export default function CodeViewer({
   // edit target (selected chunk, or the whole file) and the result lands in the
   // Edits drawer. The conversation is carried along for context.
   const runSuggest = async (instruction) => {
-    if (!editKey || !editNode || suggestBusy || chatBusy) return
+    if (!editKey || !editNode || suggestBusy || chatBusy || loading) return
     setSuggestBusy(true)
     setChatError(null)
-    setDrawerOpen(true)
-    const transcript = chatLog.slice(-6).map((m) => ({ role: m.role, text: m.text }))
+    setInsightOpen(true)
+    const transcript = targetNodeId === chatNodeId
+      ? chatLog.filter((message) => !message.nodeId || message.nodeId === targetNodeId).slice(-6).map((m) => ({ role: m.role, text: m.text }))
+      : []
     const base = editBuf // revise the current draft, so edits stack across messages
     setChatLog((log) => [...log, { role: 'user', text: instruction, edit: true }])
     try {
@@ -397,21 +437,23 @@ export default function CodeViewer({
       if (proposed && proposed !== base) {
         setEdits((m) => {
           const c = { ...m }
+          delete c[legacyEditKey]
           if (proposed === selCode) delete c[editKey] // back to the original → no edit
           else c[editKey] = {
             text: proposed,
             around: pendingRange, gran: chunkSize, depthSpread,
-            fileId: file.id, relPath: file.relPath, nodeId: editNode.nodeId, label: editNode.label,
+            projectId, fileId: file.id, relPath: file.relPath, nodeId: editNode.nodeId, label: editNode.label,
             ts: Date.now(),
           }
           return c
         })
         setChatLog((log) => [...log, { role: 'assistant', text: `Updated ${editNode.label === 'Whole file' ? 'the file' : editNode.label} in the editor →`, edits: true }])
+        setInsightTab('drafts')
       } else {
         setChatLog((log) => [...log, { role: 'assistant', text: 'That didn\'t call for a code change, so I left it as is.', edits: true }])
       }
     } catch (e) {
-      setChatError(e.message || 'Failed to suggest edits')
+      setChatError(humanizeError(e, 'The draft could not be generated.'))
     } finally {
       setSuggestBusy(false)
     }
@@ -434,17 +476,26 @@ export default function CodeViewer({
   useEffect(() => {
     let cancelled = false
     setLoading(true)
+    setViewerError('')
+    setText('')
+    setResp(null)
     setSelected(null)
     setPendingRange(null); setManualMode(false) // new file opens as one whole-file chunk
-    // Switching files dismisses the Q&A panel, but the per-file transcript is kept
-    // (chatLog is derived from chatLogs[file.id]) so returning restores it.
-    setChatOpen(false); setChatClosing(false); setShowChunks(false)
+    // Desktop keeps the docked Insight pane visible; compact layouts prioritize
+    // the newly opened code and let the user reveal Insight explicitly.
+    setInsightTab('understand')
+    setInsightOpen(!demo && window.innerWidth >= 768)
+    setShowChunks(false)
     setFabPulse(false); clearTimeout(fabPulseTimer.current)
     setChatBusy(false); setSuggestBusy(false) // don't carry an in-flight indicator across files
     setChatInput(''); setChatError(null); setCtxFileId(null)
     setChatDepth(0); setChatNodeId(null); setLastQuestion(''); setEditMode(false)
     setHistoryIdx(0) // restart the edit-history carousel for the new file
-    fetchRaw(file.id).then((t) => !cancelled && setText(t)).catch(() => {})
+    fetchRaw(file.id)
+      .then((t) => !cancelled && setText(t))
+      .catch((error) => {
+        if (!cancelled) setViewerError(humanizeError(error, 'This file could not be loaded.'))
+      })
     return () => { cancelled = true }
   }, [file.id])
 
@@ -460,6 +511,8 @@ export default function CodeViewer({
   // Advanced granularity/depth sliders), or the default whole-file single chunk.
   useEffect(() => {
     let cancelled = false
+    setLoading(true)
+    setViewerError('')
     const sendD = depthSpread >= 6 ? 50 : depthSpread // 6 on the slider = ∞
     const t = setTimeout(() => {
       const req = pendingRange
@@ -475,7 +528,12 @@ export default function CodeViewer({
             if (idx >= 0) setSelected(idx)
           }
         })
-        .catch(() => !cancelled && setLoading(false))
+        .catch((error) => {
+          if (!cancelled) {
+            setLoading(false)
+            setViewerError(humanizeError(error, 'Context could not be resolved for this file.'))
+          }
+        })
     }, 80)
     return () => { cancelled = true; clearTimeout(t) }
   }, [file.id, pendingRange, manualMode, chunkSize, depthSpread, marksVersion])
@@ -578,7 +636,9 @@ export default function CodeViewer({
   const annotatedLines = new Set()
   for (const c of chunks) {
     if (!c.nodeId) continue
-    const ed = edits[`${file.id}::${c.nodeId}`]
+    const namespaced = edits[`${projectId || 'unscoped'}::${file.id}::${c.nodeId}`]
+    const legacy = edits[`${file.id}::${c.nodeId}`]
+    const ed = namespaced ?? (legacy?.projectId === projectId ? legacy : undefined)
     const t = editTextOf(ed)
     if (t !== undefined && t !== text.slice(c.start, c.end)) annotatedLines.add(lineOf(c.start))
   }
@@ -648,6 +708,7 @@ export default function CodeViewer({
       // select a chunk by highlighting a region; a click clears it. This keeps the
       // chat context ("Whole file" vs a line range) in sync with the real selection.
       if (pendingRange || manualMode || selected != null) {
+        setLoading(true)
         setPendingRange(null); setManualMode(false); setSelected(null)
       }
       return
@@ -660,6 +721,8 @@ export default function CodeViewer({
     if (end < start) { const tmp = start; start = end; end = tmp }
     sel.removeAllRanges() // drop the native blue selection; the chunk band replaces it
     setManualMode(false)
+    setSelected(null)
+    setLoading(true)
     setPendingRange({ start, end })
     // With the chat open, a fresh highlight re-shows the chunk bands even if you'd
     // toggled the Highlights switch off. With it closed, nudge the FAB instead.
@@ -705,10 +768,12 @@ export default function CodeViewer({
   // everywhere that symbol is defined/used across the project (IDE-style). Skip trivial
   // spans (operators, tiny tokens) that aren't identifiers.
   const openRefs = (name) => {
+    setInsightOpen(true)
+    setInsightTab('trace')
     setRefsPeek({ name, loading: true, data: null, error: null })
     fetchReferences(name, file.id)
       .then((data) => setRefsPeek((p) => (p && p.name === name ? { ...p, loading: false, data } : p)))
-      .catch((e) => setRefsPeek((p) => (p && p.name === name ? { ...p, loading: false, error: e.message } : p)))
+      .catch((e) => setRefsPeek((p) => (p && p.name === name ? { ...p, loading: false, error: humanizeError(e, 'References could not be searched.') } : p)))
   }
   // Only a clean single identifier is clickable — `getFile`, `ctxNS`, `BARE_MODEL`. Spans
   // with parens/dots/colons (`bare(node)`, `this.hits.get(key)`, `b:<hash>`) are notation,
@@ -746,6 +811,18 @@ export default function CodeViewer({
                 <span className="chunk-switch-knob" />
               </span>
             </button>
+            {!demo && (
+              <button
+                type="button"
+                className={`insight-toggle${insightOpen ? ' active' : ''}`}
+                onClick={() => setInsightOpen((open) => !open)}
+                aria-expanded={insightOpen}
+                title={insightOpen ? 'Hide Insight' : 'Show Insight'}
+              >
+                <span aria-hidden="true">✦</span>
+                Insight
+              </button>
+            )}
             <button
               type="button"
               className="gran-help"
@@ -762,6 +839,20 @@ export default function CodeViewer({
             </button>
           </div>
         </div>
+        {!demo && (
+          <div className="scope-ledger" aria-label="Active context">
+            <span className="scope-ledger-label">Scope</span>
+            <button type="button" onClick={bulgeSelection} title="Reveal the scoped code">
+              <i className="scope-dot exact" />
+              {pendingRange && selected != null && chunks[selected] ? selectionLabel(chunks[selected]) : 'Whole file'}
+            </button>
+            <span title={file.relPath}><i className="scope-dot file" />{file.relPath}</span>
+            <span><i className="scope-dot support" />{Math.max(0, chunks.length - 1)} supporting units</span>
+            <span className={`scope-readiness${loading ? ' resolving' : ''}`}>
+              <i />{loading ? 'Resolving context…' : viewerError ? 'Needs attention' : 'Ready'}
+            </span>
+          </div>
+        )}
         {/* The manual chunking sliders live only on the demo page now — shown in a
             single side-by-side row. The main app chunks by highlighting. */}
         {demo && (
@@ -828,7 +919,10 @@ export default function CodeViewer({
         )}
       </div>
 
-      <div className={`viewer-body${drawerOpen ? ' drawer-open' : ''}${locked ? ' locked' : ''}`}>
+      <div
+        className={`viewer-body${drawerOpen ? ' drawer-open' : ''}${insightOpen ? ' insight-open' : ''}${locked ? ' locked' : ''}`}
+        style={{ '--insight-size': `${insightWidth}px` }}
+      >
         <div className={`code-scroll${scrolling ? ' scrolling' : ''}`} ref={scrollRef} onScroll={onScroll} onMouseUp={onCodeMouseUp}>
           <div className={`code${showChunks ? ' bands' : ''}`}>
             {lines.map((line, k) => {
@@ -868,10 +962,35 @@ export default function CodeViewer({
           </div>
         </div>
 
+        {!demo && insightOpen && (
+          <>
+            <div className="insight-resizer" onPointerDown={beginInsightResize} role="separator" aria-label="Resize Insight" />
+            <div className="insight-tabbar" role="tablist" aria-label="Insight views">
+              <span className="insight-tabbar-title">Insight</span>
+              {[
+                ['understand', 'Understand'],
+                ['trace', 'Trace'],
+                ['drafts', `Drafts${editHistory.length ? ` · ${editHistory.length}` : ''}`],
+              ].map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={insightTab === id}
+                  className={insightTab === id ? 'active' : ''}
+                  onClick={() => setInsightTab(id)}
+                >
+                  {label}
+                </button>
+              ))}
+              <button type="button" className="insight-collapse" onClick={() => setInsightOpen(false)} aria-label="Hide Insight">×</button>
+            </div>
+          </>
+        )}
+
         <button
           className={`drawer-handle${(chatOpen || chatClosing) ? ' chat-hidden' : ''}`}
-          style={{ right: drawerOpen ? '50%' : 0 }}
-          onClick={() => { if (!locked) setDrawerOpen((o) => !o) }}
+          onClick={() => { if (!locked) { setInsightOpen(true); setInsightTab('drafts') } }}
           disabled={locked}
           title={locked ? 'Close the welcome panel first' : (drawerOpen ? 'Hide chunk list' : 'Show chunk list')}
           aria-label={drawerOpen ? 'Hide chunk list' : 'Show chunk list'}
@@ -894,7 +1013,7 @@ export default function CodeViewer({
               <span>Edits{editNode ? <span className="cl-pane-for"> · {editNode.label}</span> : ''}</span>
               <button
                 className="cl-reset"
-                onClick={() => editKey && setEdits((m) => { const c = { ...m }; delete c[editKey]; return c })}
+                onClick={() => editKey && setEdits((m) => { const c = { ...m }; delete c[editKey]; delete c[legacyEditKey]; return c })}
                 disabled={!isEdited}
                 title="Reset to the original code"
               >reset</button>
@@ -920,11 +1039,12 @@ export default function CodeViewer({
                 value={editBuf}
                 onChange={(e) => editKey && setEdits((m) => {
                   const c = { ...m }
+                  delete c[legacyEditKey]
                   if (e.target.value === selCode) delete c[editKey]
                   else c[editKey] = {
                     text: e.target.value,
                     around: pendingRange, gran: chunkSize, depthSpread,
-                    fileId: file.id, relPath: file.relPath, nodeId: editNode.nodeId, label: editNode.label,
+                    projectId, fileId: file.id, relPath: file.relPath, nodeId: editNode.nodeId, label: editNode.label,
                     ts: Date.now(),
                   }
                   return c
@@ -979,7 +1099,6 @@ export default function CodeViewer({
             className={`chat-panel${chatClosing ? ' closing' : ''}`}
             role="dialog"
             aria-label="Ask about this file"
-            onAnimationEnd={() => { if (chatClosing) setChatClosing(false) }}
           >
             <div className="chat-head">
               <span className="chat-title">
@@ -1020,8 +1139,23 @@ export default function CodeViewer({
               </div>
             )}
             <div className="chat-body" ref={chatScrollRef}>
+              {chatLog.length === 0 && !chatBusy && !suggestBusy && (
+                <div className="chat-placeholder insight-empty-copy">
+                  <strong>Ask from evidence, not guesswork</strong>
+                  <span>
+                    The current file and {pendingRange ? 'your exact selection' : 'its whole-file structure'} are in scope.
+                    {ctxFileId ? ' One supporting file is attached.' : ' Attach one supporting file when a comparison needs it.'}
+                  </span>
+                  <div className="insight-prompt-list" aria-label="Example questions">
+                    <button type="button" onClick={() => setChatInput('Explain the responsibility of this code.')}>Explain this responsibility</button>
+                    <button type="button" onClick={() => setChatInput('What depends on this code?')}>What depends on this?</button>
+                    <button type="button" onClick={() => setChatInput('What should I inspect next?')}>What should I inspect next?</button>
+                  </div>
+                </div>
+              )}
               {chatLog.map((m, i) => (
                 <div key={i} className={`chat-msg ${m.role}${m.deepen ? ' deepen' : ''}${m.edit ? ' edit' : ''}${m.edits ? ' edits' : ''}`}>
+                  {m.role === 'assistant' && m.scope && <div className="chat-msg-scope">Scope · {m.scope}</div>}
                   {m.role === 'assistant' && m.path?.length > 0 && (
                     <div className="chat-msg-path">{m.path.join(' › ')}</div>
                   )}
@@ -1033,7 +1167,10 @@ export default function CodeViewer({
               ))}
               {(chatBusy || suggestBusy) && (
                 <div className="chat-msg assistant">
-                  <div className="chat-bubble thinking">{suggestBusy ? 'Editing…' : 'Thinking…'}</div>
+                  <div className="chat-bubble thinking insight-thinking">
+                    <strong>{suggestBusy ? 'Preparing a draft' : 'Building an answer'}</strong>
+                    <span>{suggestBusy ? 'Comparing the request with the scoped code…' : 'Reading the structural target and its supporting context…'}</span>
+                  </div>
                 </div>
               )}
               {chatError && <div className="chat-msg-error">{chatError}</div>}
@@ -1086,12 +1223,12 @@ export default function CodeViewer({
                   // Enter sends; Shift+Enter inserts a newline.
                   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitChat() }
                 }}
-                disabled={!targetNodeId || chatBusy || suggestBusy}
+                disabled={!targetNodeId || loading || chatBusy || suggestBusy}
               />
               <button
                 className="chat-send"
                 type="submit"
-                disabled={!targetNodeId || chatBusy || suggestBusy || !chatInput.trim()}
+                disabled={!targetNodeId || loading || chatBusy || suggestBusy || !chatInput.trim()}
                 aria-label={editMode ? 'Apply edit' : 'Send'}
               >↑</button>
             </form>
@@ -1119,6 +1256,63 @@ export default function CodeViewer({
             </svg>
           )}
         </button>
+
+        {!demo && insightOpen && insightTab === 'trace' && (
+          <aside className="trace-panel" aria-label="Context trace">
+            <div className="trace-scroll">
+              <section className="context-map">
+                <div className="trace-kicker">Context map</div>
+                <h3>What the answer can see</h3>
+                <p>Scope is explicit and follows the evidence you selected.</p>
+                <div className="context-map-path">
+                  <div><i className="scope-dot project" /><span><small>Project</small>{projectId ? 'Active project' : 'Demo'}</span></div>
+                  <div><i className="scope-dot file" /><span><small>Primary file</small>{file.relPath}</span></div>
+                  <div><i className="scope-dot exact" /><span><small>Exact focus</small>{pendingRange && selected != null && chunks[selected] ? selectionLabel(chunks[selected]) : 'Whole file'}</span></div>
+                  <div><i className="scope-dot structural" /><span><small>Structural target</small>{nodes[targetNodeId]?.label || editNode?.label || 'Whole file'}</span></div>
+                  <div><i className="scope-dot support" /><span><small>Supporting context</small>{Math.max(0, chunks.length - 1)} structural units</span></div>
+                  {ctxFileId && (
+                    <div><i className="scope-dot attached" /><span><small>Attached file</small>{files.find((candidate) => candidate.id === ctxFileId)?.relPath || ctxFileId}</span></div>
+                  )}
+                </div>
+                <div className="context-disclosure">
+                  {pendingRange && pendingRange.end - pendingRange.start <= 200
+                    ? 'The exact highlighted excerpt is supplied with the structural target.'
+                    : pendingRange
+                      ? 'The structural region is supplied; the exact excerpt is too large to quote into the request.'
+                      : 'The whole-file root is the primary target.'}
+                </div>
+              </section>
+
+              <section className="investigation-trail">
+                <div className="trace-kicker">Investigation trail</div>
+                <h3>{refsPeek ? <>References to <code>{refsPeek.name}</code></> : 'No symbol search yet'}</h3>
+                {!refsPeek && <p>Click a code-formatted symbol in an answer to trace where it is defined and used across the project.</p>}
+                {refsPeek?.loading && <div className="trace-loading"><span className="empty-spinner" />Searching indexed files…</div>}
+                {refsPeek?.error && <div className="chat-msg-error">{refsPeek.error}</div>}
+                {refsPeek && !refsPeek.loading && !refsPeek.error && refsPeek.data.count === 0 && (
+                  <div className="refs-peek-empty">No references found. This may be a local value, generated name, or dynamically resolved symbol.</div>
+                )}
+                {refsPeek && !refsPeek.loading && !refsPeek.error && refsPeek.data.count > 0 && (
+                  <div className="refs-peek-list">
+                    <div className="trace-result-summary">{refsPeek.data.count}{refsPeek.data.truncated ? '+' : ''} references · {refsPeek.data.files.length} files</div>
+                    {refsPeek.data.files.map((group) => (
+                      <div key={group.fileId} className="refs-peek-file">
+                        <div className="refs-peek-path">{group.relPath}{group.fileId === file.id && <span className="refs-peek-here"> · this file</span>}</div>
+                        {group.hits.map((hit, index) => (
+                          <button key={index} type="button" className="refs-peek-row" onClick={() => gotoRef(group.fileId, hit.offset)}>
+                            <span className={`refs-kind ${hit.kind}`}>{hit.kind}</span>
+                            <span className="refs-peek-ln">{hit.line}</span>
+                            <code className="refs-peek-code">{hit.lineText}</code>
+                          </button>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
+          </aside>
+        )}
       </div>
 
       {/* Portaled to <body> so the overlay (and its blur) sits above the top bar
@@ -1128,8 +1322,9 @@ export default function CodeViewer({
           <div className="chunk-help" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
             <button className="chunk-help-x" onClick={() => setHelpOpen(false)} aria-label="Close">×</button>
             <p className="chunk-help-text">
-              Highlight code you would like to interrogate, and click on the chat
-              button on the bottom right to interact with the chunk around it!
+              Highlight the exact code you want to investigate. CodeArchitect resolves
+              the tightest structural target around it, shows the context in Insight,
+              and keeps every proposed change in Drafts until you decide what to do.
             </p>
             {!demo && (
               <button
@@ -1147,45 +1342,8 @@ export default function CodeViewer({
         document.body,
       )}
 
-      {refsPeek && createPortal(
-        <div className="modal-overlay dim" onClick={() => setRefsPeek(null)}>
-          <div className="refs-peek" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-            <button className="chunk-help-x" onClick={() => setRefsPeek(null)} aria-label="Close">×</button>
-            <div className="refs-peek-head">
-              <code className="refs-peek-name">{refsPeek.name}</code>
-              <span className="refs-peek-meta">
-                {refsPeek.loading ? 'searching the project…'
-                  : refsPeek.error ? refsPeek.error
-                  : `${refsPeek.data.count}${refsPeek.data.truncated ? '+' : ''} ${refsPeek.data.count === 1 ? 'reference' : 'references'} in ${refsPeek.data.files.length} ${refsPeek.data.files.length === 1 ? 'file' : 'files'}`}
-              </span>
-            </div>
-            {!refsPeek.loading && !refsPeek.error && refsPeek.data.count === 0 && (
-              <div className="refs-peek-empty">No references found across the project.</div>
-            )}
-            {!refsPeek.loading && !refsPeek.error && refsPeek.data.count > 0 && (
-              <div className="refs-peek-list">
-                {refsPeek.data.files.map((g) => (
-                  <div key={g.fileId} className="refs-peek-file">
-                    <div className="refs-peek-path">
-                      {g.relPath}{g.fileId === file.id && <span className="refs-peek-here"> · this file</span>}
-                    </div>
-                    {g.hits.map((h, i) => (
-                      <button key={i} type="button" className="refs-peek-row" onClick={() => gotoRef(g.fileId, h.offset)}>
-                        <span className={`refs-kind ${h.kind}`}>{h.kind}</span>
-                        <span className="refs-peek-ln">{h.line}</span>
-                        <code className="refs-peek-code">{h.lineText}</code>
-                      </button>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>,
-        document.body,
-      )}
-
-      {loading && <div className="viewer-loading">chunking…</div>}
+      {loading && <div className="viewer-loading">Resolving context…</div>}
+      {viewerError && <div className="viewer-error-banner">{viewerError}</div>}
     </div>
   )
 }

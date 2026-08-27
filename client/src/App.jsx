@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   fetchHealth, fetchFiles, fetchProjects,
@@ -8,6 +8,7 @@ import {
 import Library from './components/Library.jsx'
 import CodeViewer from './components/CodeViewer.jsx'
 import ProjectSwitcher from './components/ProjectSwitcher.jsx'
+import { humanizeError } from './lib/humanizeError.js'
 
 // Per-project localStorage namespace for chunk-size overrides.
 const keyFor = (projectId) => `cv:chunkSizes:${projectId}`
@@ -20,14 +21,134 @@ function loadChunkSizes(projectId) {
   }
 }
 
+function ProjectOverview({ project, files, scan, edits, onOpenFile }) {
+  const languages = useMemo(() => {
+    const counts = new Map()
+    for (const file of files) {
+      const label = file.language || file.relPath.split('.').pop() || 'other'
+      counts.set(label, (counts.get(label) || 0) + 1)
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])
+  }, [files])
+
+  const topFolders = useMemo(() => {
+    const counts = new Map()
+    for (const file of files) {
+      const folder = file.relPath.includes('/') ? file.relPath.split('/')[0] : 'Project root'
+      counts.set(folder, (counts.get(folder) || 0) + 1)
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
+  }, [files])
+
+  const editedFiles = new Set(Object.entries(edits).flatMap(([key, value]) => {
+    const parts = key.split('::')
+    if (parts.length >= 3) return parts[0] === project?.id ? [parts[1]] : []
+    return value?.projectId === project?.id ? [parts[0]] : []
+  })).size
+  const coverageLimited = scan?.truncatedByCount || scan?.truncatedByBytes || scan?.truncatedByClient
+
+  return (
+    <div className="project-overview-shell">
+      <section className="project-overview">
+        <div className="overview-kicker">Project overview</div>
+        <h2>{project?.name || 'Active project'}</h2>
+        <p className="overview-lede">Start with the shape of the system, then follow evidence into a file. Nothing here changes your source.</p>
+
+        <div className="overview-metrics">
+          <div><strong>{files.length}</strong><span>indexed files</span></div>
+          <div><strong>{languages.length}</strong><span>file types</span></div>
+          <div><strong>{editedFiles}</strong><span>drafted files</span></div>
+        </div>
+
+        {coverageLimited && (
+          <div className="coverage-card warning">
+            <strong>Coverage limit reached</strong>
+            <span>The overview reflects the indexed subset. Review the status bar before drawing project-wide conclusions.</span>
+          </div>
+        )}
+
+        <div className="overview-grid">
+          <section>
+            <h3>Languages</h3>
+            <div className="overview-bars">
+              {languages.slice(0, 6).map(([name, count]) => (
+                <div key={name} className="overview-bar-row">
+                  <span>{name}</span>
+                  <span className="overview-bar"><i style={{ width: `${Math.max(8, (count / files.length) * 100)}%` }} /></span>
+                  <span>{count}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+          <section>
+            <h3>Largest areas</h3>
+            <div className="overview-folder-list">
+              {topFolders.map(([name, count]) => <div key={name}><span>{name}/</span><span>{count} files</span></div>)}
+            </div>
+          </section>
+        </div>
+
+        {files[0] && <button className="overview-primary" onClick={() => onOpenFile(files[0].id)}>Open the first file</button>}
+      </section>
+
+      <aside className="overview-insight">
+        <div className="insight-rail-label"><span>Insight</span><span>Project scope</span></div>
+        <div className="overview-insight-body">
+          <div className="overview-scope-icon">◎</div>
+          <h3>Choose evidence to investigate</h3>
+          <p>Select a file to ask about exact code, or use <strong>Ask project</strong> in Explorer for a repository-wide question.</p>
+          <div className="scope-mini-ledger">
+            <span><i className="scope-dot project" /> Scope · entire project</span>
+            <span><i className="scope-dot support" /> Context · indexed files</span>
+            <span><i className="scope-dot safe" /> Actions · drafts only</span>
+          </div>
+        </div>
+      </aside>
+    </div>
+  )
+}
+
+function EmptyWorkspace({ onOpenProject }) {
+  return (
+    <div className="empty-workspace">
+      <div className="empty-workspace-mark" aria-hidden="true">⌁</div>
+      <div className="overview-kicker">Context workbench</div>
+      <h2>Understand a codebase without losing your place.</h2>
+      <p>Open a folder to map its structure, inspect exact code, ask scoped questions, and keep proposed changes safely in drafts.</p>
+      <button className="overview-primary" onClick={onOpenProject}>Open a project folder</button>
+      <div className="empty-workspace-steps">
+        <span><b>1</b> Choose a folder</span>
+        <span><b>2</b> Review coverage</span>
+        <span><b>3</b> Explore safely</span>
+      </div>
+      <small>Read-only exploration · generated folders and binaries are skipped</small>
+    </div>
+  )
+}
+
 export default function App() {
   const [files, setFiles] = useState([])
   const [projectDir, setProjectDir] = useState('')
   const [activeProjectId, setActiveProjectId] = useState(null)
   const [projects, setProjects] = useState([])
-  const [health, setHealth] = useState(null)
+  // undefined = the first check is still pending; null = a completed check failed.
+  const [health, setHealth] = useState(undefined)
+  const [scan, setScan] = useState(null)
+  const [startupError, setStartupError] = useState('')
+  const [systemNotice, setSystemNotice] = useState('')
   const [loaded, setLoaded] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
+  const [explorerOpen, setExplorerOpen] = useState(false)
+  const [folderInsightOpen, setFolderInsightOpen] = useState(false)
+  const [explorerWidth, setExplorerWidth] = useState(() => {
+    try {
+      const saved = Number(localStorage.getItem('cv:explorerWidth'))
+      return Number.isFinite(saved) && saved >= 232 && saved <= 380 ? saved : 288
+    } catch {
+      return 288
+    }
+  })
+  const projectSwitcherRef = useRef(null)
   // True while a project is being uploaded or switched in — i.e. it's registered
   // on the server but its files aren't in the viewer yet. Drives a loading state
   // in the stage so the main area isn't blank (or showing the old project).
@@ -65,8 +186,9 @@ export default function App() {
     try {
       await clearTreeCache()
       setConfirmClear(false)
-    } catch {
-      /* surfaced below would be nicer; for now keep the modal open on failure */
+      setSystemNotice('Context cache cleared. Structure and base summaries were kept.')
+    } catch (error) {
+      setSystemNotice(humanizeError(error, 'The context cache could not be cleared.'))
     } finally {
       setClearing(false)
     }
@@ -84,8 +206,9 @@ export default function App() {
       const r = await setProjectBareWindow(activeProjectId, pendingWindow)
       if (r.projects) setProjects(r.projects)
       setPendingWindow(null)
-    } catch {
-      /* keep the modal open on failure */
+      setSystemNotice('Context detail updated. Project summaries are warming in the background.')
+    } catch (error) {
+      setSystemNotice(humanizeError(error, 'Context detail could not be changed.'))
     } finally {
       setApplyingWindow(false)
     }
@@ -120,27 +243,42 @@ export default function App() {
     try { localStorage.setItem('cv:edits', JSON.stringify(edits)) } catch { /* ignore */ }
   }, [edits])
 
+  // Draft keys predating project namespaces cannot identify their owner. Assign
+  // them once to the project that was active when this version first loads, then
+  // persist the migration so they can never appear in every similarly shaped
+  // project. Legacy objects that already carry an owner keep that owner.
+  useEffect(() => {
+    if (!activeProjectId) return
+    setEdits((current) => {
+      let changed = false
+      const next = { ...current }
+      for (const [key, value] of Object.entries(current)) {
+        if (key.split('::').length !== 2) continue
+        const owner = (typeof value === 'object' && value?.projectId) || activeProjectId
+        const namespacedKey = `${owner}::${key}`
+        if (!(namespacedKey in next)) {
+          next[namespacedKey] = typeof value === 'string'
+            ? { text: value, projectId: owner }
+            : { ...value, projectId: owner }
+        }
+        delete next[key]
+        changed = true
+      }
+      return changed ? next : current
+    })
+  }, [activeProjectId])
+
   // A jump requested from the edit history: switch to the edit's file, restore its
   // granularity, and hand the rest (depth/sub + select-the-chunk) to the viewer.
   const [jumpTarget, setJumpTarget] = useState(null)
   // Bumped when a file should open WITH its chat already open (e.g. clicking a file
   // shortcut in a folder-chat answer). The viewer watches this signal.
   const [fileChatSignal, setFileChatSignal] = useState(0)
-  const openFileWithChat = (id) => { setSelectedId(id); setFileChatSignal((n) => n + 1) }
-  // Welcome state (both true on load). Clicking the content collapses it in two
-  // phases: first the viewer fills horizontally (viewerLocked → false), then a
-  // beat later the top bar collapses vertically (topbarBig → false).
-  const [topbarBig, setTopbarBig] = useState(true)
-  const [viewerLocked, setViewerLocked] = useState(true)
-  // Granularity controls stay hidden until the whole collapse finishes, so the
-  // slider doesn't pop in mid-animation.
-  const [controlsReady, setControlsReady] = useState(false)
-  const collapseWelcome = () => {
-    if (!viewerLocked) return // already collapsing / collapsed
-    setViewerLocked(false) // phase 1: horizontal fill (~0.22s)
-    setTimeout(() => setTopbarBig(false), 240) // phase 2: vertical collapse (~0.4s)
-    setTimeout(() => setControlsReady(true), 680) // reveal controls once settled
-  }
+  const openFileWithChat = (id) => { setSelectedId(id); setExplorerOpen(false); setFileChatSignal((n) => n + 1) }
+  // The workspace is immediately usable. Orientation now comes from the stable
+  // Explorer / Code / Insight shell rather than a one-way welcome animation.
+  const viewerLocked = false
+  const controlsReady = true
   const jumpToEdit = (entry) => {
     if (!entry) return
     setSelectedId(entry.fileId)
@@ -156,9 +294,36 @@ export default function App() {
   }
 
   const selectedFile = files.find((f) => f.id === selectedId) || null
-  // Welcome state with nothing to show: the stage goes transparent (gradient on the
-  // right) and the placeholder renders as a left-half white card (see .stage-bare).
-  const bareEmpty = viewerLocked && !selectedFile && !projectLoading
+  const activeProject = projects.find((p) => p.id === activeProjectId) || null
+  const draftCount = Object.entries(edits).filter(([key, value]) => {
+    const parts = key.split('::')
+    return parts.length >= 3 ? parts[0] === activeProjectId : value?.projectId === activeProjectId
+  }).length
+
+  const selectFile = (id) => {
+    setSelectedId(id)
+    setExplorerOpen(false)
+  }
+
+  const beginExplorerResize = (event) => {
+    if (window.innerWidth < 1180) return
+    event.preventDefault()
+    const startX = event.clientX
+    const startWidth = explorerWidth
+    const move = (moveEvent) => {
+      setExplorerWidth(Math.max(232, Math.min(380, startWidth + moveEvent.clientX - startX)))
+    }
+    const finish = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', finish)
+      setExplorerWidth((width) => {
+        try { localStorage.setItem('cv:explorerWidth', String(width)) } catch { /* storage unavailable */ }
+        return width
+      })
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', finish)
+  }
   // Every file chunks structurally now (grammar tree, JSON, or the indent
   // fallback), so the baseline is always granularity 1 (whole file = one box);
   // a per-file override wins when present. Later an LLM pass may choose this per file.
@@ -171,26 +336,82 @@ export default function App() {
   // Load the active project's file list + its saved chunk sizes. Called on mount
   // and after any project change so the view follows the active project.
   async function loadActiveFiles() {
-    const f = await fetchFiles().catch(() => ({ files: [], projectDir: '', projectId: null }))
-    setFiles(f.files)
-    setProjectDir(f.projectDir || '')
-    setActiveProjectId(f.projectId || null)
-    setChunkSizes(loadChunkSizes(f.projectId))
-    setSelectedId(f.files.length ? f.files[0].id : null)
-    setLoaded(true)
+    try {
+      const f = await fetchFiles()
+      setFiles(f.files)
+      setProjectDir(f.projectDir || '')
+      setActiveProjectId(f.projectId || null)
+      setScan(f.scan || null)
+      setChunkSizes(loadChunkSizes(f.projectId))
+      setSelectedId(null)
+      setStartupError('')
+    } catch (error) {
+      setFiles([])
+      setProjectDir('')
+      setScan(null)
+      setStartupError(humanizeError(error, 'The workspace could not be loaded.'))
+    } finally {
+      setLoaded(true)
+    }
+  }
+
+  async function initializeWorkspace(isCancelled = () => false) {
+    let [nextHealth, nextProjects] = await Promise.all([
+      fetchHealth().catch(() => null),
+      fetchProjects().catch(() => ({ projects: [], activeId: null })),
+    ])
+    // The API begins listening before its default project scan completes. Follow
+    // the server's explicit initialization state instead of guessing a timeout;
+    // large repositories can legitimately take longer than a few seconds.
+    while (nextHealth?.ok && nextHealth.initializing) {
+      setHealth(nextHealth)
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      if (isCancelled()) return false
+      ;[nextHealth, nextProjects] = await Promise.all([
+        fetchHealth().catch(() => null),
+        fetchProjects().catch(() => nextProjects),
+      ])
+    }
+    if (isCancelled()) return false
+    setHealth(nextHealth)
+    if (!nextHealth) {
+      setStartupError('CodeArchitect cannot reach its analysis service. Check the connection and retry.')
+      setLoaded(true)
+      return false
+    }
+    if (nextHealth.startupError && nextProjects.projects.length === 0) {
+      setStartupError(humanizeError(nextHealth.startupError, 'The initial project could not be indexed.'))
+      setLoaded(true)
+      return false
+    }
+    setProjects(nextProjects.projects)
+    await loadActiveFiles()
+    return true
   }
 
   useEffect(() => {
-    ;(async () => {
-      const [h, p] = await Promise.all([
-        fetchHealth().catch(() => null),
-        fetchProjects().catch(() => ({ projects: [], activeId: null })),
-      ])
-      setHealth(h)
-      setProjects(p.projects)
-      await loadActiveFiles()
-    })()
+    let cancelled = false
+    initializeWorkspace(() => cancelled)
+    return () => { cancelled = true }
   }, [])
+
+  // Keep the service indicator honest after startup and recover it automatically
+  // after a transient outage.
+  useEffect(() => {
+    let cancelled = false
+    const check = async () => {
+      const next = await fetchHealth().catch(() => null)
+      if (!cancelled) setHealth(next)
+    }
+    const timer = window.setInterval(check, 15_000)
+    return () => { cancelled = true; window.clearInterval(timer) }
+  }, [])
+
+  const retryWorkspace = async () => {
+    setLoaded(false)
+    setStartupError('')
+    await initializeWorkspace()
+  }
 
   const switchProject = async (id) => {
     if (id === activeProjectId) return
@@ -200,7 +421,9 @@ export default function App() {
       const r = await activateProject(id)
       setProjects(r.projects)
       await loadActiveFiles()
-      collapseWelcome() // make the switched-in project fully visible
+      setSystemNotice(`Opened ${r.project?.name || projects.find((p) => p.id === id)?.name || 'project'}`)
+    } catch (error) {
+      setSystemNotice(humanizeError(error, 'The project could not be opened.'))
     } finally {
       setProjectLoading(false)
       setLoadingName('')
@@ -211,14 +434,14 @@ export default function App() {
   // failure (caller surfaces the message); a no-op if the user cancels.
   // Load a project from a browser folder upload (works in hosted deploys, where
   // the server can't read the user's filesystem).
-  const handleUploadProject = async (name, files) => {
+  const handleUploadProject = async (name, files, uploadScan = {}) => {
     setLoadingName(name)
     setProjectLoading(true)
     try {
-      const r = await uploadProject(name, files)
+      const r = await uploadProject(name, files, uploadScan)
       setProjects(r.projects)
       await loadActiveFiles()
-      collapseWelcome() // drop the welcome banner so the new project is visible
+      setSystemNotice(`Indexed ${files.length} files from ${name}`)
     } finally {
       setProjectLoading(false)
       setLoadingName('')
@@ -226,14 +449,20 @@ export default function App() {
   }
 
   const handleRemoveProject = async (id) => {
-    const r = await removeProject(id)
-    setProjects(r.projects)
-    await loadActiveFiles()
+    try {
+      const removedName = projects.find((project) => project.id === id)?.name || 'project'
+      const r = await removeProject(id)
+      setProjects(r.projects)
+      await loadActiveFiles()
+      setSystemNotice(`Removed ${removedName} from the workspace. Source files were not changed.`)
+    } catch (error) {
+      setSystemNotice(humanizeError(error, 'The project could not be removed.'))
+    }
   }
 
   return (
     <div className="app">
-      <header className={`topbar${view === 'main' && topbarBig ? ' big' : ''}`}>
+      <header className="topbar workspace-topbar">
         <div className="brand">
           <span className="logo" aria-hidden="true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -249,81 +478,97 @@ export default function App() {
           </div>
         </div>
         {view === 'main' && (
+          <button
+            type="button"
+            className={`mobile-pane-toggle${explorerOpen ? ' active' : ''}`}
+            onClick={() => setExplorerOpen((open) => !open)}
+            aria-expanded={explorerOpen}
+          >
+            Explorer
+          </button>
+        )}
+        {view === 'main' && (
           <ProjectSwitcher
+            ref={projectSwitcherRef}
             projects={projects}
             activeId={activeProjectId}
             onSwitch={switchProject}
             onUpload={handleUploadProject}
             onRemove={handleRemoveProject}
             onBareWindow={handleBareWindow}
-            welcome={topbarBig}
-            onExitWelcome={collapseWelcome}
+            welcome={false}
           />
         )}
         <div className="topbar-right">
           {view === 'main' ? (
-            // Only meaningful once a project is loaded — there's nothing to clear otherwise.
-            projects.length > 0 && (
-            <button className="reload-btn" title="Clear cache" aria-label="Clear cache" onClick={() => setConfirmClear(true)}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                   stroke="currentColor" strokeWidth="1.3"
-                   strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="3 6 5 6 21 6" />
-                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                <path d="M10 11v6M14 11v6" />
-                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-              </svg>
-            </button>
-            )
+            <>
+              <span className={`service-state${health?.ok ? ' online' : health === undefined ? ' pending' : ' offline'}`}>
+                <i />{health?.initializing ? 'Preparing analysis' : health?.ok ? 'Analysis ready' : health === undefined ? 'Checking analysis' : 'Analysis offline'}
+              </span>
+              {activeProject && (
+                <button className="reload-btn text-btn" title="Clear derived answer context" onClick={() => setConfirmClear(true)}>
+                  Clear context cache
+                </button>
+              )}
+            </>
           ) : (
-            <button className="reload-btn" title="Back to the app" aria-label="Back to the app" onClick={() => setView('main')}>
+            <button className="reload-btn text-btn" title="Back to the app" aria-label="Back to the app" onClick={() => setView('main')}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                    stroke="currentColor" strokeWidth="1.5"
                    strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                 <polyline points="9 22 9 12 15 12 15 22" />
               </svg>
+              Back to workspace
             </button>
           )}
         </div>
-        {/* Greeting shown only while the bar is expanded (right after refresh). */}
-        {view === 'main' && (
-          <div className="topbar-welcome" aria-hidden={!topbarBig}>
-            {projects.length === 0 ? 'Welcome!' : 'Welcome Back!'}
-          </div>
-        )}
       </header>
 
       {view === 'main' ? (
-        // Clicking anywhere in the content below collapses the welcome state
-        // (one-way — it can only be re-expanded by refreshing the page).
-        <div className={`app-body${viewerLocked ? ' welcome' : ''}`} onClick={collapseWelcome}>
-        {/* Centered call-to-action over the blank welcome card; fades out as the
-            welcome state collapses (driven by the .welcome class above). */}
-        <div className="welcome-cta" aria-hidden={!viewerLocked}>
-          {projects.length === 0 ? 'Click here to start' : 'Click here to resume'}
+        <div className={`app-body workspace-body${explorerOpen ? ' explorer-open' : ''}${folderInsightOpen ? ' folder-insight-open' : ''}`}>
+        <div className="workspace-explorer" style={{ width: explorerWidth }}>
+          <Library
+            projectId={activeProjectId}
+            files={files}
+            projectDir={projectDir}
+            edits={edits}
+            loaded={loaded}
+            selectedId={selectedId}
+            onSelect={selectFile}
+            onOpenFileChat={openFileWithChat}
+            onFolderInsightChange={setFolderInsightOpen}
+            noProject={!activeProject}
+          />
         </div>
-        <Library
-          files={files}
-          projectDir={projectDir}
-          edits={edits}
-          loaded={loaded}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          onOpenFileChat={openFileWithChat}
-          noProject={projects.length === 0}
-        />
-        {/* In the welcome state with no project loaded, drop the stage's opaque
-            white so the gradient backdrop shows through on the right — matching
-            the opened-up look the locked viewer gives once a project is loaded. */}
-        <main className={`stage${bareEmpty ? ' stage-bare' : ''}`}>
-          {projectLoading ? (
-            <div className="empty empty-loading">
+        <div className="workspace-resizer explorer-resizer" onPointerDown={beginExplorerResize} role="separator" aria-label="Resize Explorer" />
+        <main className="stage workspace-stage">
+          {!loaded ? (
+            <div className="project-loading-state">
               <span className="empty-spinner" aria-hidden="true" />
-              {loadingName ? `Loading ${loadingName}…` : 'Loading project…'}
+              <div>
+                <strong>Preparing workspace</strong>
+                <span>Scanning supported source files and checking coverage…</span>
+              </div>
+            </div>
+          ) : projectLoading ? (
+            <div className="project-loading-state">
+              <span className="empty-spinner" aria-hidden="true" />
+              <div>
+                <strong>{loadingName ? `Reading ${loadingName}` : 'Reading project'}</strong>
+                <span>Filtering generated files and building the structural index…</span>
+              </div>
+            </div>
+          ) : startupError ? (
+            <div className="workspace-error-state">
+              <span aria-hidden="true">!</span>
+              <h2>Workspace unavailable</h2>
+              <p>{startupError}</p>
+              <button className="overview-primary" onClick={retryWorkspace}>Try again</button>
             </div>
           ) : selectedFile ? (
             <CodeViewer
+              projectId={activeProjectId}
               file={selectedFile}
               files={files}
               chunkSize={chunkSize}
@@ -340,18 +585,16 @@ export default function App() {
               onOpenCaching={() => setCachingOpen(true)}
               onOpenReference={openReference}
             />
-          ) : bareEmpty ? (
-            // Welcome state, no project: a blank white card that mirrors the locked
-            // viewer (left half, rounded top-right) so the white/gradient split
-            // matches a loaded project instead of leaving a bare 300px library edge
-            // against the gradient. No message — the welcome card stays empty; the
-            // "no source files" text shows once the welcome collapses (.empty below).
-            <div className="empty-bare-card" />
+          ) : activeProject && files.length > 0 ? (
+            <ProjectOverview project={activeProject} files={files} scan={scan} edits={edits} onOpenFile={selectFile} />
+          ) : !activeProject ? (
+            <EmptyWorkspace onOpenProject={() => projectSwitcherRef.current?.openFolder()} />
           ) : (
-            <div className="empty">
-              {/* With no project uploaded at all, show nothing here — the library's
-                  upload prompt is the only message. */}
-              {projects.length === 0 ? '' : loaded ? 'No source files found in this folder' : 'Loading…'}
+            <div className="workspace-error-state quiet">
+              <span aria-hidden="true">∅</span>
+              <h2>No supported source files found</h2>
+              <p>This folder may contain only generated, binary, locked, or unsupported files.</p>
+              <button className="overview-primary" onClick={() => projectSwitcherRef.current?.openFolder()}>Choose another folder</button>
             </div>
           )}
         </main>
@@ -381,6 +624,17 @@ export default function App() {
           </main>
         </div>
       )}
+
+      <footer className="workspace-statusbar" aria-live="polite">
+        <span className={`status-primary${projectLoading ? ' busy' : ''}`}>
+          <i />{projectLoading ? 'Indexing project' : systemNotice || (view === 'help' ? 'Chunking demo' : activeProject ? 'Ready to explore' : 'Open a project to begin')}
+        </span>
+        {view === 'main' && activeProject && <span>{activeProject.name}</span>}
+        {view === 'main' && activeProject && <span>{files.length} indexed</span>}
+        {view === 'main' && scan?.skipped > 0 && <span className="status-warning">{scan.skipped} skipped</span>}
+        {view === 'main' && (scan?.truncatedByCount || scan?.truncatedByBytes || scan?.truncatedByClient) && <span className="status-warning">Coverage limited</span>}
+        {view === 'main' && <span>{draftCount} {draftCount === 1 ? 'draft' : 'drafts'} · source unchanged</span>}
+      </footer>
 
       {view === 'help' && demoIntroOpen && (
         <div className={`modal-overlay ${demoIntroDismissable ? 'dim' : 'glass'}`} onClick={demoIntroDismissable ? () => setDemoIntroOpen(false) : undefined}>

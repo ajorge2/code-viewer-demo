@@ -10,6 +10,7 @@ export const SKIP_DIRS = new Set([
   'node_modules', '.git', 'dist', 'build', '.next', 'out', 'coverage',
   '.venv', 'venv', '__pycache__', '.mypy_cache', '.pytest_cache',
   '.idea', '.vscode', 'target', '.cache', 'vendor', '.turbo',
+  '.tree-cache', '.claude', '.codex', '.agents', 'benchmark-results',
 ]);
 
 // Extension → language label (drives a future syntax highlighter; for now just

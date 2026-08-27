@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { askFolder } from '../lib/api.js'
 import { renderRich } from '../lib/richText.jsx'
+import { humanizeError } from '../lib/humanizeError.js'
 import ContextAttach from './ContextAttach.jsx'
 
 // Build a nested folder tree from flat relPaths.
@@ -94,6 +95,7 @@ function refsInText(text, refs) {
 }
 
 export default function Library({
+  projectId,
   files,
   projectDir,
   edits = {},
@@ -101,6 +103,7 @@ export default function Library({
   selectedId,
   onSelect,
   onOpenFileChat,
+  onFolderInsightChange,
   noProject = false,
 }) {
   const [filter, setFilter] = useState('')
@@ -108,12 +111,18 @@ export default function Library({
   // i.e. any edits key is prefixed with `${fileId}::`.
   const annotatedFiles = useMemo(() => {
     const set = new Set()
-    for (const k of Object.keys(edits)) {
-      const i = k.indexOf('::')
-      if (i > 0) set.add(k.slice(0, i))
+    for (const [key, value] of Object.entries(edits)) {
+      const parts = key.split('::')
+      if (parts.length >= 3) {
+        if (parts[0] === projectId) set.add(parts[1])
+      } else if (!value?.projectId || value.projectId === projectId) {
+        // Legacy drafts were keyed fileId::nodeId. Keep them visible until the
+        // user next edits that unit, when CodeViewer writes the project-safe key.
+        set.add(parts[0])
+      }
     }
     return set
-  }, [edits])
+  }, [edits, projectId])
   // Folder navigation history (relative to project root; '' = root). `histIdx`
   // points at the current entry so the chevrons can step back/forward in depth.
   const [history, setHistory] = useState([''])
@@ -200,6 +209,31 @@ export default function Library({
   const chatInputRef = useRef(null)
   const chatPanelRef = useRef(null)
   const chatFabRef = useRef(null)
+  // Invalidates async answers when the active project changes. A folder path and
+  // file id only have meaning inside one project, so late completions must never
+  // be allowed to repopulate freshly reset state.
+  const projectGenerationRef = useRef(0)
+
+  // File ids and folder paths are project-scoped. Reset navigation and folder
+  // conversations when the active project changes so similarly named folders do
+  // not inherit each other's state.
+  useEffect(() => {
+    projectGenerationRef.current += 1
+    setHistory([''])
+    setHistIdx(0)
+    setFilter('')
+    setChatOpen(false)
+    setChatClosing(false)
+    setChatLogs({})
+    setChatInput('')
+    setBusyDir(null)
+    setChatError(null)
+    setCtxFileId(null)
+  }, [projectId])
+
+  useEffect(() => {
+    onFolderInsightChange?.(chatOpen || chatClosing)
+  }, [chatOpen, chatClosing, onFolderInsightChange])
   // Current folder's view of the per-folder state.
   const chatLog = chatLogs[cwd] || []
   const chatBusy = busyDir === cwd
@@ -208,10 +242,11 @@ export default function Library({
       const cur = all[cwd] || []
       return { ...all, [cwd]: typeof updater === 'function' ? updater(cur) : updater }
     })
-  // Open/close with the genie animation: closing keeps the panel mounted through
-  // genie-out (see .lib-chat-panel.closing) before React unmounts it.
+  // The workbench rail closes immediately. Its former floating-panel animation is
+  // intentionally disabled by the stable-pane layout, so there is no closing
+  // phase to wait for.
   const openChat = () => { setChatClosing(false); setChatOpen(true) }
-  const closeChat = () => { if (!chatOpen) return; setChatOpen(false); setChatClosing(true) }
+  const closeChat = () => { setChatOpen(false); setChatClosing(false) }
   // Navigating the MAIN folder view (top arrows, folder rows, breadcrumbs) dismisses
   // the folder chat — it's scoped to the folder you were looking at. The chat's own
   // in-head chevrons still re-scope it without closing, so they call goBack/goFwd
@@ -241,9 +276,10 @@ export default function Library({
   // Jump from a chat answer to a mentioned child: open the file (closing the
   // folder chat so the file's own view/chat is visible). Subfolders just call
   // setCwd, which re-scopes this same chat to them (the cwd effect resets the log).
-  // Clicking a file shortcut in a folder-chat answer opens that file AND its file
-  // chat. The folder chat stays open — the two are meant to coexist.
-  const openFileRef = (id) => { onOpenFileChat(id) }
+  // A file shortcut replaces folder Insight with that file's Insight. Both occupy
+  // the same docked rail (and the full viewport on mobile), so keeping both open
+  // would hide the requested destination.
+  const openFileRef = (id) => { dropChat(); onOpenFileChat(id) }
 
   const folderLabel = cwd ? `${rootName}/${cwd}` : rootName
   const submitFolderChat = async () => {
@@ -254,6 +290,7 @@ export default function Library({
     // even if the user navigates away while it's in flight.
     const dir = cwd
     const ctxId = ctxFileId
+    const generation = projectGenerationRef.current
     const transcript = chatLog.slice(-4).map((m) => ({ role: m.role, text: m.text }))
     setChatError(null)
     setBusyDir(dir)
@@ -261,11 +298,15 @@ export default function Library({
     setChatInput('')
     try {
       const { answer } = await askFolder(dir, q, transcript, ctxId)
+      if (generation !== projectGenerationRef.current) return
       setChatLog((log) => [...log, { role: 'assistant', text: answer }])
     } catch (e) {
-      setChatError(e.message || 'Something went wrong')
+      if (generation !== projectGenerationRef.current) return
+      setChatError(humanizeError(e))
     } finally {
-      setBusyDir((d) => (d === dir ? null : d))
+      if (generation === projectGenerationRef.current) {
+        setBusyDir((d) => (d === dir ? null : d))
+      }
     }
   }
 
@@ -274,13 +315,23 @@ export default function Library({
   if (noProject) {
     return (
       <aside className="library">
-        <div className="lib-empty">Click “+” above to upload a project</div>
+        <div className="explorer-pane-head">
+          <span>Explorer</span>
+          <span className="explorer-pane-meta">No project</span>
+        </div>
+        <div className="lib-empty">
+          <span>Project files will appear here after you open a folder.</span>
+        </div>
       </aside>
     )
   }
 
   return (
     <aside className="library">
+      <div className="explorer-pane-head">
+        <span>Explorer</span>
+        <span className="explorer-pane-meta">{files.length} files</span>
+      </div>
       <div className="lib-project" title={cwd ? `${rootName}/${cwd}` : projectDir}>
         <span className="lib-crumbs">
           {[rootName, ...cwdParts].map((part, i, arr) => (
@@ -336,7 +387,7 @@ export default function Library({
             <button
               key={row.file.id}
               className={`tree-row file${row.file.id === selectedId ? ' active' : ''}`}
-              onClick={() => onSelect(row.file.id)}
+              onClick={() => { dropChat(); onSelect(row.file.id) }}
               title={row.file.relPath}
             >
               <Guides depth={row.depth} prefix={row.prefix} isLast={row.isLast} />
@@ -357,12 +408,8 @@ export default function Library({
         title={`Ask about ${folderLabel}/`}
         aria-label="Ask about this folder"
       >
-        {/* chat bubble with a folder glyph inside */}
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M4 4.5h16a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5h-9.5l-3.5 3v-3h-3a1.5 1.5 0 0 1-1.5-1.5V6a1.5 1.5 0 0 1 1.5-1.5z" />
-          <path d="M9.4 8h1.8l.9 1h3v3.5h-5.7z" />
-        </svg>
+        <span aria-hidden="true">✦</span>
+        <span>Ask {cwd ? 'folder' : 'project'}</span>
       </button>
 
       {(chatOpen || chatClosing) && (
@@ -371,8 +418,11 @@ export default function Library({
           className={`lib-chat-panel${chatClosing ? ' closing' : ''}`}
           role="dialog"
           aria-label="Ask about this folder"
-          onAnimationEnd={() => { if (chatClosing) setChatClosing(false) }}
         >
+          <div className="insight-rail-label">
+            <span>Insight</span>
+            <span>{cwd ? 'Folder scope' : 'Project scope'}</span>
+          </div>
           <div className="chat-head">
             <span className="chat-head-left">
               {/* Same folder history back/forward as the main UI's path chevrons —
@@ -394,6 +444,16 @@ export default function Library({
             <button className="chat-close" onClick={closeChat} aria-label="Close">×</button>
           </div>
           <div className="chat-body" ref={chatScrollRef}>
+            {chatLog.length === 0 && !chatBusy && (
+              <div className="chat-placeholder insight-empty-copy">
+                <strong>{cwd ? 'Ask about this folder' : 'Ask across the project'}</strong>
+                <span>The answer will stay scoped to <code>{folderLabel}/</code>, plus one file you explicitly attach.</span>
+                <div className="insight-prompt-list" aria-label="Example questions">
+                  <button type="button" onClick={() => setChatInput('What is this area responsible for?')}>What is this area responsible for?</button>
+                  <button type="button" onClick={() => setChatInput('Where should I start reading?')}>Where should I start reading?</button>
+                </div>
+              </div>
+            )}
             {chatLog.map((m, i) => {
               const refClick = (r) => (r.kind === 'file' ? () => openFileRef(r.id) : () => setCwd(r.path))
               const refs = m.role === 'assistant' ? refsInText(m.text, projectRefs) : []

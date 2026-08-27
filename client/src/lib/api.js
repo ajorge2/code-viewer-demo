@@ -21,11 +21,11 @@ export async function fetchProjects() {
 
 // Register a project from a browser folder upload. `files` is [{ relPath, content }]
 // read from the user's chosen directory (see lib/uploadFolder.js).
-export async function uploadProject(name, files) {
+export async function uploadProject(name, files, scan = {}) {
   const res = await fetch('/api/projects/upload', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, files }),
+    body: JSON.stringify({ name, files, scan }),
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.error || 'Failed to upload folder')
