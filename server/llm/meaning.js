@@ -622,7 +622,7 @@ export async function frontierChunks(file, around = null) {
 //              or 'infer' (typed message → classify deepen vs. new).
 //   transcript recent [{role,text}] turns, for classification + answer context.
 // Returns { answer, meaning, path, depth, atBottom, maxDepth }.
-export async function ask({ file, nodeId, question, depth = 0, intent = 'infer', transcript = [], contextFile = null, bareWindow = DEFAULT_BARE_WINDOW, focus = '', highlight = '' }) {
+export async function ask({ file, nodeId, question, depth = 0, intent = 'infer', transcript = [], contextFile = null, bareWindow = DEFAULT_BARE_WINDOW, focus = '', highlight = '', traceContext = null }) {
   const { nodes } = await fileNodes(file);
   if (!nodes[nodeId]) {
     const e = new Error('Unknown nodeId for this file (it may be stale — re-chunk and retry).');
@@ -684,6 +684,9 @@ export async function ask({ file, nodeId, question, depth = 0, intent = 'infer',
           : '')
         + (hl
           ? `The reader highlighted these exact characters in the code and is asking specifically about them — be precise about this snippet in particular, not just the unit around it:\n"${hl}"\n\n`
+          : '')
+        + (traceContext
+          ? `The application's Trace tab currently shows this UI context:\n${clip(JSON.stringify(traceContext, null, 2))}\nWhen useful, you may explicitly direct the reader to the Trace tab and describe what they will find there. Do not claim that Trace shows anything outside this snapshot.\n\n`
           : '')
         + `Question: ${question}`,
     }],

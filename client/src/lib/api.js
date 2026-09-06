@@ -95,11 +95,11 @@ export async function fetchRaw(id) {
 // per-line drill state: { depth, intent: 'infer'|'deepen', transcript }.
 // Returns { answer, meaning, path, depth, atBottom, maxDepth }.
 export async function askQuestion(fileId, nodeId, question, opts = {}) {
-  const { depth = 0, intent = 'infer', transcript = [], contextFileId = null, focus = '', highlight = '' } = opts
+  const { depth = 0, intent = 'infer', transcript = [], contextFileId = null, focus = '', highlight = '', traceContext = null } = opts
   const res = await fetch(`/api/files/${fileId}/ask`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nodeId, question, depth, intent, transcript, contextFileId, focus, highlight }),
+    body: JSON.stringify({ nodeId, question, depth, intent, transcript, contextFileId, focus, highlight, traceContext }),
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.error || 'Failed to get an answer')

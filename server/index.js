@@ -4,6 +4,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import express from 'express';
 import cors from 'cors';
+import { initLogger } from 'braintrust';
+
+initLogger({ projectName: 'My Project' });
 
 import {
   loadProject, listFiles, getFile, fileCount, getScanStats,
@@ -321,7 +324,7 @@ app.get('/api/references', async (req, res) => {
 app.post('/api/files/:id/ask', async (req, res) => {
   const file = getFile(req.params.id);
   if (!file) return res.status(404).json({ error: 'Not found' });
-  const { nodeId, question, depth, intent, transcript, contextFileId, focus, highlight } = req.body || {};
+  const { nodeId, question, depth, intent, transcript, contextFileId, focus, highlight, traceContext } = req.body || {};
   if (!nodeId || !question || !String(question).trim()) {
     return res.status(400).json({ error: 'nodeId and a non-empty question are required' });
   }
@@ -338,6 +341,7 @@ app.post('/api/files/:id/ask', async (req, res) => {
       bareWindow: getBareWindow(activeProjectId()),
       focus: typeof focus === 'string' ? focus : '',
       highlight: typeof highlight === 'string' ? highlight : '',
+      traceContext: traceContext && typeof traceContext === 'object' && !Array.isArray(traceContext) ? traceContext : null,
     });
     res.json(result); // { answer, meaning, path, depth, atBottom, maxDepth }
   } catch (e) {

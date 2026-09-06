@@ -7,16 +7,17 @@
   "license": "MIT",
   "scripts": {
     "dev": "concurrently -n server,client -c blue,green \"npm run dev:server\" \"npm run dev:client\"",
-    "dev:server": "node --watch server/index.js",
+    "dev:server": "node --import braintrust/hook.mjs --watch server/index.js",
     "dev:client": "npm --prefix client run dev",
     "build": "npm install --prefix client --include=dev && npm --prefix client run build",
-    "start": "node server/index.js"
+    "start": "node --import braintrust/hook.mjs server/index.js"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
+    "braintrust": "3.29.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",

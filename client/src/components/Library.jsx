@@ -3,6 +3,7 @@ import { askFolder } from '../lib/api.js'
 import { renderRich } from '../lib/richText.jsx'
 import { humanizeError } from '../lib/humanizeError.js'
 import ContextAttach from './ContextAttach.jsx'
+import InsightTabbar from './InsightTabbar.jsx'
 
 // Build a nested folder tree from flat relPaths.
 function buildTree(files) {
@@ -103,6 +104,7 @@ export default function Library({
   selectedId,
   onSelect,
   onOpenFileChat,
+  closeChatSignal = 0,
   onFolderInsightChange,
   noProject = false,
 }) {
@@ -245,7 +247,10 @@ export default function Library({
   // The workbench rail closes immediately. Its former floating-panel animation is
   // intentionally disabled by the stable-pane layout, so there is no closing
   // phase to wait for.
-  const openChat = () => { setChatClosing(false); setChatOpen(true) }
+  const openChat = () => {
+    setChatClosing(false)
+    setChatOpen(true)
+  }
   const closeChat = () => { setChatOpen(false); setChatClosing(false) }
   // Navigating the MAIN folder view (top arrows, folder rows, breadcrumbs) dismisses
   // the folder chat — it's scoped to the folder you were looking at. The chat's own
@@ -254,6 +259,11 @@ export default function Library({
   // The dismissal is INSTANT (no genie-out) — matching how the file chat vanishes on
   // a file switch. The × button and FAB still animate out via closeChat.
   const dropChat = () => { setChatOpen(false); setChatClosing(false) }
+  const closeChatSignalRef = useRef(closeChatSignal)
+  useEffect(() => {
+    if (closeChatSignal !== closeChatSignalRef.current) dropChat()
+    closeChatSignalRef.current = closeChatSignal
+  }, [closeChatSignal])
   const navBack = () => { dropChat(); goBack() }
   const navFwd = () => { dropChat(); goFwd() }
   const navToFolder = (next) => { dropChat(); setCwd(next) }
@@ -415,14 +425,17 @@ export default function Library({
       {(chatOpen || chatClosing) && (
         <div
           ref={chatPanelRef}
-          className={`lib-chat-panel${chatClosing ? ' closing' : ''}`}
+          className={`chat-panel folder-chat-panel${chatClosing ? ' closing' : ''}`}
           role="dialog"
           aria-label="Ask about this folder"
         >
-          <div className="insight-rail-label">
-            <span>Insight</span>
-            <span>{cwd ? 'Folder scope' : 'Project scope'}</span>
-          </div>
+          <InsightTabbar
+            label="Insight views"
+            tabs={[{ id: 'understand', label: 'Understand' }]}
+            activeTab="understand"
+            onClose={closeChat}
+            className="folder-insight-tabbar"
+          />
           <div className="chat-head">
             <span className="chat-head-left">
               {/* Same folder history back/forward as the main UI's path chevrons —
@@ -439,9 +452,13 @@ export default function Library({
                   <polyline points="9 18 15 12 9 6" />
                 </svg>
               </button>
-              <span className="chat-title">{folderLabel}/</span>
+              <span className="chat-title">
+                <span className="chat-title-name">{folderLabel}/</span>
+                <span className="chat-title-dot"> • </span>
+                <span className="chat-sel">{cwd ? 'Folder scope' : 'Project scope'}</span>
+              </span>
             </span>
-            <button className="chat-close" onClick={closeChat} aria-label="Close">×</button>
+            <button className="chat-close" onClick={closeChat} aria-label="Close chat">×</button>
           </div>
           <div className="chat-body" ref={chatScrollRef}>
             {chatLog.length === 0 && !chatBusy && (

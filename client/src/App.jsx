@@ -140,6 +140,7 @@ export default function App() {
   const [selectedId, setSelectedId] = useState(null)
   const [explorerOpen, setExplorerOpen] = useState(false)
   const [folderInsightOpen, setFolderInsightOpen] = useState(false)
+  const [closeFolderChatSignal, setCloseFolderChatSignal] = useState(0)
   const [explorerWidth, setExplorerWidth] = useState(() => {
     try {
       const saved = Number(localStorage.getItem('cv:explorerWidth'))
@@ -274,7 +275,12 @@ export default function App() {
   // Bumped when a file should open WITH its chat already open (e.g. clicking a file
   // shortcut in a folder-chat answer). The viewer watches this signal.
   const [fileChatSignal, setFileChatSignal] = useState(0)
-  const openFileWithChat = (id) => { setSelectedId(id); setExplorerOpen(false); setFileChatSignal((n) => n + 1) }
+  const openFileWithChat = (id) => {
+    setSelectedId(id)
+    setExplorerOpen(false)
+    setCloseFolderChatSignal((n) => n + 1)
+    setFileChatSignal((n) => n + 1)
+  }
   // The workspace is immediately usable. Orientation now comes from the stable
   // Explorer / Code / Insight shell rather than a one-way welcome animation.
   const viewerLocked = false
@@ -502,9 +508,6 @@ export default function App() {
         <div className="topbar-right">
           {view === 'main' ? (
             <>
-              <span className={`service-state${health?.ok ? ' online' : health === undefined ? ' pending' : ' offline'}`}>
-                <i />{health?.initializing ? 'Preparing analysis' : health?.ok ? 'Analysis ready' : health === undefined ? 'Checking analysis' : 'Analysis offline'}
-              </span>
               {activeProject && (
                 <button className="reload-btn text-btn" title="Clear derived answer context" onClick={() => setConfirmClear(true)}>
                   Clear context cache
@@ -537,6 +540,7 @@ export default function App() {
             selectedId={selectedId}
             onSelect={selectFile}
             onOpenFileChat={openFileWithChat}
+            closeChatSignal={closeFolderChatSignal}
             onFolderInsightChange={setFolderInsightOpen}
             noProject={!activeProject}
           />
@@ -581,6 +585,8 @@ export default function App() {
               onJumpConsumed={() => setJumpTarget(null)}
               onJumpToEdit={jumpToEdit}
               openChatSignal={fileChatSignal}
+              folderChatOpen={folderInsightOpen}
+              onOpenFileChat={() => setCloseFolderChatSignal((n) => n + 1)}
               onOpenDemo={() => setView('help')}
               onOpenCaching={() => setCachingOpen(true)}
               onOpenReference={openReference}

@@ -4,6 +4,7 @@ import { fetchRaw, fetchChunks, fetchChunksAround, askQuestion, suggestEdits, fe
 import { renderRich } from '../lib/richText.jsx'
 import { humanizeError } from '../lib/humanizeError.js'
 import ContextAttach from './ContextAttach.jsx'
+import InsightTabbar from './InsightTabbar.jsx'
 
 // Map a DOM Selection endpoint (node + offset) to an absolute file char offset.
 // Each rendered `.seg` carries its absolute char start in data-cs, and — by the
@@ -123,11 +124,14 @@ function charDiff(orig, edited) {
 
 export default function CodeViewer({
   projectId, file, files = [], chunkSize, onChunkSize, edits, setEdits, jumpTarget, onJumpConsumed, onJumpToEdit,
-  locked = false, controlsReady = true, openChatSignal = 0, demo = false, onOpenDemo, onOpenInfo, onOpenCaching, onOpenReference,
+  locked = false, controlsReady = true, openChatSignal = 0, folderChatOpen = false, onOpenFileChat,
+  demo = false, onOpenDemo, onOpenInfo, onOpenCaching, onOpenReference,
 }) {
   const [helpOpen, setHelpOpen] = useState(false) // chunking how-to modal
   // "Find references" peek: null (closed) or { name, loading, data, error }.
   const [refsPeek, setRefsPeek] = useState(null)
+  const [traceAttention, setTraceAttention] = useState(0)
+  const investigationRef = useRef(null)
   const pendingOffsetRef = useRef(null) // char offset to scroll to once a jumped-to file renders
   const [text, setText] = useState('')
   const [resp, setResp] = useState(null)
@@ -175,10 +179,14 @@ export default function CodeViewer({
   // (around your highlight) and you're ready to ask. Closing returns to the clean
   // view. The toolbar toggle still overrides while the chat is closed.
   const openChat = () => {
+    onOpenFileChat?.()
     setInsightOpen(true); setInsightTab('understand'); setShowChunks(true)
     setFabPulse(false); clearTimeout(fabPulseTimer.current) // opened — stop nudging
   }
   const closeChat = () => setInsightOpen(false)
+  useEffect(() => {
+    if (folderChatOpen && chatOpen) closeChat()
+  }, [folderChatOpen]) // eslint-disable-line react-hooks/exhaustive-deps
   // Pulse the chat FAB to draw the eye to it after a fresh highlight. Toggling off
   // then on replays the animation from the first pulse on every new highlight; the
   // CSS plays exactly 3, and the trailing timer just removes the class afterward.
@@ -345,8 +353,32 @@ export default function CodeViewer({
     // short so the answer can be specific about them; the server re-checks the cap.
     const rawHl = pendingRange ? text.slice(pendingRange.start, pendingRange.end) : ''
     const highlight = rawHl && rawHl.length <= 200 ? rawHl : ''
+    // Give Understand the same compact state the Trace tab presents, including
+    // any symbol investigation already performed there. This lets answers point
+    // to Trace without pretending it contains information it does not have.
+    const traceContext = {
+      project: projectId ? 'Active project' : 'Demo',
+      primaryFile: file.relPath,
+      exactFocus: pendingRange && selected != null && chunks[selected] ? selectionLabel(chunks[selected]) : 'Whole file',
+      structuralTarget: nodes[targetNodeId]?.label || editNode?.label || 'Whole file',
+      supportingUnits: Math.max(0, chunks.length - 1),
+      attachedFile: ctxFileId ? files.find((candidate) => candidate.id === ctxFileId)?.relPath || ctxFileId : null,
+      investigation: refsPeek
+        ? {
+            symbol: refsPeek.name,
+            status: refsPeek.loading ? 'searching' : refsPeek.error ? 'error' : 'complete',
+            count: refsPeek.data?.count ?? null,
+            files: refsPeek.data?.files?.map((group) => ({
+              path: group.relPath,
+              hits: group.hits.map((hit) => ({ kind: hit.kind, line: hit.line, lineText: hit.lineText })),
+            })) ?? [],
+          }
+        : null,
+    }
     try {
-      const r = await askQuestion(file.id, targetNodeId, question, { depth, intent, transcript, contextFileId: ctxFileId, focus, highlight })
+      const r = await askQuestion(file.id, targetNodeId, question, {
+        depth, intent, transcript, contextFileId: ctxFileId, focus, highlight, traceContext,
+      })
       setChatDepth(r.depth ?? 0)
       setChatNodeId(targetNodeId)
       setLastQuestion(question)
@@ -770,11 +802,17 @@ export default function CodeViewer({
   const openRefs = (name) => {
     setInsightOpen(true)
     setInsightTab('trace')
+    setTraceAttention((n) => n + 1)
     setRefsPeek({ name, loading: true, data: null, error: null })
     fetchReferences(name, file.id)
       .then((data) => setRefsPeek((p) => (p && p.name === name ? { ...p, loading: false, data } : p)))
       .catch((e) => setRefsPeek((p) => (p && p.name === name ? { ...p, loading: false, error: humanizeError(e, 'References could not be searched.') } : p)))
   }
+  useEffect(() => {
+    if (insightOpen && insightTab === 'trace' && refsPeek?.name) {
+      requestAnimationFrame(() => investigationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+    }
+  }, [insightOpen, insightTab, refsPeek?.name, traceAttention])
   // Only a clean single identifier is clickable — `getFile`, `ctxNS`, `BARE_MODEL`. Spans
   // with parens/dots/colons (`bare(node)`, `this.hits.get(key)`, `b:<hash>`) are notation,
   // not a symbol to look up, so they stay plain text.
@@ -814,13 +852,13 @@ export default function CodeViewer({
             {!demo && (
               <button
                 type="button"
-                className={`insight-toggle${insightOpen ? ' active' : ''}`}
-                onClick={() => setInsightOpen((open) => !open)}
-                aria-expanded={insightOpen}
-                title={insightOpen ? 'Hide Insight' : 'Show Insight'}
+                className={`insight-toggle file-chat-toggle${chatOpen ? ' active' : ''}`}
+                onClick={() => (chatOpen ? closeChat() : openChat())}
+                aria-expanded={chatOpen}
+                title={chatOpen ? 'Close file chat' : 'Ask about this file'}
               >
                 <span aria-hidden="true">✦</span>
-                Insight
+                Ask file
               </button>
             )}
             <button
@@ -965,26 +1003,16 @@ export default function CodeViewer({
         {!demo && insightOpen && (
           <>
             <div className="insight-resizer" onPointerDown={beginInsightResize} role="separator" aria-label="Resize Insight" />
-            <div className="insight-tabbar" role="tablist" aria-label="Insight views">
-              <span className="insight-tabbar-title">Insight</span>
-              {[
-                ['understand', 'Understand'],
-                ['trace', 'Trace'],
-                ['drafts', `Drafts${editHistory.length ? ` · ${editHistory.length}` : ''}`],
-              ].map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  aria-selected={insightTab === id}
-                  className={insightTab === id ? 'active' : ''}
-                  onClick={() => setInsightTab(id)}
-                >
-                  {label}
-                </button>
-              ))}
-              <button type="button" className="insight-collapse" onClick={() => setInsightOpen(false)} aria-label="Hide Insight">×</button>
-            </div>
+            <InsightTabbar
+              tabs={[
+                { id: 'understand', label: 'Understand' },
+                { id: 'trace', label: 'Trace' },
+                { id: 'drafts', label: `Drafts${editHistory.length ? ` · ${editHistory.length}` : ''}` },
+              ]}
+              activeTab={insightTab}
+              onTabChange={setInsightTab}
+              onClose={() => setInsightOpen(false)}
+            />
           </>
         )}
 
@@ -1283,9 +1311,9 @@ export default function CodeViewer({
                 </div>
               </section>
 
-              <section className="investigation-trail">
+              <section className="investigation-trail" ref={investigationRef}>
                 <div className="trace-kicker">Investigation trail</div>
-                <h3>{refsPeek ? <>References to <code>{refsPeek.name}</code></> : 'No symbol search yet'}</h3>
+                <h3>{refsPeek ? <>References to <code key={`${refsPeek.name}-${traceAttention}`} className="trace-attention">{refsPeek.name}</code></> : 'No symbol search yet'}</h3>
                 {!refsPeek && <p>Click a code-formatted symbol in an answer to trace where it is defined and used across the project.</p>}
                 {refsPeek?.loading && <div className="trace-loading"><span className="empty-spinner" />Searching indexed files…</div>}
                 {refsPeek?.error && <div className="chat-msg-error">{refsPeek.error}</div>}
