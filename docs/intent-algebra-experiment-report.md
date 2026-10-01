@@ -2,6 +2,12 @@
 **September 30, 2026 – In progress**
 **Status**: In progress — corpus access verified; deterministic 200-, 1,000-, 4,000-, and 10,000-diff experiments have run through GumTree extraction, bounded gSpan discovery, semantic/code clustering, nested-sample stability analysis, downward semantic recursion, centroid-aware meaning grounding, TED-based expansion, semantic-first structural alignment, category-conditioned structural-rule induction, paired Semgrep/GumTree execution, a semantic–structural feedback loop, broad component-category induction, an 80-repository static-code holdout, open-vocabulary gap expansion, cross-language static-structure validation, and residual-aware recursive static refinement; human calibration, independent-repository enrichment, broader paired-rule coverage, complete edit-tree MDL, and product benchmarks remain open
 
+> **Methodological update — October 1, 2026:** The structure-influenced discovery run
+> documented below is retained as an exploratory ablation. The next pilot restarts
+> semantic discovery from code examples: semantic meaning alone determines cluster
+> membership, while AST/GumTree/Semgrep evidence is used only afterward to verify or
+> falsify candidate terms. See `docs/intent-algebra-semantic-first-restart.md`.
+
 ## 1. Business / Decision Context (The “Why”)
 
 ### Problem
@@ -1261,21 +1267,22 @@ Future result bullets must still wait for held-out human evaluation and must not
 - Change intent and repository component identity are different levels. Narrow, code-grounded change meanings should support broader multi-label component categories rather than being stretched into universal labels themselves.
 - Repository-level breadth requires an open vocabulary. The first static transfer used all 11 induced parents but still abstained on 31.2% of files; recurring gaps are useful discovery input, not evaluation failures to hide with lower thresholds.
 - Semantic coherence does not imply one shared syntax. The string-processing umbrella supports retrieval and human description, but its failed structural transfer shows that broad component parents must remain distinct from the narrower code patterns that explain them.
+- Semantic membership must be discovered from the meanings of actual code examples. Structural features can verify or falsify a proposed term afterward, but using them to form semantic clusters answers a different question.
+- Generated labels are outputs, not clustering units. Clustering grounded English labels to manufacture broader parents compounds model interpretation and weakens direct code traceability.
 
 ### Immediate next steps
 
-1. In the final breadth sweep, split or reclassify the three overlap-rule failures—Authentication × Routing, User interface × Game application, and Web server integration × Routing—then rerun closure before freezing the vocabulary.
-2. Expand the first human calibration across a stratified sample of the 80 static judgments—strong, plausible, and abstaining—using separate parent-membership and child-specificity questions to estimate semantic precision and missing-category agreement.
-3. Preserve Text normalization as a semantic parent, audit copied-code provenance for the two filename-safe title examples, and gather more independent evidence before retrying structural induction on any second-level child.
-4. Enrich the 101-change package category with parent SHAs, fork/mirror relationships, timestamps, and commit-wide changed-file lists to validate the observed provenance proxy.
-5. Run held-out semantic entailment and source-level mutation/reparse probes for package setup; its persisted-AST role-aware probes already pass globally.
-6. Generalize the semantic–structural feedback loop and paired matchers to additional Python and JavaScript categories; evaluate complete edit-tree MDL only for multi-atom composites.
-7. Implement the versioned category registry, relation-cycle checks, bounded multi-parent resolution, and explicit abstention.
-8. Run the syntax-only, direct-LLM, retrieval, and current-CodeArchitect baselines before making explanation-quality or business-impact claims.
+1. Freeze the current run as a structure-influenced ablation and create a separate semantic-first pilot output directory.
+2. Select one consistent code-unit level, generate code-grounded behavioral descriptions, and embed those semantic representations without structural features, paths, or generated category labels.
+3. Cluster the actual code examples by meaning, preserve residuals, and recursively cluster members inside coherent semantic groups.
+4. Name and score terms from all supporting examples, then apply the empty-set-aware one-sided difference audit to their actual membership sets.
+5. Use AST/GumTree/Semgrep evidence only after semantic discovery to verify whether surviving terms have one or more transferable structural realizations.
+6. Run a small clean pilot and inspect its clusters before authorizing the replacement final breadth sweep.
+7. After the semantic-first taxonomy freezes, run held-out repository coverage, human calibration, syntax-only/direct-LLM/CodeArchitect baselines, and product explanation benchmarks.
 
 ### Phase boundary
 
-- **Phase 1 — current**: corpus → edit graphs → discovered patterns → grounded meanings → validated registry.
+- **Phase 1 — current**: code examples → semantic clusters → recursive meanings → algebra audit → downstream structural verification → validated registry.
 - **Phase 2 — deferred**: primitive-to-prose realization, Rational Speech Acts brevity optimization, multi-primitive discourse planning, and end-user explanation experiments.
 
 ## 8. Artifacts
