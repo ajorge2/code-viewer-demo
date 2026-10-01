@@ -24,14 +24,19 @@
 
 - Sample complete diff-message and code-diff pairs rather than extracting after-state
   functions before semantic discovery.
-- Prefer changes that are strongly **addition-dominant** or strongly
-  **removal-dominant**. Exclude changes with a balanced mixture of additions and
-  removals, where the natural-language message is less likely to map cleanly to one
-  code region or transformation.
-- Preserve the direction of the change as metadata, but do not use it as a semantic
-  clustering feature.
-- The exact dominance threshold and whether it is measured with changed lines or AST
-  node mass remain experimental choices. Evaluate both directions symmetrically.
+- Do not reject a record merely because it contains a balanced mixture of additions and
+  removals. Preserve addition/removal dominance only as metadata and an evaluation
+  segment, not as an eligibility gate or semantic clustering feature.
+- Partition each diff into localized edit objects. Nearby or overlapping additions and
+  removals likely describe one changed object; structurally separate edits remain
+  separate candidate objects.
+- Treat message-to-edit alignment as a weakly supervised mapping problem. For each
+  record, infer which edit object, combination of objects, or shared changed region the
+  message describes. Other edit objects in the same diff are negative or contextual
+  evidence rather than automatic members of the semantic pattern.
+- A message may describe one object, several objects, or a composite relationship. The
+  structural audit must distinguish those cases instead of assuming the whole diff is
+  positive.
 
 ## Cluster-to-structure transition
 
