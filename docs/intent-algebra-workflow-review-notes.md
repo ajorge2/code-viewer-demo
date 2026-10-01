@@ -19,3 +19,24 @@
   semantic idea corresponds to a recurring code pattern.
 - This correction invalidates the code-grounded description stage of the current
   semantic-first function pilot; retain that run only as an ablation.
+
+## Cluster-to-structure transition
+
+- Once diff messages have been embedded and clustered, the cluster already has a
+  semantic meaning. Do not add a redundant “dense semantic group” artifact or a second
+  all-member semantic audit.
+- Replace the all-member semantic audit with an **all-member structural audit** over the
+  code diffs belonging to that semantic cluster.
+- The structural audit must infer what the message-derived meaning looks like in code
+  across all supporting examples.
+- Structural templates must support metavariable-style placeholders for identifiers,
+  expressions, values, calls, blocks, and other substitutable code roles. These are
+  pattern placeholders, not literal Python variables.
+- A template must also support optional structural elements so it can preserve real
+  variation without forcing every member to have identical syntax. Optional elements
+  should retain support statistics and must not make the matcher unconstrained.
+- A reasonable representation to investigate is a small regex-like language over
+  normalized AST node types, edit operations, and syntax relationships—not ordinary
+  regex over raw source text. It could provide named placeholders, optional elements,
+  repetition, and alternatives while retaining tree nesting. This remains an open
+  design choice to compare with Semgrep templates or another tree-pattern DSL.
