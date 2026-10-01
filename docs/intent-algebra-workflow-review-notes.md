@@ -32,11 +32,16 @@
   separate candidate objects.
 - Treat message-to-edit alignment as a weakly supervised mapping problem. For each
   record, infer which edit object, combination of objects, or shared changed region the
-  message describes. Other edit objects in the same diff are negative or contextual
-  evidence rather than automatic members of the semantic pattern.
+  message describes.
+- Assign positive and negative evidence at the edit-object level, not once for the
+  entire diff. Every distinct object explicitly or implicitly described by the message
+  is a positive alignment, so one message can yield multiple labeled code examples.
+  Objects not supported by the message become negative or contextual evidence.
 - A message may describe one object, several objects, or a composite relationship. The
   structural audit must distinguish those cases instead of assuming the whole diff is
   positive.
+- Addition/removal dominance does not change this rule: even a strongly one-directional
+  diff can contain several distinct objects that the message labels separately.
 
 ## Cluster-to-structure transition
 
