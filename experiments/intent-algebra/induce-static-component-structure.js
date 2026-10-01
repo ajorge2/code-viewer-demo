@@ -39,6 +39,8 @@ function parseArguments(argv) {
     discoverySamples: ".data/intent-sweep-additive-5000/sample-results.jsonl",
     staticCoverage: ".data/intent-sweep-additive-5000/static-component-coverage.json",
     gapExpansions: ".data/intent-sweep-additive-5000/static-gap-expansions.json",
+    refinement: null,
+    childExpansions: null,
     output: ".data/intent-sweep-additive-5000/static-component-structure.json",
     category: "String processing algorithms",
     poolPerLanguage: 250,
@@ -54,6 +56,8 @@ function parseArguments(argv) {
     else if (argument === "--discovery-samples") options.discoverySamples = next();
     else if (argument === "--static-coverage") options.staticCoverage = next();
     else if (argument === "--gap-expansions") options.gapExpansions = next();
+    else if (argument === "--refinement") options.refinement = next();
+    else if (argument === "--child-expansions") options.childExpansions = next();
     else if (argument === "--output") options.output = next();
     else if (argument === "--category") options.category = next();
     else if (argument === "--pool-per-language") options.poolPerLanguage = Number.parseInt(next(), 10);
@@ -317,12 +321,22 @@ function roundedMetrics(value) {
 
 async function main() {
   const options = parseArguments(process.argv.slice(2));
-  const coverage = JSON.parse(await readFile(options.staticCoverage, "utf8"));
-  const expansion = JSON.parse(await readFile(options.gapExpansions, "utf8"));
-  const gap = coverage.gap_clusters.find((item) => item.name === options.category);
-  const expanded = expansion.categories.find((item) => item.name === options.category);
-  if (!gap || !expanded) throw new Error(`Category not found in static artifacts: ${options.category}`);
-  const positiveIds = new Set([...gap.sample_ids, ...expanded.accepted_sample_ids]);
+  let positiveIds;
+  if (options.refinement && options.childExpansions) {
+    const refinement = JSON.parse(await readFile(options.refinement, "utf8"));
+    const childExpansions = JSON.parse(await readFile(options.childExpansions, "utf8"));
+    const child = refinement.children.find((item) => item.name === options.category);
+    const expanded = childExpansions.children.find((item) => item.name === options.category);
+    if (!child || !expanded) throw new Error(`Child category not found in refinement artifacts: ${options.category}`);
+    positiveIds = new Set([...child.sample_ids, ...expanded.accepted_sample_ids]);
+  } else {
+    const coverage = JSON.parse(await readFile(options.staticCoverage, "utf8"));
+    const expansion = JSON.parse(await readFile(options.gapExpansions, "utf8"));
+    const gap = coverage.gap_clusters.find((item) => item.name === options.category);
+    const expanded = expansion.categories.find((item) => item.name === options.category);
+    if (!gap || !expanded) throw new Error(`Category not found in static artifacts: ${options.category}`);
+    positiveIds = new Set([...gap.sample_ids, ...expanded.accepted_sample_ids]);
+  }
   const pool = await unseenPool(options);
   const poolIds = new Set(pool.map((item) => item.sample_id));
   for (const sampleId of positiveIds) {

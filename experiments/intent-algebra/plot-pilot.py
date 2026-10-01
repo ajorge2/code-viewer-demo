@@ -834,8 +834,13 @@ def plot_static_structure_validation(structure: dict, output: Path) -> None:
         svg.text(left + max(width * cross_validated, 4) + 14, y + 77, f"{cross_validated:.1%} leave-one-out", size=15, weight=700)
     svg.rect(70, 655, 1260, 112, "#fff7ed", rx=10, stroke=JAVASCRIPT, stroke_width=1.5)
     svg.text(95, 692, "Decision: keep semantic-only", weight=700, size=20, fill=JAVASCRIPT)
-    svg.text(95, 724, "The fitted clauses cover 3/7 positives with one false positive, but no held-out positive is recovered across seven folds.", size=16)
-    svg.text(95, 752, "Next: split the broad semantic umbrella or collect more evidence; do not weaken the structural gate.", cls="note")
+    svg.text(
+        95,
+        724,
+        f"The fitted clauses cover {train['true_positive']}/{structure['semantic_support']} positives with {train['false_positive']} false positives; leave-one-out recovers {held_out['held_out_true_positive']}/{held_out['folds']}.",
+        size=16,
+    )
+    svg.text(95, 752, "Next: split the semantic umbrella or collect more evidence; do not weaken the structural gate.", cls="note")
     svg.finish(output)
 
 
@@ -869,9 +874,10 @@ def plot_static_recursive_refinement(refinement: dict, expansion: dict, output: 
 
     svg.rect(70, 545, 1260, 150, "#fff7ed", rx=12, stroke=JAVASCRIPT)
     svg.text(95, 585, "Current decision", weight=700, size=20, fill=JAVASCRIPT)
-    svg.text(95, 622, "Text normalization is coherent and gained two independent matches, but totals four—below the five-file pilot floor.", size=16)
+    accepted_total = sum(initial + added for _name, initial, added, status, _color in blocks if status == "accepted child")
+    svg.text(95, 622, f"Text normalization is coherent and reaches {accepted_total} audited files after the approved larger retrieval run.", size=16)
     svg.text(95, 653, "Text filter pipelines retains one member; palindrome search and format validation remain residuals. No child receives a structural rule.", size=16)
-    svg.text(95, 681, "A larger external embedding run requires explicit approval because it would send more third-party source excerpts to OpenAI.", cls="note")
+    svg.text(95, 681, "Support alone is insufficient: the 10-file normalization child still fails leave-one-positive-out structural transfer.", cls="note")
     svg.finish(output)
 
 
@@ -972,6 +978,13 @@ def main() -> None:
             json.loads(static_refinement_path.read_text(encoding="utf-8")),
             json.loads(static_child_expansion_path.read_text(encoding="utf-8")),
             args.output / "14-static-recursive-refinement.svg",
+        )
+        figure_count += 1
+    static_normalization_structure_path = args.input / "static-normalization-structure.json"
+    if static_normalization_structure_path.exists():
+        plot_static_structure_validation(
+            json.loads(static_normalization_structure_path.read_text(encoding="utf-8")),
+            args.output / "15-static-normalization-structure.svg",
         )
         figure_count += 1
     print(f"Wrote {figure_count} figures to {args.output}")

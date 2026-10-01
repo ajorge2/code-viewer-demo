@@ -663,22 +663,69 @@
         "name": "Text normalization",
         "initial_support": 2,
         "specificity_gain": 0.14271,
-        "audited_retrieval_count": 20,
-        "accepted_expansions": 2,
-        "total_support": 4,
-        "status": "insufficient_support"
+        "audited_retrieval_count": 40,
+        "accepted_expansions": 8,
+        "total_support": 10,
+        "status": "expanded_child_candidate"
       },
       "rejected_child": {
         "name": "Text filter pipelines",
         "support_after_semantic_exclusion": 1,
         "status": "insufficient_support"
       },
-      "larger_external_expansion_run": "not_authorized",
+      "larger_external_expansion_run": "explicitly_authorized_and_completed",
       "registered_count": 0,
-      "decision": "retain_text_normalization_as_four_file_provisional_child_and_preserve_residuals",
-      "reason": "Residual-aware recursion finds one meaning-specific child with positive fit gain and two additional code-entailing examples, but support remains below the five-file pilot floor. The larger proposed OpenAI payload requires explicit user approval, so no additional external retrieval or structural promotion occurs."
+      "decision": "retain_text_normalization_as_ten_file_semantic_child_and_validate_structure",
+      "reason": "Residual-aware recursion finds one meaning-specific child with positive fit gain. The explicitly approved 2,000-file search adds eight code-entailing examples, clearing the pilot evidence floor while preserving residual meanings outside the child. Structural promotion still requires held-out transfer."
     },
-    "decision": "await_larger_payload_authorization_or_continue_local_only_evidence_collection",
-    "reason": "The verified 500-file recursion preserves a coherent four-file Text normalization child without forcing singleton meanings. Expanding external retrieval to 2,000 third-party source files requires explicit approval; otherwise the next safe route is local-only evidence collection and human calibration."
+    "text_normalization_structural_validation": {
+      "semantic_support": 10,
+      "negative_pool_files": 1990,
+      "in_sample_precision": 0.875,
+      "in_sample_recall": 0.7,
+      "in_sample_f1": 0.777778,
+      "leave_one_positive_out_folds": 10,
+      "held_out_true_positive": 2,
+      "held_out_false_negative": 8,
+      "repeated_false_positive": 5,
+      "held_out_precision": 0.285714,
+      "held_out_recall": 0.2,
+      "held_out_f1": 0.235294,
+      "registered_count": 0,
+      "decision": "retain_as_semantic_only_child_and_recurse_again",
+      "reason": "The narrower child fits much better in-sample but recovers only two of 10 held-out positives. Ten examples implement normalization through materially different code structures, so support alone does not justify a structural primitive."
+    },
+    "text_normalization_recursive_refinement": {
+      "parent_member_count": 10,
+      "selected_distance_threshold": 0.39,
+      "core_coverage": 0.7,
+      "silhouette": 0.37012,
+      "subsample_stability_ari": 0.781056,
+      "accepted_child": {
+        "name": "Filename-safe title sanitization",
+        "support": 2,
+        "specificity_gain": 0.2687,
+        "provenance_warning": "matching alias.js paths and nearly identical meanings may reflect copied code"
+      },
+      "rejected_children": [
+        {
+          "name": "Case normalization",
+          "support": 3,
+          "specificity_gain": -0.051687,
+          "reason": "fails child-specificity gain"
+        },
+        {
+          "name": "Tag capitalization",
+          "support": 1,
+          "reason": "insufficient support after semantic exclusion"
+        }
+      ],
+      "residual_member_count": 3,
+      "registered_count": 0,
+      "decision": "withhold_all_second_level_children",
+      "reason": "The only definition-improving multi-member child consists of two near-duplicate alias implementations with unresolved provenance. The larger case group is less specific than its parent, the tag group falls to one member, and residual meanings remain heterogeneous."
+    },
+    "decision": "continue_human_calibration_and_provenance_audit_without_structural_promotion",
+    "reason": "Recursive semantic discovery produces useful human categories and explicit residuals, while repeated held-out structural tests prevent broad or copied-code groupings from becoming primitives. The next evidence should be human labels and repository lineage, not weaker structural thresholds."
   }
 }

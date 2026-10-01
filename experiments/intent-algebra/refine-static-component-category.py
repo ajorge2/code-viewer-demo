@@ -25,8 +25,10 @@ from sklearn.metrics import adjusted_rand_score, silhouette_score
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--static-coverage", type=Path, required=True)
-    parser.add_argument("--gap-expansions", type=Path, required=True)
+    parser.add_argument("--static-coverage", type=Path)
+    parser.add_argument("--gap-expansions", type=Path)
+    parser.add_argument("--parent-refinement", type=Path)
+    parser.add_argument("--child-expansions", type=Path)
     parser.add_argument("--embedding-cache", type=Path, required=True)
     parser.add_argument("--naming-cache", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
@@ -195,35 +197,58 @@ def main() -> None:
     here = Path(__file__).resolve().parent
     helpers = load_module("intent_embedding_helpers", here / "cluster-embedding-concepts.py")
     helpers.load_project_env(here.parents[1] / ".env")
-    coverage = json.loads(args.static_coverage.read_text(encoding="utf-8"))
-    expansions = json.loads(args.gap_expansions.read_text(encoding="utf-8"))
-    gap = next(item for item in coverage["gap_clusters"] if item["name"] == args.category)
-    expansion = next(item for item in expansions["categories"] if item["name"] == args.category)
-    files = {item["sample_id"]: item for item in coverage["files"]}
-    expansion_candidates = {item["sample_id"]: item for item in expansion["candidates"]}
     members = []
-    for sample_id in gap["sample_ids"]:
-        file = files[sample_id]
-        judgment = file["judgment"]
-        members.append({
-            "sample_id": sample_id,
-            "language": file["language"],
-            "file": file["file"],
-            "name": judgment["responsibility_name"],
-            "definition": judgment["responsibility_definition"],
-            "evidence_source": "initial static holdout gap",
-        })
-    for sample_id in expansion["accepted_sample_ids"]:
-        candidate = expansion_candidates[sample_id]
-        judgment = candidate["judgment"]
-        members.append({
-            "sample_id": sample_id,
-            "language": candidate["language"],
-            "file": candidate["file"],
-            "name": judgment["specific_role"],
-            "definition": judgment["rationale"],
-            "evidence_source": "audited semantic expansion",
-        })
+    if args.parent_refinement and args.child_expansions:
+        prior_refinement = json.loads(args.parent_refinement.read_text(encoding="utf-8"))
+        child_expansions = json.loads(args.child_expansions.read_text(encoding="utf-8"))
+        prior_child = next(item for item in prior_refinement["children"] if item["name"] == args.category)
+        expansion = next(item for item in child_expansions["children"] if item["name"] == args.category)
+        expansion_candidates = {item["sample_id"]: item for item in expansion["candidates"]}
+        members.extend({**item, "evidence_source": "parent recursive child"} for item in prior_child["members"])
+        for sample_id in expansion["accepted_sample_ids"]:
+            candidate = expansion_candidates[sample_id]
+            judgment = candidate["judgment"]
+            members.append({
+                "sample_id": sample_id,
+                "language": candidate["language"],
+                "file": candidate["file"],
+                "name": judgment["specific_role"],
+                "definition": judgment["rationale"],
+                "evidence_source": "audited recursive-child expansion",
+            })
+        parent = {"name": prior_child["name"], "definition": prior_child["definition"]}
+    else:
+        if not args.static_coverage or not args.gap_expansions:
+            raise RuntimeError("Provide static coverage plus gap expansions, or parent refinement plus child expansions")
+        coverage = json.loads(args.static_coverage.read_text(encoding="utf-8"))
+        expansions = json.loads(args.gap_expansions.read_text(encoding="utf-8"))
+        gap = next(item for item in coverage["gap_clusters"] if item["name"] == args.category)
+        expansion = next(item for item in expansions["categories"] if item["name"] == args.category)
+        files = {item["sample_id"]: item for item in coverage["files"]}
+        expansion_candidates = {item["sample_id"]: item for item in expansion["candidates"]}
+        for sample_id in gap["sample_ids"]:
+            file = files[sample_id]
+            judgment = file["judgment"]
+            members.append({
+                "sample_id": sample_id,
+                "language": file["language"],
+                "file": file["file"],
+                "name": judgment["responsibility_name"],
+                "definition": judgment["responsibility_definition"],
+                "evidence_source": "initial static holdout gap",
+            })
+        for sample_id in expansion["accepted_sample_ids"]:
+            candidate = expansion_candidates[sample_id]
+            judgment = candidate["judgment"]
+            members.append({
+                "sample_id": sample_id,
+                "language": candidate["language"],
+                "file": candidate["file"],
+                "name": judgment["specific_role"],
+                "definition": judgment["rationale"],
+                "evidence_source": "audited semantic expansion",
+            })
+        parent = {"name": args.category, "definition": gap["definition"]}
     members.sort(key=lambda item: item["sample_id"])
     texts = [f"Static code responsibility: {item['name']}\nDefinition: {item['definition']}" for item in members]
     matrix, member_requests = helpers.embed_texts(
@@ -233,7 +258,6 @@ def main() -> None:
     matrix = normalized(np.asarray(matrix))
     candidates = candidate_partitions(matrix, args)
     chosen = next((item for item in candidates if item["accepted"]), None)
-    parent = {"name": args.category, "definition": gap["definition"]}
     if chosen is None:
         payload = {
             "parent": parent,

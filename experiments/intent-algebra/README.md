@@ -194,6 +194,8 @@ npm run intent:large:expand-static-gaps
 npm run intent:large:induce-static-structure
 npm run intent:large:refine-static-category
 npm run intent:large:expand-static-children
+npm run intent:large:validate-static-child-structure
+npm run intent:large:refine-static-normalization
 ```
 
 The materializer reconstructs 3,130 complete before/after files, including 1,533 Python
@@ -284,12 +286,17 @@ Text normalization with two members and positive specificity gain, rejects Text 
 pipelines after it falls to one member, and leaves palindrome search plus format
 validation as residuals.
 
-`intent:large:expand-static-children` audits the top 20 repository-disjoint retrievals
-for accepted children. Text normalization adds two true examples—username/channel
-canonicalization and blog-tag capitalization—but reaches only four files, below the
-five-file pilot floor. The command defaults to the verified 500-file scope. A proposed
-2,000-file run was not executed because sending that larger third-party source payload
-to OpenAI requires explicit user approval.
+`intent:large:expand-static-children` uses the explicitly approved larger scope: 2,000
+files from recorded-name-disjoint repositories and 40 audited retrievals. Text
+normalization adds eight true examples and reaches 10-file support.
+
+`intent:large:validate-static-child-structure` evaluates those 10 positives against
+1,990 negatives. The fitted rule reaches 87.5% precision and 70.0% recall in-sample,
+but leave-one-positive-out precision/recall fall to 28.6%/20.0%, so the category remains
+semantic-only. `intent:large:refine-static-normalization` recurses again: filename-safe
+title sanitization has two nearly identical examples and a provenance warning, case
+normalization fails child-specificity gain, tag capitalization falls to one member, and
+three residuals remain unassigned. No second-level child is promoted.
 
 `intent:facets:additive` writes one record per retained change with four deliberately
 separate fields: edit operation, noun-only edited entity, semantic container, and raw

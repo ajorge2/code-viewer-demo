@@ -1026,19 +1026,51 @@ cleanup and capitalization/sanitization. Its definition improves mean member fit
 the parent by 0.143. A proposed **Text filter pipelines** child loses the operator-parser
 example during semantic audit and falls to one member, so it is rejected.
 
-Text normalization then retrieved the top 20 candidates from the verified 500-file
-repository-disjoint pool. None clears the original seed-similarity floor, so retrieval
-uses a top-k fallback while preserving that fact in the audit record. Two files truly
-entail the child—username/channel canonicalization and blog-tag capitalization—raising
-support from two to **four independent files**. The child remains below the provisional
-five-file floor and receives no structural rule.
+Text normalization first retrieved the top 20 candidates from the verified 500-file
+repository-disjoint pool. None cleared the original seed-similarity floor, so retrieval
+used a top-k fallback while preserving that fact in the audit record. Two files truly
+entailed the child: username/channel canonicalization and blog-tag capitalization.
 
-A proposed 2,000-file external embedding expansion was not run because it would export
-substantially more third-party source excerpts to OpenAI than the verified 500-file
-scope. Explicit user approval is required before that larger transfer. The local
-pipeline and completed judgments remain cached and reproducible.
+After explicit approval for the larger third-party source transfer, the pool expanded
+to 2,000 files from 2,000 recorded-name-disjoint repositories and the top 40 candidates
+were audited. Eight entail the category, raising support from two to **10 independent
+files**. The new examples include Greek case/diacritic normalization, domain-label and
+image-link cleanup, filename-safe series-title aliases, uppercase/whitespace
+canonicalization, blog-tag formatting, and XML whitespace removal.
 
 ![Recursive static-category refinement](figures/intent-algebra-sweep-5000/14-static-recursive-refinement.svg)
+
+### Structural validation and second recursion for Text normalization
+
+The 10-file child was evaluated against the other 1,990 files with the same normalized
+AST rule learner. Its all-member fit improves to **87.5% precision, 70.0% recall, and
+77.8% F1**. Leave-one-positive-out transfer remains weak, however: only two of 10
+held-out positives are recovered, with five repeated false-positive exposures. Held-out
+precision is **28.6%**, recall **20.0%**, and F1 **23.5%**, below the 80%/60% pilot
+promotion thresholds. Text normalization therefore remains semantic-only despite
+clearing the evidence floor.
+
+![Text normalization structural validation](figures/intent-algebra-sweep-5000/15-static-normalization-structure.svg)
+
+The recursion continued rather than weakening the structural threshold. A stable
+three-group core at cosine distance 0.39 covers seven of 10 members (silhouette 0.370;
+subsample-stability ARI 0.781). Semantic grounding then produces:
+
+- **Filename-safe title sanitization**: two nearly identical `alias.js` examples,
+  positive specificity gain of 0.269. Retained only as a provenance-warning candidate;
+  matching paths and descriptions across recorded-name-disjoint repositories may
+  reflect copied code.
+- **Case normalization**: three examples, but its proposed child definition fits the
+  members 0.052 worse than the Text normalization parent, so it fails the specificity
+  gate.
+- **Tag capitalization**: one retained example after an adjacent domain-label member is
+  excluded, so it fails minimum child support.
+- Three residuals remain unassigned: defective channel/username normalization, Greek
+  case/diacritic normalization, and delegated XML whitespace cleanup.
+
+No second-level child is promoted to a structural primitive. This is the intended
+behavior of recursive composition: semantic parents remain useful descriptions while
+only recurrent, transferable code relationships are allowed into the structural layer.
 
 ### Pre-registered quality comparison
 
@@ -1074,7 +1106,7 @@ The current working tree now contains an executable pilot in addition to existin
 - A repository-disjoint static transfer harness now evaluates complete source files without commit text, retrieves candidate parents from code embeddings, permits zero-to-two labels, and turns uncovered responsibilities into traceable growth candidates.
 - A cached static-gap feedback loop now searches 500 additional unseen-repository files and audits retrieved code before increasing category support, expanding one of five recurring gaps while leaving four below the pilot floor.
 - A cross-language static-structure inducer now abstracts Python/JavaScript ASTs into shared semantic roles and applies leave-one-positive-out validation, correctly withholding structural status from a seven-file category whose fitted rule does not transfer.
-- A residual-aware recursive refinement now preserves singleton meanings outside child clusters, accepts Text normalization as a coherent two-file child, rejects a one-file filter-pipeline child, and expands normalization to four audited repository-disjoint examples without lowering its support floor.
+- A residual-aware recursive refinement now preserves singleton meanings outside child clusters, expands Text normalization to 10 audited repository-disjoint examples, rejects it structurally after weak leave-one-out transfer, and withholds three tempting second-level children on specificity, support, or provenance grounds.
 - Held-out category-label MDL, structural-constituent MDL, and persisted-AST role-aware metamorphic probes are implemented for triage. Primitive registration, lattice resolution, source-reparse probes, complete edit-tree MDL, and explanation-quality benchmarks remain unimplemented.
 
 ## 5. Business / Practical Impact
@@ -1139,7 +1171,7 @@ Current, defensible pilot bullets:
 - Evaluated the component vocabulary on 80 static Python/JavaScript files from 80 recorded-name-disjoint repositories, obtaining 68.8% exploratory coverage across all 11 parents while preserving 25 explicit gaps and surfacing five recurrent missing component concepts.
 - Closed the first open-vocabulary component loop by auditing 57 gap-retrieval candidates from a 500-repository pool, accepting 10 code-entailing expansions and growing string-processing components from two to seven examples without promoting four weaker gaps.
 - Tested the seven-file string-processing umbrella against 493 static negatives with normalized cross-language AST clauses; rejected structural promotion after its 75.0%/42.9% in-sample precision/recall collapsed to zero held-out recall across seven leave-one-out folds.
-- Recursively split the failed structural umbrella with a 0.898-stability meaning partition, retained a higher-fit Text normalization child, and audited 20 retrievals to add two independent examples while withholding promotion at four-file support.
+- Recursively split the failed structural umbrella with a 0.898-stability meaning partition, expanded Text normalization from two to 10 audited files across a 2,000-repository pool, and still withheld structural promotion after leave-one-out precision/recall reached only 28.6%/20.0%.
 - Separated minimal queue discovery from flexible composite expansion across 1,933 addition-dominant changes with up to 32 components, caught a 22.8%-precision constraint retriever before registration, and collapsed 67 exact-host candidates into 45 unique contexts including 13 multi-base lattice intersections.
 - Preserved directed edit semantics for undirected gSpan mining through relation-node encoding, then reduced 1,957 frequent fragments to 26 support-closed pilot candidates with structural-validity and labeled-supergraph checks.
 - Created an auditable grounding queue that joins every pilot candidate to commit text, code excerpts, and provenance while explicitly withholding meanings that do not yet meet semantic or independence requirements.
@@ -1166,7 +1198,7 @@ Future result bullets must still wait for held-out human evaluation and must not
 ### Immediate next steps
 
 1. Human-label a stratified sample of the 80 static judgments—strong, plausible, and abstaining—to calibrate semantic precision and missing-category agreement.
-2. With explicit approval for the larger external payload, expand Text normalization over a 2,000-file repository-disjoint pool; otherwise keep the verified four-file child provisional and prioritize local-only evidence collection.
+2. Preserve Text normalization as a semantic parent, audit copied-code provenance for the two filename-safe title examples, and gather more independent evidence before retrying structural induction on any second-level child.
 3. Enrich the 101-change package category with parent SHAs, fork/mirror relationships, timestamps, and commit-wide changed-file lists to validate the observed provenance proxy.
 4. Run held-out semantic entailment and source-level mutation/reparse probes for package setup; its persisted-AST role-aware probes already pass globally.
 5. Generalize the semantic–structural feedback loop and paired matchers to additional Python and JavaScript categories; evaluate complete edit-tree MDL only for multi-atom composites.

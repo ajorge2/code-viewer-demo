@@ -23,6 +23,6 @@
 <text x="333.0" y="582.0" text-anchor="start" class="label" style="font-weight:700;font-size:15px">0.0% leave-one-out</text>
 <rect x="70.0" y="655.0" width="1260.0" height="112.0" fill="#fff7ed" rx="10.0" stroke="#d97706" stroke-width="1.5"/>
 <text x="95.0" y="692.0" text-anchor="start" class="label" style="fill:#d97706;font-weight:700;font-size:20px">Decision: keep semantic-only</text>
-<text x="95.0" y="724.0" text-anchor="start" class="label" style="font-size:16px">The fitted clauses cover 3/7 positives with one false positive, but no held-out positive is recovered across seven folds.</text>
-<text x="95.0" y="752.0" text-anchor="start" class="note">Next: split the broad semantic umbrella or collect more evidence; do not weaken the structural gate.</text>
+<text x="95.0" y="724.0" text-anchor="start" class="label" style="font-size:16px">The fitted clauses cover 3/7 positives with 1 false positives; leave-one-out recovers 0/7.</text>
+<text x="95.0" y="752.0" text-anchor="start" class="note">Next: split the semantic umbrella or collect more evidence; do not weaken the structural gate.</text>
 </svg>
