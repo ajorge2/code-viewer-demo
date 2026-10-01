@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="820" viewBox="0 0 1400 820" role="img" aria-labelledby="title desc">
+<title id="title">Category-conditioned structural rule performance</title>
+<desc id="desc">Three-fold held-out retrieval using typed AST neighborhoods; 2 rules pass the 1.2× MDL proxy but none clears every promotion gate</desc>
+<rect width="1400" height="820" fill="#ffffff"/>
+<style>text{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.title{font-size:31px;font-weight:700;fill:#172033}.subtitle{font-size:17px;fill:#667085}.axis{font-size:15px;fill:#667085}.label{font-size:18px;fill:#172033}.value{font-size:18px;font-weight:700}.note{font-size:14px;fill:#667085}</style>
+<text x="70.0" y="65.0" text-anchor="start" class="title">Category-conditioned structural rule performance</text>
+<text x="70.0" y="98.0" text-anchor="start" class="subtitle">Three-fold held-out retrieval using typed AST neighborhoods; 2 rules pass the 1.2× MDL proxy but none clears every promotion gate</text>
+<line x1="135.0" y1="175.0" x2="135.0" y2="680.0" stroke="#d7dde7" stroke-width="1"/>
+<line x1="135.0" y1="680.0" x2="1295.0" y2="680.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="135.0" y="709.0" text-anchor="middle" class="axis">0%</text>
+<text x="120.0" y="685.0" text-anchor="end" class="axis">0%</text>
+<line x1="367.0" y1="175.0" x2="367.0" y2="680.0" stroke="#d7dde7" stroke-width="1"/>
+<line x1="135.0" y1="579.0" x2="1295.0" y2="579.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="367.0" y="709.0" text-anchor="middle" class="axis">20%</text>
+<text x="120.0" y="584.0" text-anchor="end" class="axis">20%</text>
+<line x1="599.0" y1="175.0" x2="599.0" y2="680.0" stroke="#d7dde7" stroke-width="1"/>
+<line x1="135.0" y1="478.0" x2="1295.0" y2="478.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="599.0" y="709.0" text-anchor="middle" class="axis">40%</text>
+<text x="120.0" y="483.0" text-anchor="end" class="axis">40%</text>
+<line x1="831.0" y1="175.0" x2="831.0" y2="680.0" stroke="#d7dde7" stroke-width="1"/>
+<line x1="135.0" y1="377.0" x2="1295.0" y2="377.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="831.0" y="709.0" text-anchor="middle" class="axis">60%</text>
+<text x="120.0" y="382.0" text-anchor="end" class="axis">60%</text>
+<line x1="1063.0" y1="175.0" x2="1063.0" y2="680.0" stroke="#d7dde7" stroke-width="1"/>
+<line x1="135.0" y1="276.0" x2="1295.0" y2="276.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="1063.0" y="709.0" text-anchor="middle" class="axis">80%</text>
+<text x="120.0" y="281.0" text-anchor="end" class="axis">80%</text>
+<line x1="1295.0" y1="175.0" x2="1295.0" y2="680.0" stroke="#d7dde7" stroke-width="1"/>
+<line x1="135.0" y1="175.0" x2="1295.0" y2="175.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="1295.0" y="709.0" text-anchor="middle" class="axis">100%</text>
+<text x="120.0" y="180.0" text-anchor="end" class="axis">100%</text>
+<line x1="599.0" y1="175.0" x2="599.0" y2="680.0" stroke="#667085" stroke-width="1.5" stroke-dasharray="7 6"/>
+<line x1="135.0" y1="276.0" x2="1295.0" y2="276.0" stroke="#667085" stroke-width="1.5" stroke-dasharray="7 6"/>
+<circle cx="1038.7" cy="308.2" r="21.2" fill="#d97706" stroke="#ffffff" stroke-width="2"/>
+<text x="1050.7" y="296.2" text-anchor="start" class="label" style="fill:#d97706;font-weight:700;font-size:13px">Python package setup configurat… · n=86</text>
+<circle cx="689.0" cy="320.9" r="19.2" fill="#d97706" stroke="#ffffff" stroke-width="2"/>
+<text x="701.0" y="308.9" text-anchor="start" class="label" style="fill:#d97706;font-weight:700;font-size:13px">Grunt and Gulp workflow infrast… · n=67</text>
+<circle cx="561.1" cy="386.8" r="17.1" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="893.5" cy="349.8" r="13.7" fill="#d97706" stroke="#ffffff" stroke-width="2"/>
+<text x="905.5" y="337.8" text-anchor="start" class="label" style="fill:#d97706;font-weight:700;font-size:13px">Webpack build configuration · n=26</text>
+<circle cx="804.2" cy="377.0" r="13.7" fill="#d97706" stroke="#ffffff" stroke-width="2"/>
+<circle cx="538.5" cy="369.2" r="13.1" fill="#d97706" stroke="#ffffff" stroke-width="2"/>
+<circle cx="742.6" cy="283.2" r="12.7" fill="#d97706" stroke="#ffffff" stroke-width="2"/>
+<circle cx="135.0" cy="680.0" r="12.5" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="196.1" cy="595.8" r="12.3" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="392.8" cy="276.0" r="12.1" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<text x="404.8" y="264.0" text-anchor="start" class="label" style="fill:#70798c;font-weight:700;font-size:13px">Browser test launch configurati… · n=18</text>
+<circle cx="476.2" cy="399.4" r="11.9" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="203.2" cy="595.8" r="11.9" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="521.7" cy="399.4" r="11.5" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="759.6" cy="444.3" r="11.0" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="556.8" cy="427.5" r="10.5" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="831.0" cy="343.3" r="10.2" fill="#d97706" stroke="#ffffff" stroke-width="2"/>
+<circle cx="135.0" cy="680.0" r="10.2" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="135.0" cy="680.0" r="9.9" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="135.0" cy="680.0" r="9.9" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="263.9" cy="595.8" r="9.9" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="263.9" cy="427.5" r="9.9" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1150.0" cy="175.0" r="9.6" fill="#d97706" stroke="#ffffff" stroke-width="2"/>
+<text x="1138.0" y="163.0" text-anchor="end" class="label" style="fill:#d97706;font-weight:700;font-size:13px">Trove taxonomy metadata · n=8</text>
+<circle cx="860.0" cy="319.3" r="9.6" fill="#d97706" stroke="#ffffff" stroke-width="2"/>
+<circle cx="570.0" cy="528.5" r="9.6" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="280.0" cy="511.7" r="9.6" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="280.0" cy="427.5" r="9.6" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="280.0" cy="553.8" r="9.6" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="135.0" cy="680.0" r="9.6" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="135.0" cy="680.0" r="9.6" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="135.0" cy="680.0" r="9.6" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="135.0" cy="680.0" r="9.6" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="135.0" cy="680.0" r="9.6" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="135.0" cy="680.0" r="9.6" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="135.0" cy="680.0" r="9.3" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="797.9" cy="391.4" r="9.3" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="135.0" cy="680.0" r="9.3" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="466.4" cy="427.5" r="9.3" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="135.0" cy="680.0" r="9.3" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="135.0" cy="680.0" r="9.3" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="135.0" cy="680.0" r="9.3" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="300.7" cy="511.7" r="9.3" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="135.0" cy="680.0" r="9.3" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="135.0" cy="680.0" r="9.3" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="328.3" cy="607.9" r="8.9" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="135.0" cy="680.0" r="8.9" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="521.7" cy="478.0" r="8.9" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="135.0" cy="680.0" r="8.9" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="135.0" cy="680.0" r="8.9" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="135.0" cy="680.0" r="8.9" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<text x="715.0" y="752.0" text-anchor="middle" class="axis">Held-out recall</text>
+<text x="135.0" y="143.0" text-anchor="start" class="axis">Held-out precision</text>
+<circle cx="820.0" cy="128.0" r="7.0" fill="#d97706" stroke="#ffffff" stroke-width="1.5"/>
+<text x="835.0" y="134.0" text-anchor="start" class="label" style="font-size:14px">Weak candidate (9)</text>
+<circle cx="1040.0" cy="128.0" r="7.0" fill="#70798c" stroke="#ffffff" stroke-width="1.5"/>
+<text x="1055.0" y="134.0" text-anchor="start" class="label" style="font-size:14px">Insufficient (40)</text>
+<text x="70.0" y="798.0" text-anchor="start" class="note">Dashed lines mark the precision/recall portion of the strong-rule gate. Circle area increases with semantic support; MDL, repository independence, and support gates are evaluated separately.</text>
+</svg>

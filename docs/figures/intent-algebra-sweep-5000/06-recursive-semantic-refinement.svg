@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1594" viewBox="0 0 1400 1594" role="img" aria-labelledby="title desc">
+<title id="title">Downward semantic refinement</title>
+<desc id="desc">The three largest accepted roots; child meanings are discovered within each parent, while structural rules remain evidence</desc>
+<rect width="1400" height="1594" fill="#ffffff"/>
+<style>text{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.title{font-size:31px;font-weight:700;fill:#172033}.subtitle{font-size:17px;fill:#667085}.axis{font-size:15px;fill:#667085}.label{font-size:18px;fill:#172033}.value{font-size:18px;font-weight:700}.note{font-size:14px;fill:#667085}</style>
+<text x="70.0" y="65.0" text-anchor="start" class="title">Downward semantic refinement</text>
+<text x="70.0" y="98.0" text-anchor="start" class="subtitle">The three largest accepted roots; child meanings are discovered within each parent, while structural rules remain evidence</text>
+<rect x="70.0" y="462.0" width="330.0" height="50.0" fill="#e8edf5" rx="7.0" stroke="#d7dde7" stroke-width="1"/>
+<rect x="70.0" y="462.0" width="8.0" height="50.0" fill="#2563eb" rx="3.0"/>
+<text x="90.0" y="484.0" text-anchor="start" class="label" style="font-weight:700;font-size:16px">config · webpack · require</text>
+<text x="90.0" y="504.0" text-anchor="start" class="note">138 changes</text>
+<line x1="400.0" y1="487.0" x2="455.0" y2="487.0" stroke="#d7dde7" stroke-width="2"/>
+<line x1="455.0" y1="172.0" x2="455.0" y2="802.0" stroke="#d7dde7" stroke-width="2"/>
+<line x1="455.0" y1="172.0" x2="500.0" y2="172.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="156.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="177.0" text-anchor="start" class="label" style="font-size:14px">webpack · config · plugin · 26</text>
+<line x1="455.0" y1="214.0" x2="500.0" y2="214.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="198.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="219.0" text-anchor="start" class="label" style="font-size:14px">eslintrc · eslint · browser · 15</text>
+<line x1="455.0" y1="256.0" x2="500.0" y2="256.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="240.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="261.0" text-anchor="start" class="label" style="font-size:14px">jest · config · dist · 7</text>
+<line x1="455.0" y1="298.0" x2="500.0" y2="298.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="282.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="303.0" text-anchor="start" class="label" style="font-size:14px">webpack · server · env · 7</text>
+<line x1="455.0" y1="340.0" x2="500.0" y2="340.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="324.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="345.0" text-anchor="start" class="label" style="font-size:14px">exports · case · net · 5</text>
+<line x1="455.0" y1="382.0" x2="500.0" y2="382.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="366.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="387.0" text-anchor="start" class="label" style="font-size:14px">json · package · math · 4</text>
+<line x1="455.0" y1="424.0" x2="500.0" y2="424.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="408.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="429.0" text-anchor="start" class="label" style="font-size:14px">curly · react · jsx · 4</text>
+<line x1="455.0" y1="466.0" x2="500.0" y2="466.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="450.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="471.0" text-anchor="start" class="label" style="font-size:14px">react · warning · config · 3</text>
+<line x1="455.0" y1="508.0" x2="500.0" y2="508.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="492.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="513.0" text-anchor="start" class="label" style="font-size:14px">typescript · rules · define · 3</text>
+<line x1="455.0" y1="550.0" x2="500.0" y2="550.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="534.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="555.0" text-anchor="start" class="label" style="font-size:14px">require · shim · core · 3</text>
+<line x1="455.0" y1="592.0" x2="500.0" y2="592.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="576.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="597.0" text-anchor="start" class="label" style="font-size:14px">promise · polyfill · require · 3</text>
+<line x1="455.0" y1="634.0" x2="500.0" y2="634.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="618.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="639.0" text-anchor="start" class="label" style="font-size:14px">license · exports · drupal · 3</text>
+<line x1="455.0" y1="676.0" x2="500.0" y2="676.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="660.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="681.0" text-anchor="start" class="label" style="font-size:14px">coffee · runner · closed · 3</text>
+<line x1="455.0" y1="718.0" x2="500.0" y2="718.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="702.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="723.0" text-anchor="start" class="label" style="font-size:14px">chai · spies · sinon · 3</text>
+<line x1="455.0" y1="760.0" x2="500.0" y2="760.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="744.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="765.0" text-anchor="start" class="label" style="font-size:14px">config · requirejs · jquery · 3</text>
+<line x1="455.0" y1="802.0" x2="500.0" y2="802.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="786.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="807.0" text-anchor="start" class="label" style="font-size:14px">require · exp · platform · 3</text>
+<line x1="70.0" y1="852.0" x2="1330.0" y2="852.0" stroke="#d7dde7" stroke-width="1"/>
+<rect x="70.0" y="1074.0" width="330.0" height="50.0" fill="#e8edf5" rx="7.0" stroke="#d7dde7" stroke-width="1"/>
+<rect x="70.0" y="1074.0" width="8.0" height="50.0" fill="#d97706" rx="3.0"/>
+<text x="90.0" y="1096.0" text-anchor="start" class="label" style="font-weight:700;font-size:16px">description · python · long</text>
+<text x="90.0" y="1116.0" text-anchor="start" class="note">86 changes</text>
+<line x1="400.0" y1="1099.0" x2="455.0" y2="1099.0" stroke="#d7dde7" stroke-width="2"/>
+<line x1="455.0" y1="889.0" x2="455.0" y2="1309.0" stroke="#d7dde7" stroke-width="2"/>
+<line x1="455.0" y1="889.0" x2="500.0" y2="889.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="873.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="894.0" text-anchor="start" class="label" style="font-size:14px">description · long · content · 10</text>
+<line x1="885.0" y1="889.0" x2="925.0" y2="889.0" stroke="#d7dde7" stroke-width="2"/>
+<text x="940.0" y="894.0" text-anchor="start" class="note">markdown · content … (3); readme · open · read (3)</text>
+<line x1="455.0" y1="931.0" x2="500.0" y2="931.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="915.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="936.0" text-anchor="start" class="label" style="font-size:14px">django · requires · github · 9</text>
+<line x1="885.0" y1="931.0" x2="925.0" y2="931.0" stroke="#d7dde7" stroke-width="2"/>
+<text x="940.0" y="936.0" text-anchor="start" class="note">django · url · gith… (3); requires · django ·… (3)</text>
+<line x1="455.0" y1="973.0" x2="500.0" y2="973.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="957.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="978.0" text-anchor="start" class="label" style="font-size:14px">python · language · programming · 8</text>
+<line x1="455.0" y1="1015.0" x2="500.0" y2="1015.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="999.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="1020.0" text-anchor="start" class="label" style="font-size:14px">requires · python · install · 7</text>
+<line x1="455.0" y1="1057.0" x2="500.0" y2="1057.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="1041.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="1062.0" text-anchor="start" class="label" style="font-size:14px">readme · rst · read · 7</text>
+<line x1="455.0" y1="1099.0" x2="500.0" y2="1099.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="1083.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="1104.0" text-anchor="start" class="label" style="font-size:14px">requires · pytest · runner · 5</text>
+<line x1="455.0" y1="1141.0" x2="500.0" y2="1141.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="1125.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="1146.0" text-anchor="start" class="label" style="font-size:14px">license · package · klein · 4</text>
+<line x1="455.0" y1="1183.0" x2="500.0" y2="1183.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="1167.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="1188.0" text-anchor="start" class="label" style="font-size:14px">description · long · readme · 4</text>
+<line x1="455.0" y1="1225.0" x2="500.0" y2="1225.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="1209.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="1230.0" text-anchor="start" class="label" style="font-size:14px">exclude · filter · fixers · 3</text>
+<line x1="455.0" y1="1267.0" x2="500.0" y2="1267.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="1251.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="1272.0" text-anchor="start" class="label" style="font-size:14px">open · exec · execfile · 3</text>
+<line x1="455.0" y1="1309.0" x2="500.0" y2="1309.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="1293.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="1314.0" text-anchor="start" class="label" style="font-size:14px">profile · repoze · squeeze · 3</text>
+<line x1="70.0" y1="1359.0" x2="1330.0" y2="1359.0" stroke="#d7dde7" stroke-width="1"/>
+<rect x="70.0" y="1392.0" width="330.0" height="50.0" fill="#e8edf5" rx="7.0" stroke="#d7dde7" stroke-width="1"/>
+<rect x="70.0" y="1392.0" width="8.0" height="50.0" fill="#7c3aed" rx="3.0"/>
+<text x="90.0" y="1414.0" text-anchor="start" class="label" style="font-weight:700;font-size:16px">task · gulp · gruntfile</text>
+<text x="90.0" y="1434.0" text-anchor="start" class="note">67 changes</text>
+<line x1="400.0" y1="1417.0" x2="455.0" y2="1417.0" stroke="#d7dde7" stroke-width="2"/>
+<line x1="455.0" y1="1396.0" x2="455.0" y2="1438.0" stroke="#d7dde7" stroke-width="2"/>
+<line x1="455.0" y1="1396.0" x2="500.0" y2="1396.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="1380.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="1401.0" text-anchor="start" class="label" style="font-size:14px">gruntfile · grunt · task · 26</text>
+<line x1="885.0" y1="1396.0" x2="925.0" y2="1396.0" stroke="#d7dde7" stroke-width="2"/>
+<text x="940.0" y="1401.0" text-anchor="start" class="note">grunt · gruntfile ·… (13); utils · gruntfile ·… (3)…</text>
+<line x1="455.0" y1="1438.0" x2="500.0" y2="1438.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="1422.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="1443.0" text-anchor="start" class="label" style="font-size:14px">gulp · gulpfile · task · 23</text>
+<line x1="885.0" y1="1438.0" x2="925.0" y2="1438.0" stroke="#d7dde7" stroke-width="2"/>
+<text x="940.0" y="1443.0" text-anchor="start" class="note">gulp · watch · task (8); gulp · gulpfile · f… (7)</text>
+<text x="70.0" y="1569.0" text-anchor="start" class="note">27 accepted splits overall; maximum depth 3. Labels are provisional noun summaries.</text>
+</svg>

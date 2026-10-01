@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="852" viewBox="0 0 1400 852">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<style>text{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.title{font-size:31px;font-weight:700;fill:#172033}.sub{font-size:17px;fill:#667085}.label{font-size:18px;font-weight:700;fill:#172033}.term{font-size:15px;fill:#344054}.note{font-size:14px;fill:#667085}</style>
+<text x="70" y="60" class="title">Exploratory macro-concept clusters</text>
+<text x="70" y="93" class="sub">Soft NMF topics over lexical context from 68 addition-dominant changes; clusters may overlap</text>
+<text x="70" y="168" class="label">1. model · user · names</text>
+<text x="70" y="193" class="note">28 changes above membership threshold</text>
+<rect x="440" y="151" width="105.0" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="440" y="193" class="term">model</text>
+<rect x="585" y="151" width="90.4" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="585" y="193" class="term">user</text>
+<rect x="730" y="151" width="90.4" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="730" y="193" class="term">names</text>
+<rect x="875" y="151" width="81.7" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="875" y="193" class="term">length</text>
+<rect x="1020" y="151" width="75.9" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="1020" y="193" class="term">equals</text>
+<rect x="1165" y="151" width="74.2" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="1165" y="193" class="term">no</text>
+<line x1="70" y1="222" x2="1330" y2="222" stroke="#e3e7ee"/>
+<text x="70" y="270" class="label">2. setting · event · ideascube</text>
+<text x="70" y="295" class="note">17 changes above membership threshold</text>
+<rect x="440" y="253" width="105.0" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="440" y="295" class="term">setting</text>
+<rect x="585" y="253" width="78.6" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="585" y="295" class="term">event</text>
+<rect x="730" y="253" width="46.4" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="730" y="295" class="term">ideascube</text>
+<rect x="875" y="253" width="41.9" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="875" y="295" class="term">click</text>
+<rect x="1020" y="253" width="40.9" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="1020" y="295" class="term">conf</text>
+<rect x="1165" y="253" width="31.1" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="1165" y="295" class="term">val</text>
+<line x1="70" y1="324" x2="1330" y2="324" stroke="#e3e7ee"/>
+<text x="70" y="372" class="label">3. config · git · options</text>
+<text x="70" y="397" class="note">14 changes above membership threshold</text>
+<rect x="440" y="355" width="105.0" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="440" y="397" class="term">config</text>
+<rect x="585" y="355" width="32.1" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="585" y="397" class="term">git</text>
+<rect x="730" y="355" width="28.0" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="730" y="397" class="term">options</text>
+<rect x="875" y="355" width="18.1" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="875" y="397" class="term">load</text>
+<rect x="1020" y="355" width="14.5" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="1020" y="397" class="term">item</text>
+<rect x="1165" y="355" width="14.5" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="1165" y="397" class="term">initial</text>
+<line x1="70" y1="426" x2="1330" y2="426" stroke="#e3e7ee"/>
+<text x="70" y="474" class="label">4. url · auth · link</text>
+<text x="70" y="499" class="note">10 changes above membership threshold</text>
+<rect x="440" y="457" width="105.0" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="440" y="499" class="term">url</text>
+<rect x="585" y="457" width="84.1" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="585" y="499" class="term">auth</text>
+<rect x="730" y="457" width="30.6" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="730" y="499" class="term">link</text>
+<rect x="875" y="457" width="22.8" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="875" y="499" class="term">client</text>
+<rect x="1020" y="457" width="15.3" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="1020" y="499" class="term">map</text>
+<rect x="1165" y="457" width="15.1" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="1165" y="499" class="term">model</text>
+<line x1="70" y1="528" x2="1330" y2="528" stroke="#e3e7ee"/>
+<text x="70" y="576" class="label">5. size · extra · view</text>
+<text x="70" y="601" class="note">8 changes above membership threshold</text>
+<rect x="440" y="559" width="105.0" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="440" y="601" class="term">size</text>
+<rect x="585" y="559" width="22.0" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="585" y="601" class="term">extra</text>
+<rect x="730" y="559" width="20.2" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="730" y="601" class="term">view</text>
+<rect x="875" y="559" width="17.3" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="875" y="601" class="term">after</text>
+<rect x="1020" y="559" width="16.2" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="1020" y="601" class="term">margin</text>
+<rect x="1165" y="559" width="14.8" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="1165" y="601" class="term">data</text>
+<line x1="70" y1="630" x2="1330" y2="630" stroke="#e3e7ee"/>
+<text x="70" y="678" class="label">6. comment · props · items</text>
+<text x="70" y="703" class="note">2 changes above membership threshold</text>
+<rect x="440" y="661" width="105.0" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="440" y="703" class="term">comment</text>
+<rect x="585" y="661" width="0.0" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="585" y="703" class="term">props</text>
+<rect x="730" y="661" width="0.0" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="730" y="703" class="term">items</text>
+<rect x="875" y="661" width="0.0" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="875" y="703" class="term">margin</text>
+<rect x="1020" y="661" width="0.0" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="1020" y="703" class="term">ui</text>
+<rect x="1165" y="661" width="0.0" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="1165" y="703" class="term">style</text>
+<line x1="70" y1="732" x2="1330" y2="732" stroke="#e3e7ee"/>
+<text x="70" y="817" class="note">Topic labels are top recurrent nouns, not validated ontology names or exclusive assignments.</text>
+</svg>

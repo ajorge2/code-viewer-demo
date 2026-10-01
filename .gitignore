@@ -6,3 +6,7 @@ client/dist
 *.log
 .tree-cache/
 .meaning-cache/
+.data/
+.tools/
+__pycache__/
+*.pyc

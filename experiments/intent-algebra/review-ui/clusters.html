@@ -1,0 +1,99 @@
+<link rel="stylesheet" href="/review.css">
+<main class="shell">
+  <header>
+    <div>
+      <p class="eyebrow">CodeArchitect · Intent Algebra</p>
+      <h1>Semantic cluster interpretation</h1>
+      <p class="lede">Compare noun-level interpretations against every member diff. These are broad concept annotations, not structural primitives.</p>
+      <p><a class="mode-link" href="/">← Review structural candidates</a></p>
+    </div>
+    <div class="reviewer-box">
+      <label for="reviewer-id">Reviewer ID</label>
+      <div class="reviewer-row">
+        <input id="reviewer-id" autocomplete="off" placeholder="e.g. andrew" maxlength="64">
+        <button id="load-reviewer" type="button">Load</button>
+      </div>
+    </div>
+  </header>
+
+  <section id="workspace" hidden>
+    <div class="toolbar">
+      <button id="previous" type="button">← Previous</button>
+      <div><strong id="progress"></strong><span id="saved-count"></span></div>
+      <button id="next" type="button">Next →</button>
+    </div>
+
+    <article class="candidate">
+      <div class="candidate-heading">
+        <div><p id="candidate-id" class="eyebrow"></p><h2 id="candidate-title"></h2></div>
+        <div id="candidate-support" class="support"></div>
+      </div>
+      <div id="pattern" class="pattern" aria-label="Cluster terms"></div>
+      <p id="cluster-diagnostic" class="cluster-diagnostic"></p>
+      <div class="relationship-section">
+        <h3>Orthogonal relationships</h3>
+        <p>Recurring operation↔entity, entity↔container, and operation↔container links. Every link retains its supporting diff IDs.</p>
+        <div id="relationships" class="relationships"></div>
+      </div>
+    </article>
+
+    <section>
+      <div class="section-heading">
+        <h2>Member changes</h2>
+        <p>Look for one subject-matter concept shared by every diff; similar vocabulary alone is insufficient.</p>
+      </div>
+      <div id="evidence"></div>
+    </section>
+
+    <form id="review-form">
+      <h2>Interpretation</h2>
+      <div class="form-grid">
+        <label>Does one shared semantic concept exist?
+          <select id="shared-concept" required>
+            <option value="">Choose…</option>
+            <option value="yes">Yes — one concept fits every member</option>
+            <option value="no">No — this is a semantically mixed cluster</option>
+            <option value="uncertain">Uncertain — more evidence is needed</option>
+          </select>
+        </label>
+        <fieldset id="suggestion-fieldset" class="suggestions">
+          <legend>Candidate interpretations</legend>
+          <div id="suggestions"></div>
+        </fieldset>
+        <label class="wide-field">Chosen or custom noun-level interpretation
+          <input id="interpretation" maxlength="240" placeholder="e.g. Python packaging">
+        </label>
+        <label>Fit across all members
+          <select id="fit">
+            <option value="">Not scored</option>
+            <option value="1">1 — fits almost none</option><option value="2">2 — fits a minority</option>
+            <option value="3">3 — mixed fit</option><option value="4">4 — fits nearly all</option>
+            <option value="5">5 — fits every member directly</option>
+          </select>
+        </label>
+        <label>Breadth
+          <select id="breadth">
+            <option value="">Not scored</option>
+            <option value="too_broad">Too broad</option>
+            <option value="usable">Usable</option>
+            <option value="too_narrow">Too narrow</option>
+          </select>
+        </label>
+        <label>Confidence
+          <select id="confidence" required>
+            <option value="">Choose…</option>
+            <option value="1">1 — very low</option><option value="2">2 — low</option>
+            <option value="3">3 — medium</option><option value="4">4 — high</option>
+            <option value="5">5 — very high</option>
+          </select>
+        </label>
+        <label class="notes">Reviewer notes
+          <textarea id="notes" rows="4" maxlength="2000" placeholder="Which members fit or break the proposed interpretation?"></textarea>
+        </label>
+      </div>
+      <div class="form-actions"><p id="status" role="status" aria-live="polite"></p><button type="submit">Save interpretation &amp; next</button></div>
+    </form>
+  </section>
+</main>
+<script src="/text-diff.js"></script>
+<script src="/cluster-review.js"></script>

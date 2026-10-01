@@ -1,0 +1,188 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1428" viewBox="0 0 1500 1428">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<style>text{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.title{font-size:31px;font-weight:700;fill:#172033}.sub{font-size:17px;fill:#667085}.label{font-size:18px;font-weight:700;fill:#172033}.term{font-size:15px;fill:#344054}.note{font-size:14px;fill:#667085}</style>
+<text x="70" y="60" class="title">Embedding-based macro-concept clusters</text>
+<text x="70" y="93" class="sub">OpenAI embeddings + cosine average-linkage over 336 addition-dominant changes (distance ≤ 0.30)</text>
+<text x="70" y="121" class="note">Auxiliary semantic annotations—not TED/gSpan structural primitives</text>
+<text x="70" y="181" class="label">1. config · jest · options</text>
+<text x="70" y="206" class="note">16 changes · mean cosine 0.72</text>
+<rect x="500" y="164" width="100.0" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="500" y="206" class="term">config</text>
+<rect x="655" y="164" width="83.3" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="655" y="206" class="term">jest</text>
+<rect x="810" y="164" width="66.7" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="810" y="206" class="term">options</text>
+<rect x="965" y="164" width="58.3" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="965" y="206" class="term">require</text>
+<rect x="1120" y="164" width="58.3" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="1120" y="206" class="term">globals</text>
+<rect x="1275" y="164" width="50.0" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="1275" y="206" class="term">user</text>
+<line x1="70" y1="231" x2="1430" y2="231" stroke="#e3e7ee"/>
+<text x="70" y="279" class="label">2. console · log · message</text>
+<text x="70" y="304" class="note">13 changes · mean cosine 0.72</text>
+<rect x="500" y="262" width="100.0" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="500" y="304" class="term">console</text>
+<rect x="655" y="262" width="77.8" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="655" y="304" class="term">log</text>
+<rect x="810" y="262" width="66.7" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="810" y="304" class="term">message</text>
+<rect x="965" y="262" width="55.6" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="965" y="304" class="term">client</text>
+<rect x="1120" y="262" width="55.6" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="1120" y="304" class="term">server</text>
+<rect x="1275" y="262" width="44.4" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="1275" y="304" class="term">how</text>
+<line x1="70" y1="329" x2="1430" y2="329" stroke="#e3e7ee"/>
+<text x="70" y="377" class="label">3. requires · readme · pytest</text>
+<text x="70" y="402" class="note">11 changes · mean cosine 0.73</text>
+<rect x="500" y="360" width="100.0" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="500" y="402" class="term">requires</text>
+<rect x="655" y="360" width="61.5" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="655" y="402" class="term">readme</text>
+<rect x="810" y="360" width="61.5" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="810" y="402" class="term">pytest</text>
+<rect x="965" y="360" width="61.5" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="965" y="402" class="term">runner</text>
+<rect x="1120" y="360" width="30.8" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="1120" y="402" class="term">description</text>
+<rect x="1275" y="360" width="30.8" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="1275" y="402" class="term">long</text>
+<line x1="70" y1="427" x2="1430" y2="427" stroke="#e3e7ee"/>
+<text x="70" y="475" class="label">4. tasks · require · gulpfile</text>
+<text x="70" y="500" class="note">9 changes · mean cosine 0.76</text>
+<rect x="500" y="458" width="100.0" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="500" y="500" class="term">tasks</text>
+<rect x="655" y="458" width="90.0" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="655" y="500" class="term">require</text>
+<rect x="810" y="458" width="90.0" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="810" y="500" class="term">gulpfile</text>
+<rect x="965" y="458" width="80.0" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="965" y="500" class="term">gruntfile</text>
+<rect x="1120" y="458" width="70.0" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="1120" y="500" class="term">config</text>
+<rect x="1275" y="458" width="70.0" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="1275" y="500" class="term">grunt</text>
+<line x1="70" y1="525" x2="1430" y2="525" stroke="#e3e7ee"/>
+<text x="70" y="573" class="label">5. age · proxy · trust</text>
+<text x="70" y="598" class="note">7 changes · mean cosine 0.73</text>
+<rect x="500" y="556" width="100.0" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="500" y="598" class="term">age</text>
+<rect x="655" y="556" width="57.1" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="655" y="598" class="term">proxy</text>
+<rect x="810" y="556" width="57.1" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="810" y="598" class="term">trust</text>
+<rect x="965" y="556" width="57.1" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="965" y="598" class="term">router</text>
+<rect x="1120" y="556" width="57.1" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="1120" y="598" class="term">render</text>
+<rect x="1275" y="556" width="57.1" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="1275" y="598" class="term">heroku</text>
+<line x1="70" y1="623" x2="1430" y2="623" stroke="#e3e7ee"/>
+<text x="70" y="671" class="label">6. git · config · github</text>
+<text x="70" y="696" class="note">5 changes · mean cosine 0.74</text>
+<rect x="500" y="654" width="100.0" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="500" y="696" class="term">git</text>
+<rect x="655" y="654" width="54.5" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="655" y="696" class="term">config</text>
+<rect x="810" y="654" width="54.5" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="810" y="696" class="term">github</text>
+<rect x="965" y="654" width="36.4" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="965" y="696" class="term">hub</text>
+<rect x="1120" y="654" width="36.4" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="1120" y="696" class="term">notifications</text>
+<rect x="1275" y="654" width="27.3" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="1275" y="696" class="term">cannot</text>
+<line x1="70" y1="721" x2="1430" y2="721" stroke="#e3e7ee"/>
+<text x="70" y="769" class="label">7. process · firefox · debug</text>
+<text x="70" y="794" class="note">4 changes · mean cosine 0.73</text>
+<rect x="500" y="752" width="100.0" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="500" y="794" class="term">process</text>
+<rect x="655" y="752" width="57.1" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="655" y="794" class="term">firefox</text>
+<rect x="810" y="752" width="57.1" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="810" y="794" class="term">debug</text>
+<rect x="965" y="752" width="42.9" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="965" y="794" class="term">wct</text>
+<rect x="1120" y="752" width="42.9" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="1120" y="794" class="term">com</text>
+<rect x="1275" y="752" width="42.9" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="1275" y="794" class="term">env</text>
+<line x1="70" y1="819" x2="1430" y2="819" stroke="#e3e7ee"/>
+<text x="70" y="867" class="label">8. ajax · setting · success</text>
+<text x="70" y="892" class="note">4 changes · mean cosine 0.72</text>
+<rect x="500" y="850" width="100.0" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="500" y="892" class="term">ajax</text>
+<rect x="655" y="850" width="100.0" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="655" y="892" class="term">setting</text>
+<rect x="810" y="850" width="100.0" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="810" y="892" class="term">success</text>
+<rect x="965" y="850" width="71.4" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="965" y="892" class="term">admin</text>
+<rect x="1120" y="850" width="71.4" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="1120" y="892" class="term">select</text>
+<rect x="1275" y="850" width="57.1" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="1275" y="892" class="term">callback</text>
+<line x1="70" y1="917" x2="1430" y2="917" stroke="#e3e7ee"/>
+<text x="70" y="965" class="label">9. expect · store · foo</text>
+<text x="70" y="990" class="note">4 changes · mean cosine 0.72</text>
+<rect x="500" y="948" width="100.0" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="500" y="990" class="term">expect</text>
+<rect x="655" y="948" width="83.3" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="655" y="990" class="term">store</text>
+<rect x="810" y="948" width="66.7" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="810" y="990" class="term">foo</text>
+<rect x="965" y="948" width="66.7" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="965" y="990" class="term">session</text>
+<rect x="1120" y="948" width="66.7" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="1120" y="990" class="term">storage</text>
+<rect x="1275" y="948" width="66.7" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="1275" y="990" class="term">null</text>
+<line x1="70" y1="1015" x2="1430" y2="1015" stroke="#e3e7ee"/>
+<text x="70" y="1063" class="label">10. height · width · margin</text>
+<text x="70" y="1088" class="note">3 changes · mean cosine 0.73</text>
+<rect x="500" y="1046" width="100.0" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="500" y="1088" class="term">height</text>
+<rect x="655" y="1046" width="100.0" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="655" y="1088" class="term">width</text>
+<rect x="810" y="1046" width="85.7" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="810" y="1088" class="term">margin</text>
+<rect x="965" y="1046" width="85.7" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="965" y="1088" class="term">div</text>
+<rect x="1120" y="1046" width="85.7" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="1120" y="1088" class="term">layout</text>
+<rect x="1275" y="1046" width="85.7" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="1275" y="1088" class="term">padding</text>
+<line x1="70" y1="1113" x2="1430" y2="1113" stroke="#e3e7ee"/>
+<text x="70" y="1161" class="label">11. route · theme · errors</text>
+<text x="70" y="1186" class="note">3 changes · mean cosine 0.72</text>
+<rect x="500" y="1144" width="100.0" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="500" y="1186" class="term">route</text>
+<rect x="655" y="1144" width="66.7" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="655" y="1186" class="term">theme</text>
+<rect x="810" y="1144" width="66.7" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="810" y="1186" class="term">errors</text>
+<rect x="965" y="1144" width="50.0" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="965" y="1186" class="term">action</text>
+<rect x="1120" y="1144" width="50.0" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="1120" y="1186" class="term">msg</text>
+<rect x="1275" y="1144" width="50.0" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="1275" y="1186" class="term">user</text>
+<line x1="70" y1="1211" x2="1430" y2="1211" stroke="#e3e7ee"/>
+<text x="70" y="1259" class="label">12. url · opps · admin</text>
+<text x="70" y="1284" class="note">3 changes · mean cosine 0.72</text>
+<rect x="500" y="1242" width="100.0" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="500" y="1284" class="term">url</text>
+<rect x="655" y="1242" width="45.5" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="655" y="1284" class="term">opps</text>
+<rect x="810" y="1242" width="45.5" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="810" y="1284" class="term">admin</text>
+<rect x="965" y="1242" width="36.4" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="965" y="1284" class="term">album</text>
+<rect x="1120" y="1242" width="36.4" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="1120" y="1284" class="term">link</text>
+<rect x="1275" y="1242" width="36.4" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="1275" y="1284" class="term">preprints</text>
+<line x1="70" y1="1309" x2="1430" y2="1309" stroke="#e3e7ee"/>
+<text x="70" y="1394" class="note">Labels are recurrent noun-like tokens; inspect member diffs before treating a cluster as coherent.</text>
+</svg>

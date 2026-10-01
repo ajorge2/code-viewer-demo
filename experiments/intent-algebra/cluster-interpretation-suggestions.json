@@ -1,0 +1,32 @@
+{
+  "EMBED_CONCEPT_0001": [
+    {"id": "build_test_tooling", "label": "Build and test tooling", "description": "Changes to project automation used to prepare, build, watch, or test software."},
+    {"id": "release_preparation", "label": "Release preparation", "description": "Maintenance work that prepares generated assets or modules for release."},
+    {"id": "project_maintenance", "label": "Project maintenance", "description": "A deliberately broad bucket for internal upkeep and developer workflow changes."}
+  ],
+  "EMBED_CONCEPT_0002": [
+    {"id": "python_packaging", "label": "Python packaging", "description": "Package installation, distribution metadata, dependencies, and setup scripts."},
+    {"id": "installation_configuration", "label": "Installation configuration", "description": "Configuration that controls how software is installed into an environment."},
+    {"id": "distribution_metadata", "label": "Distribution metadata", "description": "Descriptions, requirements, scripts, and other package-release metadata."}
+  ],
+  "EMBED_CONCEPT_0003": [
+    {"id": "api_routing", "label": "API routing", "description": "URL declarations and callbacks that expose or connect API endpoints."},
+    {"id": "authentication_endpoints", "label": "Authentication endpoints", "description": "Routes and callbacks specifically associated with authentication flows."},
+    {"id": "url_configuration", "label": "URL configuration", "description": "A broader category for naming, registering, or connecting application URLs."}
+  ],
+  "EMBED_CONCEPT_0004": [
+    {"id": "interface_layout", "label": "Interface layout", "description": "Spatial sizing, margins, and global layout rules for user interfaces."},
+    {"id": "component_sizing", "label": "Component sizing", "description": "Width, height, and responsive size constraints on visual components."},
+    {"id": "visual_styling", "label": "Visual styling", "description": "A broad category for presentational CSS and component appearance."}
+  ],
+  "EMBED_CONCEPT_0005": [
+    {"id": "github_integration", "label": "GitHub integration", "description": "Application behavior that communicates with or responds to GitHub."},
+    {"id": "repository_automation", "label": "Repository automation", "description": "Automated handling of repository events, notifications, and responses."},
+    {"id": "github_api_behavior", "label": "GitHub API behavior", "description": "Requests, notifications, and status responses involving GitHub APIs."}
+  ],
+  "EMBED_CONCEPT_0006": [
+    {"id": "component_styling", "label": "Component styling", "description": "Presentation-related behavior applied within reusable UI components."},
+    {"id": "presentation_properties", "label": "Presentation properties", "description": "Props and attributes that control visual rendering or CSS output."},
+    {"id": "ui_component_configuration", "label": "UI component configuration", "description": "A broader category for configuring reusable interface components."}
+  ]
+}

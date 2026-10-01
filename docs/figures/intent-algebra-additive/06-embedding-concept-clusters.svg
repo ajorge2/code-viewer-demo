@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="840" viewBox="0 0 1500 840">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<style>text{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.title{font-size:31px;font-weight:700;fill:#172033}.sub{font-size:17px;fill:#667085}.label{font-size:18px;font-weight:700;fill:#172033}.term{font-size:15px;fill:#344054}.note{font-size:14px;fill:#667085}</style>
+<text x="70" y="60" class="title">Embedding-based macro-concept clusters</text>
+<text x="70" y="93" class="sub">OpenAI embeddings + cosine average-linkage over 68 addition-dominant changes (distance ≤ 0.30)</text>
+<text x="70" y="121" class="note">Auxiliary semantic annotations—not TED/gSpan structural primitives</text>
+<text x="70" y="181" class="label">1. tasks · prepare · config</text>
+<text x="70" y="206" class="note">5 changes · mean cosine 0.73</text>
+<rect x="500" y="164" width="100.0" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="500" y="206" class="term">tasks</text>
+<rect x="655" y="164" width="80.0" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="655" y="206" class="term">prepare</text>
+<rect x="810" y="164" width="80.0" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="810" y="206" class="term">config</text>
+<rect x="965" y="164" width="80.0" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="965" y="206" class="term">dev</text>
+<rect x="1120" y="164" width="60.0" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="1120" y="206" class="term">pat</text>
+<rect x="1275" y="164" width="60.0" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="1275" y="206" class="term">replace</text>
+<line x1="70" y1="231" x2="1430" y2="231" stroke="#e3e7ee"/>
+<text x="70" y="279" class="label">2. description · long · readme</text>
+<text x="70" y="304" class="note">4 changes · mean cosine 0.72</text>
+<rect x="500" y="262" width="100.0" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="500" y="304" class="term">description</text>
+<rect x="655" y="262" width="100.0" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="655" y="304" class="term">long</text>
+<rect x="810" y="262" width="100.0" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="810" y="304" class="term">readme</text>
+<rect x="965" y="262" width="100.0" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="965" y="304" class="term">rst</text>
+<rect x="1120" y="262" width="100.0" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="1120" y="304" class="term">install</text>
+<rect x="1275" y="262" width="100.0" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="1275" y="304" class="term">numpy</text>
+<line x1="70" y1="329" x2="1430" y2="329" stroke="#e3e7ee"/>
+<text x="70" y="377" class="label">3. url · auth · token</text>
+<text x="70" y="402" class="note">3 changes · mean cosine 0.71</text>
+<rect x="500" y="360" width="100.0" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="500" y="402" class="term">url</text>
+<rect x="655" y="360" width="60.0" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="655" y="402" class="term">auth</text>
+<rect x="810" y="360" width="40.0" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="810" y="402" class="term">token</text>
+<rect x="965" y="360" width="40.0" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="965" y="402" class="term">callback</text>
+<rect x="1120" y="360" width="40.0" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="1120" y="402" class="term">album</text>
+<rect x="1275" y="360" width="40.0" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="1275" y="402" class="term">link</text>
+<line x1="70" y1="427" x2="1430" y2="427" stroke="#e3e7ee"/>
+<text x="70" y="475" class="label">4. margin · layout · height</text>
+<text x="70" y="500" class="note">2 changes · mean cosine 0.75</text>
+<rect x="500" y="458" width="100.0" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="500" y="500" class="term">margin</text>
+<rect x="655" y="458" width="100.0" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="655" y="500" class="term">layout</text>
+<rect x="810" y="458" width="66.7" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="810" y="500" class="term">height</text>
+<rect x="965" y="458" width="66.7" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="965" y="500" class="term">width</text>
+<rect x="1120" y="458" width="50.0" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="1120" y="500" class="term">27vw</text>
+<rect x="1275" y="458" width="50.0" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="1275" y="500" class="term">80vh</text>
+<line x1="70" y1="525" x2="1430" y2="525" stroke="#e3e7ee"/>
+<text x="70" y="573" class="label">5. github · git · hub</text>
+<text x="70" y="598" class="note">2 changes · mean cosine 0.75</text>
+<rect x="500" y="556" width="100.0" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="500" y="598" class="term">github</text>
+<rect x="655" y="556" width="66.7" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="655" y="598" class="term">git</text>
+<rect x="810" y="556" width="66.7" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="810" y="598" class="term">hub</text>
+<rect x="965" y="556" width="66.7" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="965" y="598" class="term">notifications</text>
+<rect x="1120" y="556" width="50.0" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="1120" y="598" class="term">res</text>
+<rect x="1275" y="556" width="50.0" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="1275" y="598" class="term">send</text>
+<line x1="70" y1="623" x2="1430" y2="623" stroke="#e3e7ee"/>
+<text x="70" y="671" class="label">6. props · style · current</text>
+<text x="70" y="696" class="note">2 changes · mean cosine 0.74</text>
+<rect x="500" y="654" width="100.0" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="500" y="696" class="term">props</text>
+<rect x="655" y="654" width="66.7" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="655" y="696" class="term">style</text>
+<rect x="810" y="654" width="50.0" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="810" y="696" class="term">current</text>
+<rect x="965" y="654" width="50.0" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="965" y="696" class="term">cursor</text>
+<rect x="1120" y="654" width="50.0" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="1120" y="696" class="term">label</text>
+<rect x="1275" y="654" width="50.0" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="1275" y="696" class="term">pointer</text>
+<line x1="70" y1="721" x2="1430" y2="721" stroke="#e3e7ee"/>
+<text x="70" y="806" class="note">Labels are recurrent noun-like tokens; inspect member diffs before treating a cluster as coherent.</text>
+</svg>

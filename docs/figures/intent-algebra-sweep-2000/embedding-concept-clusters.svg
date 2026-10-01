@@ -1,0 +1,188 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1428" viewBox="0 0 1500 1428">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<style>text{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.title{font-size:31px;font-weight:700;fill:#172033}.sub{font-size:17px;fill:#667085}.label{font-size:18px;font-weight:700;fill:#172033}.term{font-size:15px;fill:#344054}.note{font-size:14px;fill:#667085}</style>
+<text x="70" y="60" class="title">Embedding-based macro-concept clusters</text>
+<text x="70" y="93" class="sub">OpenAI embeddings + cosine average-linkage over 1278 addition-dominant changes (distance ≤ 0.30)</text>
+<text x="70" y="121" class="note">Auxiliary semantic annotations—not TED/gSpan structural primitives</text>
+<text x="70" y="181" class="label">1. config · require · webpack</text>
+<text x="70" y="206" class="note">76 changes · mean cosine 0.73</text>
+<rect x="500" y="164" width="100.0" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="500" y="206" class="term">config</text>
+<rect x="655" y="164" width="65.3" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="655" y="206" class="term">require</text>
+<rect x="810" y="164" width="57.1" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="810" y="206" class="term">webpack</text>
+<rect x="965" y="164" width="53.1" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="965" y="206" class="term">eslintrc</text>
+<rect x="1120" y="164" width="49.0" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="1120" y="206" class="term">jest</text>
+<rect x="1275" y="164" width="36.7" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="1275" y="206" class="term">react</text>
+<line x1="70" y1="231" x2="1430" y2="231" stroke="#e3e7ee"/>
+<text x="70" y="279" class="label">2. requires · readme · python</text>
+<text x="70" y="304" class="note">42 changes · mean cosine 0.72</text>
+<rect x="500" y="262" width="100.0" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="500" y="304" class="term">requires</text>
+<rect x="655" y="262" width="76.1" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="655" y="304" class="term">readme</text>
+<rect x="810" y="262" width="65.2" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="810" y="304" class="term">python</text>
+<rect x="965" y="262" width="52.2" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="965" y="304" class="term">description</text>
+<rect x="1120" y="262" width="47.8" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="1120" y="304" class="term">long</text>
+<rect x="1275" y="262" width="47.8" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="1275" y="304" class="term">install</text>
+<line x1="70" y1="329" x2="1430" y2="329" stroke="#e3e7ee"/>
+<text x="70" y="377" class="label">3. task · grunt · gruntfile</text>
+<text x="70" y="402" class="note">30 changes · mean cosine 0.76</text>
+<rect x="500" y="360" width="100.0" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="500" y="402" class="term">task</text>
+<rect x="655" y="360" width="93.1" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="655" y="402" class="term">grunt</text>
+<rect x="810" y="360" width="86.2" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="810" y="402" class="term">gruntfile</text>
+<rect x="965" y="360" width="75.9" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="965" y="402" class="term">tasks</text>
+<rect x="1120" y="360" width="65.5" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="1120" y="402" class="term">gulpfile</text>
+<rect x="1275" y="360" width="58.6" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="1275" y="402" class="term">watch</text>
+<line x1="70" y1="427" x2="1430" y2="427" stroke="#e3e7ee"/>
+<text x="70" y="475" class="label">4. env · process · port</text>
+<text x="70" y="500" class="note">18 changes · mean cosine 0.75</text>
+<rect x="500" y="458" width="100.0" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="500" y="500" class="term">env</text>
+<rect x="655" y="458" width="96.4" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="655" y="500" class="term">process</text>
+<rect x="810" y="458" width="82.1" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="810" y="500" class="term">port</text>
+<rect x="965" y="458" width="60.7" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="965" y="500" class="term">server</text>
+<rect x="1120" y="458" width="57.1" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="1120" y="500" class="term">config</text>
+<rect x="1275" y="458" width="46.4" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="1275" y="500" class="term">console</text>
+<line x1="70" y1="525" x2="1430" y2="525" stroke="#e3e7ee"/>
+<text x="70" y="573" class="label">5. router · path · age</text>
+<text x="70" y="598" class="note">17 changes · mean cosine 0.73</text>
+<rect x="500" y="556" width="100.0" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="500" y="598" class="term">router</text>
+<rect x="655" y="556" width="40.0" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="655" y="598" class="term">path</text>
+<rect x="810" y="556" width="35.0" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="810" y="598" class="term">age</text>
+<rect x="965" y="556" width="35.0" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="965" y="598" class="term">routes</text>
+<rect x="1120" y="556" width="30.0" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="1120" y="598" class="term">static</text>
+<rect x="1275" y="556" width="30.0" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="1275" y="598" class="term">window</text>
+<line x1="70" y1="623" x2="1430" y2="623" stroke="#e3e7ee"/>
+<text x="70" y="671" class="label">6. height · width · html</text>
+<text x="70" y="696" class="note">16 changes · mean cosine 0.72</text>
+<rect x="500" y="654" width="100.0" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="500" y="696" class="term">height</text>
+<rect x="655" y="654" width="83.3" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="655" y="696" class="term">width</text>
+<rect x="810" y="654" width="75.0" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="810" y="696" class="term">html</text>
+<rect x="965" y="654" width="66.7" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="965" y="696" class="term">layout</text>
+<rect x="1120" y="654" width="66.7" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="1120" y="696" class="term">content</text>
+<rect x="1275" y="654" width="66.7" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="1275" y="696" class="term">image</text>
+<line x1="70" y1="721" x2="1430" y2="721" stroke="#e3e7ee"/>
+<text x="70" y="769" class="label">7. git · github · type</text>
+<text x="70" y="794" class="note">10 changes · mean cosine 0.73</text>
+<rect x="500" y="752" width="100.0" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="500" y="794" class="term">git</text>
+<rect x="655" y="752" width="73.3" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="655" y="794" class="term">github</text>
+<rect x="810" y="752" width="46.7" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="810" y="794" class="term">type</text>
+<rect x="965" y="752" width="40.0" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="965" y="794" class="term">config</text>
+<rect x="1120" y="752" width="40.0" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="1120" y="794" class="term">json</text>
+<rect x="1275" y="752" width="40.0" height="18" rx="4" fill="#2563eb" opacity="0.82"/>
+<text x="1275" y="794" class="term">require</text>
+<line x1="70" y1="819" x2="1430" y2="819" stroke="#e3e7ee"/>
+<text x="70" y="867" class="label">8. scroll · event · active</text>
+<text x="70" y="892" class="note">8 changes · mean cosine 0.75</text>
+<rect x="500" y="850" width="100.0" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="500" y="892" class="term">scroll</text>
+<rect x="655" y="850" width="90.0" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="655" y="892" class="term">event</text>
+<rect x="810" y="850" width="60.0" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="810" y="892" class="term">active</text>
+<rect x="965" y="850" width="60.0" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="965" y="892" class="term">attr</text>
+<rect x="1120" y="850" width="60.0" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="1120" y="892" class="term">click</text>
+<rect x="1275" y="850" width="60.0" height="18" rx="4" fill="#7c3aed" opacity="0.82"/>
+<text x="1275" y="892" class="term">document</text>
+<line x1="70" y1="917" x2="1430" y2="917" stroke="#e3e7ee"/>
+<text x="70" y="965" class="label">9. user · profile · hash</text>
+<text x="70" y="990" class="note">8 changes · mean cosine 0.74</text>
+<rect x="500" y="948" width="100.0" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="500" y="990" class="term">user</text>
+<rect x="655" y="948" width="45.8" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="655" y="990" class="term">profile</text>
+<rect x="810" y="948" width="29.2" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="810" y="990" class="term">hash</text>
+<rect x="965" y="948" width="25.0" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="965" y="990" class="term">location</text>
+<rect x="1120" y="948" width="25.0" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="1120" y="990" class="term">next</text>
+<rect x="1275" y="948" width="16.7" height="18" rx="4" fill="#138a72" opacity="0.82"/>
+<text x="1275" y="990" class="term">copy</text>
+<line x1="70" y1="1015" x2="1430" y2="1015" stroke="#e3e7ee"/>
+<text x="70" y="1063" class="label">10. ember · cli · content</text>
+<text x="70" y="1088" class="note">8 changes · mean cosine 0.74</text>
+<rect x="500" y="1046" width="100.0" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="500" y="1088" class="term">ember</text>
+<rect x="655" y="1046" width="58.8" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="655" y="1088" class="term">cli</text>
+<rect x="810" y="1046" width="47.1" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="810" y="1088" class="term">content</text>
+<rect x="965" y="1046" width="35.3" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="965" y="1088" class="term">google</text>
+<rect x="1120" y="1046" width="35.3" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="1120" y="1088" class="term">type</text>
+<rect x="1275" y="1046" width="23.5" height="18" rx="4" fill="#d97706" opacity="0.82"/>
+<text x="1275" y="1088" class="term">addons</text>
+<line x1="70" y1="1113" x2="1430" y2="1113" stroke="#e3e7ee"/>
+<text x="70" y="1161" class="label">11. props · todo · list</text>
+<text x="70" y="1186" class="note">8 changes · mean cosine 0.72</text>
+<rect x="500" y="1144" width="100.0" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="500" y="1186" class="term">props</text>
+<rect x="655" y="1144" width="66.7" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="655" y="1186" class="term">todo</text>
+<rect x="810" y="1144" width="44.4" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="810" y="1186" class="term">list</text>
+<rect x="965" y="1144" width="33.3" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="965" y="1186" class="term">bind</text>
+<rect x="1120" y="1144" width="33.3" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="1120" y="1186" class="term">constructor</text>
+<rect x="1275" y="1144" width="33.3" height="18" rx="4" fill="#d94f70" opacity="0.82"/>
+<text x="1275" y="1186" class="term">state</text>
+<line x1="70" y1="1211" x2="1430" y2="1211" stroke="#e3e7ee"/>
+<text x="70" y="1259" class="label">12. log · level · date</text>
+<text x="70" y="1284" class="note">7 changes · mean cosine 0.77</text>
+<rect x="500" y="1242" width="100.0" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="500" y="1284" class="term">log</text>
+<rect x="655" y="1242" width="84.6" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="655" y="1284" class="term">level</text>
+<rect x="810" y="1242" width="46.2" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="810" y="1284" class="term">date</text>
+<rect x="965" y="1242" width="38.5" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="965" y="1284" class="term">logging</text>
+<rect x="1120" y="1242" width="38.5" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="1120" y="1284" class="term">result</text>
+<rect x="1275" y="1242" width="30.8" height="18" rx="4" fill="#58748f" opacity="0.82"/>
+<text x="1275" y="1284" class="term">timestamp</text>
+<line x1="70" y1="1309" x2="1430" y2="1309" stroke="#e3e7ee"/>
+<text x="70" y="1394" class="note">Labels are recurrent noun-like tokens; inspect member diffs before treating a cluster as coherent.</text>
+</svg>

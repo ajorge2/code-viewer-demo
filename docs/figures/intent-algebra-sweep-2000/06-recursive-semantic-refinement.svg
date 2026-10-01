@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1017" viewBox="0 0 1400 1017" role="img" aria-labelledby="title desc">
+<title id="title">Downward semantic refinement</title>
+<desc id="desc">The three largest accepted roots; child meanings are discovered within each parent, while structural rules remain evidence</desc>
+<rect width="1400" height="1017" fill="#ffffff"/>
+<style>text{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.title{font-size:31px;font-weight:700;fill:#172033}.subtitle{font-size:17px;fill:#667085}.axis{font-size:15px;fill:#667085}.label{font-size:18px;fill:#172033}.value{font-size:18px;font-weight:700}.note{font-size:14px;fill:#667085}</style>
+<text x="70.0" y="65.0" text-anchor="start" class="title">Downward semantic refinement</text>
+<text x="70.0" y="98.0" text-anchor="start" class="subtitle">The three largest accepted roots; child meanings are discovered within each parent, while structural rules remain evidence</text>
+<rect x="70.0" y="273.0" width="330.0" height="50.0" fill="#e8edf5" rx="7.0" stroke="#d7dde7" stroke-width="1"/>
+<rect x="70.0" y="273.0" width="8.0" height="50.0" fill="#2563eb" rx="3.0"/>
+<text x="90.0" y="295.0" text-anchor="start" class="label" style="font-weight:700;font-size:16px">config · require · webpack</text>
+<text x="90.0" y="315.0" text-anchor="start" class="note">76 changes</text>
+<line x1="400.0" y1="298.0" x2="455.0" y2="298.0" stroke="#d7dde7" stroke-width="2"/>
+<line x1="455.0" y1="172.0" x2="455.0" y2="424.0" stroke="#d7dde7" stroke-width="2"/>
+<line x1="455.0" y1="172.0" x2="500.0" y2="172.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="156.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="177.0" text-anchor="start" class="label" style="font-size:14px">eslintrc · eslint · es6 · 19</text>
+<line x1="885.0" y1="172.0" x2="925.0" y2="172.0" stroke="#d7dde7" stroke-width="2"/>
+<text x="940.0" y="177.0" text-anchor="start" class="note">eslintrc · es6 · br… (9); curly · react · jsx (3)</text>
+<line x1="455.0" y1="214.0" x2="500.0" y2="214.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="198.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="219.0" text-anchor="start" class="label" style="font-size:14px">webpack · config · loader · 8</text>
+<line x1="455.0" y1="256.0" x2="500.0" y2="256.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="240.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="261.0" text-anchor="start" class="label" style="font-size:14px">jest · config · typescript · 5</text>
+<line x1="455.0" y1="298.0" x2="500.0" y2="298.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="282.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="303.0" text-anchor="start" class="label" style="font-size:14px">shim · config · require · 5</text>
+<line x1="455.0" y1="340.0" x2="500.0" y2="340.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="324.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="345.0" text-anchor="start" class="label" style="font-size:14px">require · exports · liphte · 4</text>
+<line x1="455.0" y1="382.0" x2="500.0" y2="382.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="366.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="387.0" text-anchor="start" class="label" style="font-size:14px">closed · hello · passed · 4</text>
+<line x1="455.0" y1="424.0" x2="500.0" y2="424.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="408.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="429.0" text-anchor="start" class="label" style="font-size:14px">chai · spies · sinon · 3</text>
+<line x1="70.0" y1="474.0" x2="1330.0" y2="474.0" stroke="#d7dde7" stroke-width="1"/>
+<rect x="70.0" y="591.0" width="330.0" height="50.0" fill="#e8edf5" rx="7.0" stroke="#d7dde7" stroke-width="1"/>
+<rect x="70.0" y="591.0" width="8.0" height="50.0" fill="#d97706" rx="3.0"/>
+<text x="90.0" y="613.0" text-anchor="start" class="label" style="font-weight:700;font-size:16px">requires · readme · python</text>
+<text x="90.0" y="633.0" text-anchor="start" class="note">42 changes</text>
+<line x1="400.0" y1="616.0" x2="455.0" y2="616.0" stroke="#d7dde7" stroke-width="2"/>
+<line x1="455.0" y1="511.0" x2="455.0" y2="721.0" stroke="#d7dde7" stroke-width="2"/>
+<line x1="455.0" y1="511.0" x2="500.0" y2="511.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="495.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="516.0" text-anchor="start" class="label" style="font-size:14px">readme · description · long · 8</text>
+<line x1="455.0" y1="553.0" x2="500.0" y2="553.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="537.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="558.0" text-anchor="start" class="label" style="font-size:14px">requires · python · install · 7</text>
+<line x1="455.0" y1="595.0" x2="500.0" y2="595.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="579.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="600.0" text-anchor="start" class="label" style="font-size:14px">django · requires · url · 6</text>
+<line x1="455.0" y1="637.0" x2="500.0" y2="637.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="621.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="642.0" text-anchor="start" class="label" style="font-size:14px">pytest · runner · requires · 3</text>
+<line x1="455.0" y1="679.0" x2="500.0" y2="679.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="663.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="684.0" text-anchor="start" class="label" style="font-size:14px">readme · package · description · 3</text>
+<line x1="455.0" y1="721.0" x2="500.0" y2="721.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="705.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="726.0" text-anchor="start" class="label" style="font-size:14px">package · contrib · include · 3</text>
+<line x1="70.0" y1="771.0" x2="1330.0" y2="771.0" stroke="#d7dde7" stroke-width="1"/>
+<rect x="70.0" y="825.0" width="330.0" height="50.0" fill="#e8edf5" rx="7.0" stroke="#d7dde7" stroke-width="1"/>
+<rect x="70.0" y="825.0" width="8.0" height="50.0" fill="#7c3aed" rx="3.0"/>
+<text x="90.0" y="847.0" text-anchor="start" class="label" style="font-weight:700;font-size:16px">task · grunt · gruntfile</text>
+<text x="90.0" y="867.0" text-anchor="start" class="note">30 changes</text>
+<line x1="400.0" y1="850.0" x2="455.0" y2="850.0" stroke="#d7dde7" stroke-width="2"/>
+<line x1="455.0" y1="808.0" x2="455.0" y2="892.0" stroke="#d7dde7" stroke-width="2"/>
+<line x1="455.0" y1="808.0" x2="500.0" y2="808.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="792.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="813.0" text-anchor="start" class="label" style="font-size:14px">gruntfile · grunt · jshint · 10</text>
+<line x1="885.0" y1="808.0" x2="925.0" y2="808.0" stroke="#d7dde7" stroke-width="2"/>
+<text x="940.0" y="813.0" text-anchor="start" class="note">grunt · task · regi… (4); jshint · config · g… (3)</text>
+<line x1="455.0" y1="850.0" x2="500.0" y2="850.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="834.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="855.0" text-anchor="start" class="label" style="font-size:14px">gulpfile · require · gulp · 5</text>
+<line x1="455.0" y1="892.0" x2="500.0" y2="892.0" stroke="#d7dde7" stroke-width="2"/>
+<rect x="500.0" y="876.0" width="385.0" height="32.0" fill="#f7f9fc" rx="5.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="515.0" y="897.0" text-anchor="start" class="label" style="font-size:14px">task · watch · gulp · 5</text>
+<text x="70.0" y="992.0" text-anchor="start" class="note">9 accepted splits overall; maximum depth 2. Labels are provisional noun summaries.</text>
+</svg>

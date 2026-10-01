@@ -1,0 +1,21 @@
+rules:
+  - id: intent-python-setup-before
+    languages: [python]
+    message: Python setup call in the original version
+    severity: INFO
+    pattern: setup(...)
+
+  - id: intent-python-package-after
+    languages: [python]
+    message: Python package metadata in the updated version
+    severity: INFO
+    patterns:
+      - pattern-either:
+          - pattern: setup(..., description=$VALUE, ...)
+          - pattern: setup(..., author=$VALUE, ...)
+
+  - id: intent-python-trove-after
+    languages: [python]
+    message: Trove classifier metadata in the updated version
+    severity: INFO
+    pattern: setup(..., classifiers=$VALUE, ...)
