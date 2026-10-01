@@ -530,7 +530,32 @@
       "decision": "retain_role_aware_policy_and_add_source_level_probes",
       "reason": "Randomizing local labels while preserving semantic anchors keeps every persisted-AST clause matched, while mutating the anchors themselves breaks every tested clause. The distinction is empirically supported but still needs complete source mutation and GumTree/Semgrep reparsing."
     },
-    "decision": "continue_to_feedback_loop_expansion_and_provenance",
+    "broad_component_category_layer": {
+      "reliable_leaf_meaning_count": 49,
+      "raw_multi_leaf_group_count": 12,
+      "coherent_component_count": 11,
+      "assigned_leaf_count": 41,
+      "unassigned_leaf_count": 8,
+      "leaves_with_secondary_parent": 1,
+      "maximum_parents_per_leaf": 2,
+      "component_names": [
+        "Build and development tooling",
+        "Package distribution configuration",
+        "Routing",
+        "User interface",
+        "Web server integration",
+        "Browser testing infrastructure",
+        "Authentication",
+        "Automated testing",
+        "User data management",
+        "Game application",
+        "Network communication interfaces"
+      ],
+      "universal_coverage_validated": false,
+      "decision": "retain_as_candidate_component_layer_and_test_on_static_code",
+      "reason": "The parent layer turns narrow traceable change meanings into broader component responsibilities without forcing every meaning into a closed taxonomy. Eight leaves abstain and one cross-cutting Webpack/server meaning receives two parents. General usefulness must now be measured against static components from held-out repositories."
+    },
+    "decision": "continue_to_static_component_coverage_and_feedback_loop_expansion",
     "reason": "The larger nested sample preserves or label-shifts 88 of 169 earlier clusters while exposing 81 unstable categories and 27 useful downward splits. Clear categories such as Python package setup, Grunt/Gulp workflows, and Django URL configuration strengthen, while broad mixed parents abstain. The new positive-specificity gate prevents recursive children from being promoted when their meaning adds no fit beyond the parent."
   }
 }

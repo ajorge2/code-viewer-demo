@@ -681,6 +681,37 @@ def plot_semantic_expansion_loop(
     svg.finish(output)
 
 
+def plot_component_category_hierarchy(hierarchy: dict, output: Path) -> None:
+    components = hierarchy["components"]
+    svg = Svg(
+        "Broad component categories above grounded change meanings",
+        f"{hierarchy['coherent_component_count']} coherent parents cover {hierarchy['leaves_with_component_membership']} of {hierarchy['eligible_leaf_count']} reliable leaves; overlap is allowed but bounded",
+        height=900,
+    )
+    left, right = 390, 1280
+    max_support = max(component["support"] for component in components)
+    colors = [MEDIUM_CONFIDENCE, HIGH_CONFIDENCE, INTERSECTION, JAVASCRIPT]
+    svg.text(70, 142, "Component category", cls="axis")
+    svg.text(left, 142, "Unique supporting changes", cls="axis")
+    for index, component in enumerate(components):
+        y = 170 + index * 57
+        width = (right - left) * component["support"] / max_support
+        color = colors[index % len(colors)]
+        svg.text(left - 20, y + 24, component["name"], anchor="end", size=16, weight=700)
+        svg.rect(left, y, width, 32, color, rx=6)
+        svg.text(left + width + 12, y + 23, f"{component['support']} changes · {component['child_count']} leaves", size=14, weight=700)
+        if component["secondary_child_ids"]:
+            svg.text(left + width + 210, y + 23, f"+{len(component['secondary_child_ids'])} overlap", size=13, fill=INTERSECTION, weight=700)
+    svg.rect(70, 822, 1260, 45, "#f7f9fc", rx=8, stroke=GRID)
+    svg.text(
+        90,
+        850,
+        "Eight reliable meanings remain unassigned instead of being forced into a vague parent. Support is deduplicated by underlying change; these are candidate components, not universal coverage claims.",
+        cls="note",
+    )
+    svg.finish(output)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -741,6 +772,13 @@ def main() -> None:
             json.loads(audit_path.read_text(encoding="utf-8")),
             json.loads(expanded_evaluation_path.read_text(encoding="utf-8")),
             args.output / "09-semantic-structural-feedback-loop.svg",
+        )
+        figure_count += 1
+    component_hierarchy_path = args.input / "component-category-hierarchy.json"
+    if component_hierarchy_path.exists():
+        plot_component_category_hierarchy(
+            json.loads(component_hierarchy_path.read_text(encoding="utf-8")),
+            args.output / "10-component-category-hierarchy.svg",
         )
         figure_count += 1
     print(f"Wrote {figure_count} figures to {args.output}")

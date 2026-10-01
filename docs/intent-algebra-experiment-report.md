@@ -1,6 +1,6 @@
 # CodeArchitect Intent Algebra: Bottom-Up Primitive Discovery for Human-Readable Code Explanations
 **September 30, 2026 – In progress**
-**Status**: In progress — corpus access verified; deterministic 200-, 1,000-, 4,000-, and 10,000-diff experiments have run through GumTree extraction, bounded gSpan discovery, semantic/code clustering, nested-sample stability analysis, downward semantic recursion, centroid-aware meaning grounding, TED-based expansion, semantic-first structural alignment, category-conditioned structural-rule induction, paired Semgrep/GumTree execution, and a first semantic–structural feedback loop; calibrated confidence, independent-repository enrichment, broader paired-rule coverage, final edit-script MDL evaluation, and product benchmarks remain open
+**Status**: In progress — corpus access verified; deterministic 200-, 1,000-, 4,000-, and 10,000-diff experiments have run through GumTree extraction, bounded gSpan discovery, semantic/code clustering, nested-sample stability analysis, downward semantic recursion, centroid-aware meaning grounding, TED-based expansion, semantic-first structural alignment, category-conditioned structural-rule induction, paired Semgrep/GumTree execution, a semantic–structural feedback loop, and broad component-category induction; static-code coverage, independent-repository enrichment, broader paired-rule coverage, complete edit-tree MDL, and product benchmarks remain open
 
 ## 1. Business / Decision Context (The “Why”)
 
@@ -865,9 +865,42 @@ context frames. It does not yet mutate complete source files and reparse them th
 GumTree and Semgrep, so it is strong intermediate evidence rather than the final
 metamorphic gate.
 
+### Broad component-category layer
+
+The grounded change meanings are now treated as traceable leaves beneath a broader,
+overlapping component vocabulary. Forty-nine high/medium-confidence meanings were
+clustered by their definitions; an LLM named only groups with a recognizable shared
+component responsibility, and parent definitions were rescored against every child
+meaning. A leaf may receive at most two parents when a secondary parent fits nearly as
+well as its primary one.
+
+| Broad component category | Primary leaf meanings | Unique supporting changes |
+|---|---:|---:|
+| Build and development tooling | 9 | 115 |
+| Package distribution configuration | 4 | 101 |
+| Routing | 5 | 61 |
+| User interface | 6 | 56 |
+| Web server integration | 3 | 49 |
+| Browser testing infrastructure | 2 | 26 |
+| Authentication | 3 | 24 |
+| Automated testing | 3 | 21 |
+| User data management | 2 | 18 |
+| Game application | 2 | 16 |
+| Network communication interfaces | 2 | 13 |
+
+Eleven coherent parents cover 41 of the 49 reliable meanings. Eight meanings—including
+GitHub integration, queue consumers, temporal normalization, and JavaScript diagnostics—
+remain unassigned instead of being forced into vague buckets. Webpack-associated server
+configuration has both **Build and development tooling** and **Web server integration**
+parents, demonstrating bounded overlap. These categories are a candidate descriptive
+layer, not evidence of universal repository coverage. The next evaluation must apply
+them to static components from held-out repositories rather than more commit clusters.
+
 ![Category-conditioned structural rule performance](figures/intent-algebra-sweep-5000/08-structural-rule-performance.svg)
 
 ![Semantic–structural feedback loop](figures/intent-algebra-sweep-5000/09-semantic-structural-feedback-loop.svg)
+
+![Broad component categories](figures/intent-algebra-sweep-5000/10-component-category-hierarchy.svg)
 
 ### Pre-registered quality comparison
 
@@ -898,6 +931,7 @@ The current working tree now contains an executable pilot in addition to existin
 - Semgrep 1.176.0 now executes two paired Python category prefilters across 1,533 reconstructed before/after pairs; a sample-ID join and GumTree clause verifier convert those source matches into change-pattern matches.
 - A cached cumulative-evidence audit now loops traceable out-of-cluster matches back into semantic membership using meaning-vector fit plus LLM entailment, then re-induces and re-evaluates the structural rule.
 - A repository-support analyzer now collapses multi-repository rows and shared repository names into observed provenance components instead of treating every listed alias as independent support.
+- A grounded component hierarchy now groups 41 of 49 reliable change meanings into 11 broad, traceable component categories with bounded multi-parent overlap and explicit abstention for unmatched meanings.
 - Held-out category-label MDL, structural-constituent MDL, and persisted-AST role-aware metamorphic probes are implemented for triage. Primitive registration, lattice resolution, source-reparse probes, complete edit-tree MDL, and explanation-quality benchmarks remain unimplemented.
 
 ## 5. Business / Practical Impact
@@ -958,6 +992,7 @@ Current, defensible pilot bullets:
 - Audited provenance for 49 grounded categories and found one that clears both observed support proxies: 101 patch-distinct Python package setup changes across 101 known-name components and 184 raw repository aliases.
 - Distinguished predictive label compression from composite-pattern compression, evaluating 81 multi-atom clauses and retaining one 25-match Grunt/Gulp structure at 1.50× while correctly marking atomic package and Trove rules MDL-inapplicable.
 - Implemented role-aware metamorphic tests that preserved 589/589 clauses under local-name randomization and rejected 515/515 anchor mutations, including 100% results for package setup and Trove rules.
+- Induced 11 broad component categories above 49 reliable change meanings, covering 41 meanings while preserving eight abstentions and a traceable cross-cutting overlap between build tooling and web-server integration.
 - Separated minimal queue discovery from flexible composite expansion across 1,933 addition-dominant changes with up to 32 components, caught a 22.8%-precision constraint retriever before registration, and collapsed 67 exact-host candidates into 45 unique contexts including 13 multi-base lattice intersections.
 - Preserved directed edit semantics for undirected gSpan mining through relation-node encoding, then reduced 1,957 frequent fragments to 26 support-closed pilot candidates with structural-validity and labeled-supergraph checks.
 - Created an auditable grounding queue that joins every pilot candidate to commit text, code excerpts, and provenance while explicitly withholding meanings that do not yet meet semantic or independence requirements.
@@ -977,17 +1012,17 @@ Future result bullets must still wait for held-out human evaluation and must not
 - Addition dominance is a useful cohort filter, not a semantic guarantee: a valid additive graph can still yield punctuation or generic-expression subgraphs unless candidate-level context is required.
 - Orthogonal primitives and architectural topics are different representational layers. Database, cache, authentication, and similar concepts should overlap freely rather than being forced into the primitive lattice.
 - Discovery-cluster membership is not exhaustive semantic ground truth. Structurally matched non-members must be audited as possible category expansions before they are counted as false positives.
+- Change intent and repository component identity are different levels. Narrow, code-grounded change meanings should support broader multi-label component categories rather than being stretched into universal labels themselves.
 
 ### Immediate next steps
 
-1. Enrich the 101-change package category with parent SHAs, fork/mirror relationships, timestamps, and commit-wide changed-file lists to validate the observed 101-component provenance proxy.
-2. Run held-out semantic entailment and source-level mutation/reparse probes for package setup; its persisted-AST role-aware probes already pass 589/589 positive and 515/515 negative cases globally.
-3. Audit the five low-vector-fit but LLM-entailing package candidates and analyze the remaining 25 missed expanded-reference members without fitting rules to sample IDs.
-4. Generalize the feedback loop to additional strong semantic categories, compiling paired matchers only when structural clauses add discriminative evidence over the Semgrep prefilter; evaluate complete edit-tree MDL only for multi-atom composites.
-5. Preserve semantic categories as primary registry nodes and structural AND/OR rules as traceable implementation evidence; reject punctuation-only clauses and abstain when no discriminative structural rule can be induced.
-6. Scale GumTree extraction after the grouping audit, measuring throughput and failure modes by language rather than immediately mining every retained row.
-7. Implement registry validation, relation cycle checks, most-specific-match resolution, and positive/negative metamorphic probes.
-8. Run the syntax-only, direct-LLM, retrieval, and current-CodeArchitect baselines before making explanation-quality or business-impact claims.
+1. Build a held-out static-component benchmark from unfamiliar repositories, then measure how often the 11 broad parents provide a useful description, overlap appropriately, or abstain.
+2. Use uncovered static components to drive additional bottom-up discovery—especially storage, caching, observability, background work, and other concepts that should not be inserted without corpus evidence.
+3. Enrich the 101-change package category with parent SHAs, fork/mirror relationships, timestamps, and commit-wide changed-file lists to validate the observed provenance proxy.
+4. Run held-out semantic entailment and source-level mutation/reparse probes for package setup; its persisted-AST role-aware probes already pass globally.
+5. Generalize the semantic–structural feedback loop and paired matchers to additional Python and JavaScript categories; evaluate complete edit-tree MDL only for multi-atom composites.
+6. Implement the versioned category registry, relation-cycle checks, bounded multi-parent resolution, and explicit abstention.
+7. Run the syntax-only, direct-LLM, retrieval, and current-CodeArchitect baselines before making explanation-quality or business-impact claims.
 
 ### Phase boundary
 

@@ -188,6 +188,7 @@ npm run intent:large:evaluate-semgrep:expanded
 npm run intent:large:provenance
 npm run intent:large:structural-mdl
 npm run intent:large:probe-rules
+npm run intent:large:component-hierarchy
 ```
 
 The materializer reconstructs 3,130 complete before/after files, including 1,533 Python
@@ -232,6 +233,18 @@ then runs a negative probe that mutates the anchors without changing AST shape. 
 current persisted-AST pass retains 589/589 positive matches and rejects 515/515 anchor
 mutations; package setup and Trove both pass at 100%. Complete source mutation followed
 by GumTree/Semgrep reparsing remains a stronger future gate.
+
+`intent:large:component-hierarchy` builds the broader layer needed to describe repository
+components rather than individual edits. It groups 49 high/medium-confidence grounded
+meanings by definition, asks the LLM to retain and name only coherent component parents,
+and embeds those definitions to bound secondary memberships. The current pass produces
+11 categories—build tooling, package distribution, routing, user interface, web-server
+integration, browser testing, authentication, automated testing, user data management,
+game application, and network communication. They cover 41 leaves; eight abstain, and
+one Webpack/server leaf belongs to two parents. The cached run replays offline. This is
+not yet a universal vocabulary: coverage must be measured on static components from
+held-out repositories, with uncovered components feeding another bottom-up discovery
+round.
 
 `intent:facets:additive` writes one record per retained change with four deliberately
 separate fields: edit operation, noun-only edited entity, semantic container, and raw
