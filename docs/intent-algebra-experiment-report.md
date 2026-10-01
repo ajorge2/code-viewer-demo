@@ -1101,6 +1101,31 @@ clear, while a child is proposed only when its meaning is reusable and supported
 multiple independent code examples. Future human batches will ask separately whether
 the parent is correct and whether the proposed child adds useful specificity.
 
+### Preliminary overlap-closure audit
+
+The algebra treats the empty set as a valid silent zero term. For two non-disjoint
+terms `A` and `B`, their overlap is admissible when at least one directional difference
+is itself a valid term:
+
+`A ∩ B != ∅  =>  valid(A \ B) or valid(B \ A)`
+
+Allowing `∅` as valid means proper subset relationships pass without requiring an
+artificial “everything else” label. The zero term is never emitted in an explanation
+and does not count toward semantic support. If both differences are empty, the terms
+are extensionally equal and are flagged as aliases instead of being treated as two
+independent discoveries.
+
+The saved 11-parent hierarchy contains one explicit cross-parent leaf:
+**Webpack-associated server configuration**, shared by **Build and development
+tooling** and **Web server integration**. The 80-file static holdout contains eight
+distinct multi-label parent pairs across 11 files. Every observed pair has non-empty
+evidence on both sides of the overlap, and a provisional semantic judge finds at least
+one coherent directional remainder for each pair. No two parents have identical
+holdout match sets. The current vocabulary therefore contains no observed violation of
+the one-sided difference rule, although this is only a preliminary audit over
+LLM-adjudicated matches. The final sweep must rerun the audit on the frozen, larger
+membership matrix and retain the code examples supporting every accepted remainder.
+
 ### Pre-registered quality comparison
 
 | Approach | Match coverage | Intent precision | Unique resolution | Human usefulness | vs Baseline | Notes |
