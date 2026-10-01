@@ -486,7 +486,36 @@
       "paired_reference_recall": 0.752475,
       "registered_count": 0,
       "decision": "retain_feedback_loop_and_expand_to_more_categories",
-      "reason": "The 20 apparent false positives were all code-grounded package setup changes, demonstrating that discovery-cluster membership was incomplete rather than that the matcher was uniformly wrong. Combining executable structural evidence, LLM entailment, and member-vector fit added 15 conservative members and materially improved held-out rule quality. Registration remains blocked on independent repository families and final edit-script MDL."
+      "reason": "The 20 apparent false positives were all code-grounded package setup changes, demonstrating that discovery-cluster membership was incomplete rather than that the matcher was uniformly wrong. Combining executable structural evidence, LLM entailment, and member-vector fit added 15 conservative members and materially improved held-out rule quality. The category's OR branches are atomic, so composite MDL is not applicable; registration remains blocked on external provenance, held-out semantic validation, and matcher robustness."
+    },
+    "observed_provenance_support": {
+      "category_count": 49,
+      "categories_passing_both_observed_support_proxies": 1,
+      "meaning": "Python package setup configuration",
+      "patch_distinct_change_count": 101,
+      "observed_repository_name_count": 184,
+      "observed_provenance_component_count": 101,
+      "multi_repository_row_count": 25,
+      "maximum_repository_names_on_one_row": 23,
+      "passes_100_change_proxy": true,
+      "passes_50_component_proxy": true,
+      "final_independence_validated": false,
+      "decision": "retain_as_support_proxy_pending_external_enrichment",
+      "reason": "Counting each CommitPackFT row once and unioning rows that share repository names prevents known alias inflation. The resulting 101 components clear the numeric proxy, but disjoint-name forks, renamed mirrors, cherry-picks, and commit-wide scope remain invisible in the bucket."
+    },
+    "structural_constituent_mdl": {
+      "evaluated_multi_atom_clause_count": 81,
+      "clauses_passing_1_2x": 1,
+      "categories_with_passing_clause": 1,
+      "passing_meaning": "Grunt and Gulp workflow infrastructure",
+      "passing_clause_support": 25,
+      "passing_compression_ratio": 1.504363,
+      "passing_category_support": 67,
+      "python_package_setup_status": "not_applicable_atomic_rule",
+      "trove_taxonomy_status": "not_applicable_atomic_rule",
+      "registered_count": 0,
+      "decision": "retain_proxy_and_require_full_edit_tree_mdl_for_composites",
+      "reason": "Classification-label compression is not composite-pattern compression. The separate constituent code grants no MDL credit to single-atom rules and finds only one multi-atom clause above 1.2x; that clause remains below support cutoffs and the proxy does not yet encode complete GumTree edit trees."
     },
     "decision": "continue_to_feedback_loop_expansion_and_provenance",
     "reason": "The larger nested sample preserves or label-shifts 88 of 169 earlier clusters while exposing 81 unstable categories and 27 useful downward splits. Clear categories such as Python package setup, Grunt/Gulp workflows, and Django URL configuration strengthen, while broad mixed parents abstain. The new positive-specificity gate prevents recursive children from being promoted when their meaning adds no fit beyond the parent."

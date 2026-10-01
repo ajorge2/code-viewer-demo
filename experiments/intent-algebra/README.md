@@ -185,6 +185,8 @@ npm run intent:large:evaluate-semgrep
 npm run intent:large:audit-expansions
 npm run intent:large:induce-structure:expanded
 npm run intent:large:evaluate-semgrep:expanded
+npm run intent:large:provenance
+npm run intent:large:structural-mdl
 ```
 
 The materializer reconstructs 3,130 complete before/after files, including 1,533 Python
@@ -206,6 +208,22 @@ floor and are provisionally added, while five remain review candidates. Re-induc
 compression. The paired executable matcher reaches 93.8% precision and 75.2% recall
 against this expanded provisional reference. Zero rules are registered because
 independent-repository support and the final edit-script MDL gate remain unresolved.
+
+The provenance analyzer treats each CommitPackFT row as one unit even when it lists
+several forks or mirrors, then unions rows that share any repository name. Package setup
+has 101 patch-distinct changes, 101 observed provenance components, and 184 raw
+repository names; it is the only one of 49 categories to pass both observed support
+proxies. This is not final independence evidence because the bucket cannot connect
+disjoint-name forks, renamed mirrors, or cherry-picks. External enrichment remains a
+promotion gate.
+
+`intent:large:structural-mdl` keeps classification compression separate from the
+proposal's composite-pattern cutoff. It compares 81 recurring multi-atom clauses with
+their independently encoded constituent atoms and charges one-time rule storage. Only
+one passes 1.2x: a 25-match, three-atom Grunt/Gulp workflow clause at 1.50x. Package
+setup and Trove are atomic-only OR rules, so composite MDL is explicitly not applicable
+to them. The proxy still uses structural atoms rather than a complete GumTree edit-tree
+code and cannot by itself promote the Grunt/Gulp clause.
 
 `intent:facets:additive` writes one record per retained change with four deliberately
 separate fields: edit operation, noun-only edited entity, semantic container, and raw

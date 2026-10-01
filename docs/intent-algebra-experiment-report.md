@@ -814,8 +814,41 @@ The Trove prefilter retrieved 82 after-revision files, but only six also satisfi
 structural edit clause; all six were reference members. These results show why source
 patterns alone are insufficient and why the paired executor must keep structural edit
 verification. Neither category is registered: package setup has crossed the nominal
-100-change boundary but independent-repository support and final edit-script MDL remain
-unmeasured, while Trove still has only eight examples.
+100-change boundary but independent-repository support, held-out semantic validation,
+and matcher robustness remain unmeasured, while Trove still has only eight examples.
+Their learned rules contain only one atom per OR branch, so composite MDL is not
+applicable to either category.
+
+### Observed provenance support proxy
+
+The expanded category was then checked against the repository metadata already present
+in CommitPackFT. Each file-pair row counts once even when it names multiple forks or
+mirrors, and rows sharing any repository name are unioned into one observed provenance
+component. Across all 49 grounded high/medium categories, only **Python package setup
+configuration** passes both provisional support cutoffs: 101 patch-distinct changes and
+101 observed provenance components spanning 184 repository names. Twenty-five of those
+rows name multiple repositories, with as many as 23 aliases on one row; those aliases
+are correctly counted as one unit rather than 23 repositories.
+
+This result clears the cutoff only as an observed-data proxy. The bucket cannot connect
+forks with disjoint names, renamed mirrors, or cherry-picked equivalent commits, and it
+does not expose every file in the original commit. External provenance enrichment is
+still required before the 50-independent-repository gate can be declared passed.
+
+### Structural constituent MDL
+
+The earlier 2.00× package result compresses category labels; it does not show that a
+composite edit is cheaper than its pieces. A separate structural-constituent proxy now
+encodes each recurring multi-atom clause two ways: as independent atom occurrences and
+as one composite occurrence plus one-time model storage. Single-atom clauses are marked
+not applicable rather than receiving artificial compression credit.
+
+Across 81 multi-atom clauses, only one clears 1.2×: a three-atom **Grunt and Gulp
+workflow infrastructure** clause with 25 observed matches and 1.50× compression. Its
+category has only 67 semantic members, so it remains below the 100-change cutoff. The
+package and Trove rules are atomic-only. This is still an intermediate atom-code proxy;
+an accepted composite must ultimately demonstrate savings under a complete GumTree
+edit-tree code and pass the same semantic and provenance gates.
 
 ![Category-conditioned structural rule performance](figures/intent-algebra-sweep-5000/08-structural-rule-performance.svg)
 
@@ -849,7 +882,8 @@ The current working tree now contains an executable pilot in addition to existin
 - Twenty-four Node tests pass: three existing benchmark tests, twelve intent-pilot/facet tests, six primitive/cluster-review validation and storage tests, and three line/token diff-rendering tests.
 - Semgrep 1.176.0 now executes two paired Python category prefilters across 1,533 reconstructed before/after pairs; a sample-ID join and GumTree clause verifier convert those source matches into change-pattern matches.
 - A cached cumulative-evidence audit now loops traceable out-of-cluster matches back into semantic membership using meaning-vector fit plus LLM entailment, then re-induces and re-evaluates the structural rule.
-- A held-out classification-MDL proxy is implemented for structural-rule triage. Primitive registration, lattice resolution, metamorphic probes, final edit-script MDL, and explanation-quality benchmarks remain unimplemented.
+- A repository-support analyzer now collapses multi-repository rows and shared repository names into observed provenance components instead of treating every listed alias as independent support.
+- Held-out category-label MDL and structural-constituent MDL proxies are implemented for triage. Primitive registration, lattice resolution, metamorphic probes, complete edit-tree MDL, and explanation-quality benchmarks remain unimplemented.
 
 ## 5. Business / Practical Impact
 
@@ -906,6 +940,8 @@ Current, defensible pilot bullets:
 - Induced held-out structural AND/OR rules for 49 grounded semantic nodes, added bounded typed AST neighborhoods around edits, produced two rules above the 1.2× MDL proxy, and still registered none because precision, support, and repository-independence gates remain unmet.
 - Compiled two MDL-positive Python rules into paired Semgrep prefilters with GumTree edit verification; against the initial discovery-cluster reference, Trove reached 100% precision and 75% recall and package setup reached 75.3% precision and 70.9% recall across 1,533 reconstructed file pairs.
 - Closed the first semantic–structural feedback loop by auditing 20 traceable out-of-cluster package changes, provisionally expanding 15, and re-inducing a 101-change rule with 90.1% held-out precision, 81.2% recall, and 2.00× classification-MDL compression.
+- Audited provenance for 49 grounded categories and found one that clears both observed support proxies: 101 patch-distinct Python package setup changes across 101 known-name components and 184 raw repository aliases.
+- Distinguished predictive label compression from composite-pattern compression, evaluating 81 multi-atom clauses and retaining one 25-match Grunt/Gulp structure at 1.50× while correctly marking atomic package and Trove rules MDL-inapplicable.
 - Separated minimal queue discovery from flexible composite expansion across 1,933 addition-dominant changes with up to 32 components, caught a 22.8%-precision constraint retriever before registration, and collapsed 67 exact-host candidates into 45 unique contexts including 13 multi-base lattice intersections.
 - Preserved directed edit semantics for undirected gSpan mining through relation-node encoding, then reduced 1,957 frequent fragments to 26 support-closed pilot candidates with structural-validity and labeled-supergraph checks.
 - Created an auditable grounding queue that joins every pilot candidate to commit text, code excerpts, and provenance while explicitly withholding meanings that do not yet meet semantic or independence requirements.
@@ -928,12 +964,12 @@ Future result bullets must still wait for held-out human evaluation and must not
 
 ### Immediate next steps
 
-1. Audit the five low-vector-fit but LLM-entailing package candidates and analyze the remaining 25 missed expanded-reference members without fitting rules to sample IDs.
-2. Generalize the feedback loop to additional strong semantic categories, compiling paired matchers only when structural clauses add discriminative evidence over the Semgrep prefilter.
-3. Preserve semantic categories as primary registry nodes and structural AND/OR rules as traceable implementation evidence; reject punctuation-only clauses and abstain when no discriminative structural rule can be induced.
-4. Enrich commits with complete changed-file lists, timestamps, parent SHAs, and fork/mirror metadata so commit-wide atomicity and independent repository support become measurable.
-5. Scale GumTree extraction after the grouping audit, measuring throughput and failure modes by language rather than immediately mining every retained row.
-6. Define exact TED normalization and the MDL code-length model, then run candidate deduplication, expansion, and compression ablations.
+1. Enrich the 101-change package category with parent SHAs, fork/mirror relationships, timestamps, and commit-wide changed-file lists to validate the observed 101-component provenance proxy.
+2. Run held-out semantic entailment and anchor-aware metamorphic probes for package setup; its atomic OR branches do not require composite MDL, but they do require robust executable behavior.
+3. Audit the five low-vector-fit but LLM-entailing package candidates and analyze the remaining 25 missed expanded-reference members without fitting rules to sample IDs.
+4. Generalize the feedback loop to additional strong semantic categories, compiling paired matchers only when structural clauses add discriminative evidence over the Semgrep prefilter; evaluate complete edit-tree MDL only for multi-atom composites.
+5. Preserve semantic categories as primary registry nodes and structural AND/OR rules as traceable implementation evidence; reject punctuation-only clauses and abstain when no discriminative structural rule can be induced.
+6. Scale GumTree extraction after the grouping audit, measuring throughput and failure modes by language rather than immediately mining every retained row.
 7. Implement registry validation, relation cycle checks, most-specific-match resolution, and positive/negative metamorphic probes.
 8. Run the syntax-only, direct-LLM, retrieval, and current-CodeArchitect baselines before making explanation-quality or business-impact claims.
 
