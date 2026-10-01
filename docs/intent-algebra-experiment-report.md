@@ -1,6 +1,6 @@
 # CodeArchitect Intent Algebra: Bottom-Up Primitive Discovery for Human-Readable Code Explanations
 **September 30, 2026 – In progress**
-**Status**: In progress — corpus access verified; deterministic 200-, 1,000-, 4,000-, and 10,000-diff experiments have run through GumTree extraction, bounded gSpan discovery, semantic/code clustering, nested-sample stability analysis, downward semantic recursion, centroid-aware meaning grounding, TED-based expansion, semantic-first structural alignment, category-conditioned structural-rule induction, and a first paired Semgrep/GumTree execution; calibrated confidence, independent-repository enrichment, broader paired-rule coverage, final edit-script MDL evaluation, and product benchmarks remain open
+**Status**: In progress — corpus access verified; deterministic 200-, 1,000-, 4,000-, and 10,000-diff experiments have run through GumTree extraction, bounded gSpan discovery, semantic/code clustering, nested-sample stability analysis, downward semantic recursion, centroid-aware meaning grounding, TED-based expansion, semantic-first structural alignment, category-conditioned structural-rule induction, paired Semgrep/GumTree execution, and a first semantic–structural feedback loop; calibrated confidence, independent-repository enrichment, broader paired-rule coverage, final edit-script MDL evaluation, and product benchmarks remain open
 
 ## 1. Business / Decision Context (The “Why”)
 
@@ -771,7 +771,7 @@ explicit anchor role, while local identifiers remain metavariables. The original
 identifier-permutation probe must distinguish these roles rather than randomizing APIs
 and locals indiscriminately.
 
-No rule is registered. A held-out classification-MDL proxy encodes out-of-fold errors
+Before the semantic feedback loop, no rule qualified for registration. A held-out classification-MDL proxy encodes out-of-fold errors
 plus average rule storage and compares that cost with directly encoding the category's
 positive labels. Two rules exceed 1.2×: **Trove taxonomy metadata** at 1.95× and **Python
 package setup configuration** at 1.37×. Trove has only eight examples; packaging remains
@@ -789,19 +789,37 @@ and then required the learned GumTree clause to verify the edit relation. This p
 the intended separation: Semgrep finds likely code contexts; GumTree confirms that the
 required structural change actually occurred.
 
-| Semantic category | Semgrep prefilter precision | Semgrep prefilter recall | After GumTree verification precision | After GumTree verification recall | Decision |
+| Semantic category | Initial reference precision | Initial reference recall | Expanded-reference precision | Expanded-reference recall | Decision |
 |---|---:|---:|---:|---:|---|
-| Python package setup configuration | 70.3% | 90.7% | 75.3% | 70.9% | Retain for false-positive refinement |
-| Trove taxonomy metadata | 8.5% | 87.5% | 100.0% | 75.0% | Precise but under-supported |
+| Python package setup configuration | 75.3% | 70.9% | 93.8% | 75.2% | Strong provisional after feedback loop |
+| Trove taxonomy metadata | 100.0% | 75.0% | 100.0% | 75.0% | Precise but under-supported |
+
+These precision and recall values measure agreement with a semantic reference set, not
+independently labeled intent truth. Against the original discovery cluster, the package
+matcher found 61 members, 20 out-of-cluster matches, and missed 25 members. Inspection
+showed that treating those 20 matches as false positives was incorrect: all 20 were
+traceable setup/package changes such as dependency declarations, entry points, package
+data, and distribution metadata. Their meaning-vector scores also fell within the
+existing category's observed range.
+
+The feedback loop therefore audits executable out-of-cluster matches against the
+grounded definition. The LLM judged all 20 package changes to entail the category;
+15 also met the category's conservative fifth-percentile member-fit floor and were
+provisionally added, while five remain queued for review. Re-induction increased support
+from 86 to 101 changes, held-out structural precision from 73.6% to 90.1%, recall from
+77.9% to 81.2%, and classification-MDL compression from 1.37× to 2.00×. The unchanged
+paired executable matcher then reached 93.8% reference precision and 75.2% recall.
 
 The Trove prefilter retrieved 82 after-revision files, but only six also satisfied its
-structural edit clause; all six were true category members. The package rule finished
-with 61 true positives, 20 false positives, and 25 false negatives. These results show
-why source-pattern matching alone is insufficient and why the paired executor must keep
-the structural verification layer. Both matchers remain experimental: neither meets the
-100-commit and 50-independent-repository promotion gates.
+structural edit clause; all six were reference members. These results show why source
+patterns alone are insufficient and why the paired executor must keep structural edit
+verification. Neither category is registered: package setup has crossed the nominal
+100-change boundary but independent-repository support and final edit-script MDL remain
+unmeasured, while Trove still has only eight examples.
 
 ![Category-conditioned structural rule performance](figures/intent-algebra-sweep-5000/08-structural-rule-performance.svg)
+
+![Semantic–structural feedback loop](figures/intent-algebra-sweep-5000/09-semantic-structural-feedback-loop.svg)
 
 ### Pre-registered quality comparison
 
@@ -830,6 +848,7 @@ The current working tree now contains an executable pilot in addition to existin
 - A separate semantic-cluster interpretation screen now supports accept/reject/custom labels and stores cluster judgments independently from primitive grounding reviews.
 - Twenty-four Node tests pass: three existing benchmark tests, twelve intent-pilot/facet tests, six primitive/cluster-review validation and storage tests, and three line/token diff-rendering tests.
 - Semgrep 1.176.0 now executes two paired Python category prefilters across 1,533 reconstructed before/after pairs; a sample-ID join and GumTree clause verifier convert those source matches into change-pattern matches.
+- A cached cumulative-evidence audit now loops traceable out-of-cluster matches back into semantic membership using meaning-vector fit plus LLM entailment, then re-induces and re-evaluates the structural rule.
 - A held-out classification-MDL proxy is implemented for structural-rule triage. Primitive registration, lattice resolution, metamorphic probes, final edit-script MDL, and explanation-quality benchmarks remain unimplemented.
 
 ## 5. Business / Practical Impact
@@ -851,7 +870,7 @@ Continue **bounded scale-up with strict promotion gates**:
 1. Pause broad human review and require candidate-level semantic context beyond a frequent edit fragment.
 2. Preserve the addition-dominant cohort as an ablation while comparing it with semantic-boundary expansion on the same deterministic sample.
 3. Use the completed 1,000-diff sweep to tune candidate quality, but defer repository-support claims until provenance enrichment identifies independent repository families.
-4. Expand and refine the paired executable matcher set, prioritizing category rules whose structural verifier improves precision rather than merely repeating the Semgrep prefilter.
+4. Expand the semantic–structural feedback loop beyond the first two categories, prioritizing rules whose structural verifier adds discriminative evidence rather than merely repeating a source-context prefilter.
 5. Freeze the schema, MDL definition, and evaluation rubric only after the revised pilot exposes failure modes.
 6. Scale the corpus only if the pilot achieves acceptable precision and produces non-trivial recurring intents.
 
@@ -885,7 +904,8 @@ Current, defensible pilot bullets:
 - Expanded semantic discovery to 10,000 deterministic diffs and 3,130 retained changes, producing 456 traceable clusters and 545 recursive nodes; grounded 77 supported nodes into 34 high-, 15 medium-, 15 low-confidence meanings and 13 abstentions.
 - Added a child-specificity confidence gate after the larger sweep found two of 23 grounded children that did not improve fit over their parent, preventing geometrically coherent but non-specializing labels from being promoted.
 - Induced held-out structural AND/OR rules for 49 grounded semantic nodes, added bounded typed AST neighborhoods around edits, produced two rules above the 1.2× MDL proxy, and still registered none because precision, support, and repository-independence gates remain unmet.
-- Compiled two MDL-positive Python rules into paired Semgrep prefilters with GumTree edit verification, reaching 100% precision and 75% recall for Trove taxonomy metadata and 75.3% precision and 70.9% recall for Python package setup across 1,533 reconstructed file pairs.
+- Compiled two MDL-positive Python rules into paired Semgrep prefilters with GumTree edit verification; against the initial discovery-cluster reference, Trove reached 100% precision and 75% recall and package setup reached 75.3% precision and 70.9% recall across 1,533 reconstructed file pairs.
+- Closed the first semantic–structural feedback loop by auditing 20 traceable out-of-cluster package changes, provisionally expanding 15, and re-inducing a 101-change rule with 90.1% held-out precision, 81.2% recall, and 2.00× classification-MDL compression.
 - Separated minimal queue discovery from flexible composite expansion across 1,933 addition-dominant changes with up to 32 components, caught a 22.8%-precision constraint retriever before registration, and collapsed 67 exact-host candidates into 45 unique contexts including 13 multi-base lattice intersections.
 - Preserved directed edit semantics for undirected gSpan mining through relation-node encoding, then reduced 1,957 frequent fragments to 26 support-closed pilot candidates with structural-validity and labeled-supergraph checks.
 - Created an auditable grounding queue that joins every pilot candidate to commit text, code excerpts, and provenance while explicitly withholding meanings that do not yet meet semantic or independence requirements.
@@ -904,11 +924,12 @@ Future result bullets must still wait for held-out human evaluation and must not
 - The registry should abstain when a shared intent is not supported. Forcing every frequent graph into English would turn syntax regularity into fabricated semantics.
 - Addition dominance is a useful cohort filter, not a semantic guarantee: a valid additive graph can still yield punctuation or generic-expression subgraphs unless candidate-level context is required.
 - Orthogonal primitives and architectural topics are different representational layers. Database, cache, authentication, and similar concepts should overlap freely rather than being forced into the primitive lattice.
+- Discovery-cluster membership is not exhaustive semantic ground truth. Structurally matched non-members must be audited as possible category expansions before they are counted as false positives.
 
 ### Immediate next steps
 
-1. Analyze the 20 package-rule false positives and 25 false negatives, plus the two Trove false negatives, then refine role-aware anchors without fitting to sample IDs.
-2. Compile additional weak category rules into paired matchers only when their structural clauses add discriminative precision over the Semgrep prefilter.
+1. Audit the five low-vector-fit but LLM-entailing package candidates and analyze the remaining 25 missed expanded-reference members without fitting rules to sample IDs.
+2. Generalize the feedback loop to additional strong semantic categories, compiling paired matchers only when structural clauses add discriminative evidence over the Semgrep prefilter.
 3. Preserve semantic categories as primary registry nodes and structural AND/OR rules as traceable implementation evidence; reject punctuation-only clauses and abstain when no discriminative structural rule can be induced.
 4. Enrich commits with complete changed-file lists, timestamps, parent SHAs, and fork/mirror metadata so commit-wide atomicity and independent repository support become measurable.
 5. Scale GumTree extraction after the grouping audit, measuring throughput and failure modes by language rather than immediately mining every retained row.

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "decision_date": "2026-09-30",
+  "decision_date": "2026-10-01",
   "policy": {
     "semantic_clusters_are": "traceable macro-concept annotations and candidate composite groupings",
     "semantic_clusters_are_not": "accepted structural primitives",
@@ -445,13 +445,13 @@
       "rules": [
         {
           "meaning": "Python package setup configuration",
-          "prefilter_precision": 0.702703,
-          "prefilter_recall": 0.906977,
-          "verified_precision": 0.753086,
-          "verified_recall": 0.709302,
-          "true_positives": 61,
-          "false_positives": 20,
-          "false_negatives": 25
+          "initial_cluster_reference_prefilter_precision": 0.702703,
+          "initial_cluster_reference_prefilter_recall": 0.906977,
+          "initial_cluster_reference_verified_precision": 0.753086,
+          "initial_cluster_reference_verified_recall": 0.709302,
+          "matched_cluster_members": 61,
+          "out_of_cluster_matches": 20,
+          "missed_cluster_members": 25
         },
         {
           "meaning": "Trove taxonomy metadata",
@@ -468,7 +468,27 @@
       "decision": "retain_executable_rules_for_refinement",
       "reason": "Paired Semgrep prefilters plus GumTree edit verification materially improve traceability and remove false source-context matches, most dramatically reducing the Trove prefilter from 82 after-side matches to six verified true positives. The rules remain below independent-repository support and final edit-script MDL gates."
     },
-    "decision": "continue_to_paired_matcher_expansion_and_provenance",
+    "semantic_structural_feedback_loop": {
+      "meaning": "Python package setup configuration",
+      "original_cluster_support": 86,
+      "executable_out_of_cluster_matches": 20,
+      "llm_entailing_matches": 20,
+      "provisional_expansions": 15,
+      "review_candidates": 5,
+      "rejected_candidates": 0,
+      "expanded_reference_support": 101,
+      "expanded_rule_precision": 0.901099,
+      "expanded_rule_recall": 0.811881,
+      "expanded_rule_f1": 0.854167,
+      "expanded_rule_mdl_proxy_ratio": 2.003126,
+      "expanded_rule_status": "strong_provisional",
+      "paired_reference_precision": 0.938272,
+      "paired_reference_recall": 0.752475,
+      "registered_count": 0,
+      "decision": "retain_feedback_loop_and_expand_to_more_categories",
+      "reason": "The 20 apparent false positives were all code-grounded package setup changes, demonstrating that discovery-cluster membership was incomplete rather than that the matcher was uniformly wrong. Combining executable structural evidence, LLM entailment, and member-vector fit added 15 conservative members and materially improved held-out rule quality. Registration remains blocked on independent repository families and final edit-script MDL."
+    },
+    "decision": "continue_to_feedback_loop_expansion_and_provenance",
     "reason": "The larger nested sample preserves or label-shifts 88 of 169 earlier clusters while exposing 81 unstable categories and 27 useful downward splits. Clear categories such as Python package setup, Grunt/Gulp workflows, and Django URL configuration strengthen, while broad mixed parents abstain. The new positive-specificity gate prevents recursive children from being promoted when their meaning adds no fit beyond the parent."
   }
 }

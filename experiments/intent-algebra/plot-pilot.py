@@ -619,6 +619,68 @@ def plot_structural_rule_performance(rules: dict, output: Path) -> None:
     svg.finish(output)
 
 
+def plot_semantic_expansion_loop(
+    base_rules: dict,
+    expanded_rules: dict,
+    audit: dict,
+    expanded_evaluation: dict,
+    output: Path,
+) -> None:
+    meaning = "Python package setup configuration"
+    base = next(category for category in base_rules["categories"] if category["meaning"] == meaning)
+    expanded = next(category for category in expanded_rules["categories"] if category["meaning"] == meaning)
+    audit_category = next(category for category in audit["categories"] if category["meaning"] == meaning)
+    executable = next(result for result in expanded_evaluation["results"] if result["meaning"] == meaning)
+    base_metrics = base["cross_validation"]["micro"]
+    expanded_metrics = expanded["cross_validation"]["micro"]
+    executable_metrics = executable["paired_verified_reference_metrics"]
+
+    svg = Svg(
+        "Semantic–structural feedback loop",
+        "Traceable out-of-cluster matches expand a meaning, then the enlarged category re-induces a more discriminative code rule",
+    )
+    steps = [
+        ("Executable matches", audit_category["out_of_cluster_match_count"], "outside the original cluster"),
+        ("Meaning-entailing", sum(candidate["llm_verdict"] == "entails" for candidate in audit_category["candidates"]), "LLM judgment + code evidence"),
+        ("Provisional expansion", audit_category["decision_counts"]["provisional_expand"], "also above the member-fit floor"),
+        ("Held for review", audit_category["decision_counts"]["review"], "meaning fits, vector evidence weaker"),
+    ]
+    x_positions = [70, 400, 730, 1060]
+    for index, ((label, value, note), x) in enumerate(zip(steps, x_positions, strict=True)):
+        svg.rect(x, 155, 270, 145, "#f7f9fc", rx=12, stroke=GRID, stroke_width=1.5)
+        svg.text(x + 20, 190, label, size=16, weight=700)
+        svg.text(x + 20, 245, value, size=40, weight=700, fill=HIGH_CONFIDENCE if index == 2 else INK)
+        svg.text(x + 20, 277, note, cls="note")
+        if index < len(steps) - 1:
+            svg.line(x + 270, 227, x_positions[index + 1], 227, stroke=MEDIUM_CONFIDENCE, width=3)
+
+    metrics = [
+        ("Category support", base["support"], expanded["support"], "changes"),
+        ("Held-out precision", base_metrics["precision"], expanded_metrics["precision"], "percent"),
+        ("Held-out recall", base_metrics["recall"], expanded_metrics["recall"], "percent"),
+        ("MDL proxy", base_metrics["mdl"]["compression_ratio"], expanded_metrics["mdl"]["compression_ratio"], "ratio"),
+    ]
+    max_values = {"changes": 110.0, "percent": 1.0, "ratio": 2.2}
+    svg.text(70, 365, "Re-induction result", weight=700, size=20)
+    for index, (label, before, after, unit) in enumerate(metrics):
+        y = 415 + index * 78
+        svg.text(260, y + 21, label, anchor="end", size=16)
+        scale = 850 / max_values[unit]
+        svg.rect(285, y, float(before) * scale, 24, PALE, rx=5)
+        svg.rect(285, y + 31, float(after) * scale, 24, HIGH_CONFIDENCE, rx=5)
+        before_label = f"{before:.1%}" if unit == "percent" else f"{before:.2f}×" if unit == "ratio" else str(before)
+        after_label = f"{after:.1%}" if unit == "percent" else f"{after:.2f}×" if unit == "ratio" else str(after)
+        svg.text(295 + float(before) * scale, y + 19, before_label, size=14, weight=700, fill=INK)
+        svg.text(295 + float(after) * scale, y + 50, after_label, size=14, weight=700, fill="#ffffff")
+    svg.rect(1130, 405, 200, 190, "#f0fdf8", rx=12, stroke=HIGH_CONFIDENCE, stroke_width=1.5)
+    svg.text(1230, 445, "Paired execution", anchor="middle", size=17, weight=700)
+    svg.text(1230, 492, f"{executable_metrics['reference_precision']:.1%}", anchor="middle", size=31, weight=700, fill=HIGH_CONFIDENCE)
+    svg.text(1230, 518, "reference precision", anchor="middle", cls="note")
+    svg.text(1230, 558, f"{executable_metrics['reference_recall']:.1%} recall", anchor="middle", size=17, weight=700)
+    svg.text(70, 772, "Gray bars: original cluster only. Green bars: 15 cumulative-evidence expansions included. This is provisional in-sample feedback, not independent validation or registry promotion.", cls="note")
+    svg.finish(output)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -668,6 +730,18 @@ def main() -> None:
     if structural_path.exists():
         rules = json.loads(structural_path.read_text(encoding="utf-8"))
         plot_structural_rule_performance(rules, args.output / "08-structural-rule-performance.svg")
+        figure_count += 1
+    expanded_rules_path = args.input / "category-structural-rules-expanded.json"
+    audit_path = args.input / "semantic-expansion-audit.json"
+    expanded_evaluation_path = args.input / "paired-semgrep-evaluation-expanded.json"
+    if structural_path.exists() and expanded_rules_path.exists() and audit_path.exists() and expanded_evaluation_path.exists():
+        plot_semantic_expansion_loop(
+            json.loads(structural_path.read_text(encoding="utf-8")),
+            json.loads(expanded_rules_path.read_text(encoding="utf-8")),
+            json.loads(audit_path.read_text(encoding="utf-8")),
+            json.loads(expanded_evaluation_path.read_text(encoding="utf-8")),
+            args.output / "09-semantic-structural-feedback-loop.svg",
+        )
         figure_count += 1
     print(f"Wrote {figure_count} figures to {args.output}")
 

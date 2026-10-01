@@ -46,6 +46,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--refinement", type=Path, required=True)
     parser.add_argument("--samples", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--semantic-expansions",
+        type=Path,
+        help="Optional audited expansion artifact; only provisional_expand candidates are added",
+    )
     parser.add_argument("--confidence-levels", default="high,medium")
     parser.add_argument("--folds", type=int, default=3)
     parser.add_argument("--maximum-atoms-per-clause", type=int, default=3)
@@ -503,6 +508,17 @@ def main() -> None:
             postings.setdefault(atom, set()).add(sample_id)
 
     refinement_by_id = {node["node_id"]: node for node in refinement["nodes"]}
+    expansion_ids: dict[str, set[str]] = {}
+    if args.semantic_expansions:
+        expansions = json.loads(args.semantic_expansions.read_text(encoding="utf-8"))
+        expansion_ids = {
+            category["node_id"]: {
+                candidate["sample_id"]
+                for candidate in category.get("candidates", [])
+                if candidate.get("decision") == "provisional_expand"
+            }
+            for category in expansions.get("categories", [])
+        }
     targets = [
         node for node in meanings["nodes"]
         if node["confidence"]["level"] in accepted_levels
@@ -511,7 +527,9 @@ def main() -> None:
     results = []
     for meaning in targets:
         node = refinement_by_id[meaning["node_id"]]
-        positives = set(node["hard_member_ids"])
+        original_positives = set(node["hard_member_ids"])
+        added_positives = expansion_ids.get(meaning["node_id"], set())
+        positives = original_positives | added_positives
         universe, language_scope = language_universe(positives, samples)
         positives &= universe
         validation, _fold_rules = cross_validate(
@@ -523,7 +541,7 @@ def main() -> None:
         if (
             cv["precision"] >= 0.80
             and cv["recall"] >= 0.40
-            and meaning["support"] >= 10
+            and len(positives) >= 10
             and cv["mdl"]["passes_1_2x"]
         ):
             status = "strong_provisional"
@@ -535,7 +553,9 @@ def main() -> None:
             "node_id": meaning["node_id"],
             "meaning": meaning["chosen_meaning"]["name"],
             "semantic_confidence": meaning["confidence"]["level"],
-            "support": meaning["support"],
+            "support": len(positives),
+            "original_cluster_support": len(original_positives),
+            "audited_expansion_support": len(added_positives),
             "language_scope": language_scope,
             "comparison_universe_count": len(universe),
             "status": status,
@@ -548,6 +568,11 @@ def main() -> None:
         "method": "category-conditioned AST rule induction with deterministic held-out folds",
         "rule_form": "OR of AND clauses",
         "semantic_precedence": True,
+        "semantic_expansion_policy": (
+            "union original members with structurally traceable candidates that passed the cumulative semantic audit"
+            if args.semantic_expansions else
+            "original discovery-cluster members only"
+        ),
         "leakage_controls": {
             "commit_text_used": False,
             "file_paths_used": False,

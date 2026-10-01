@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="820" viewBox="0 0 1400 820" role="img" aria-labelledby="title desc">
+<title id="title">Semantic–structural feedback loop</title>
+<desc id="desc">Traceable out-of-cluster matches expand a meaning, then the enlarged category re-induces a more discriminative code rule</desc>
+<rect width="1400" height="820" fill="#ffffff"/>
+<style>text{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.title{font-size:31px;font-weight:700;fill:#172033}.subtitle{font-size:17px;fill:#667085}.axis{font-size:15px;fill:#667085}.label{font-size:18px;fill:#172033}.value{font-size:18px;font-weight:700}.note{font-size:14px;fill:#667085}</style>
+<text x="70.0" y="65.0" text-anchor="start" class="title">Semantic–structural feedback loop</text>
+<text x="70.0" y="98.0" text-anchor="start" class="subtitle">Traceable out-of-cluster matches expand a meaning, then the enlarged category re-induces a more discriminative code rule</text>
+<rect x="70.0" y="155.0" width="270.0" height="145.0" fill="#f7f9fc" rx="12.0" stroke="#d7dde7" stroke-width="1.5"/>
+<text x="90.0" y="190.0" text-anchor="start" class="label" style="font-weight:700;font-size:16px">Executable matches</text>
+<text x="90.0" y="245.0" text-anchor="start" class="label" style="fill:#172033;font-weight:700;font-size:40px">20</text>
+<text x="90.0" y="277.0" text-anchor="start" class="note">outside the original cluster</text>
+<line x1="340.0" y1="227.0" x2="400.0" y2="227.0" stroke="#2563eb" stroke-width="3"/>
+<rect x="400.0" y="155.0" width="270.0" height="145.0" fill="#f7f9fc" rx="12.0" stroke="#d7dde7" stroke-width="1.5"/>
+<text x="420.0" y="190.0" text-anchor="start" class="label" style="font-weight:700;font-size:16px">Meaning-entailing</text>
+<text x="420.0" y="245.0" text-anchor="start" class="label" style="fill:#172033;font-weight:700;font-size:40px">20</text>
+<text x="420.0" y="277.0" text-anchor="start" class="note">LLM judgment + code evidence</text>
+<line x1="670.0" y1="227.0" x2="730.0" y2="227.0" stroke="#2563eb" stroke-width="3"/>
+<rect x="730.0" y="155.0" width="270.0" height="145.0" fill="#f7f9fc" rx="12.0" stroke="#d7dde7" stroke-width="1.5"/>
+<text x="750.0" y="190.0" text-anchor="start" class="label" style="font-weight:700;font-size:16px">Provisional expansion</text>
+<text x="750.0" y="245.0" text-anchor="start" class="label" style="fill:#138a72;font-weight:700;font-size:40px">15</text>
+<text x="750.0" y="277.0" text-anchor="start" class="note">also above the member-fit floor</text>
+<line x1="1000.0" y1="227.0" x2="1060.0" y2="227.0" stroke="#2563eb" stroke-width="3"/>
+<rect x="1060.0" y="155.0" width="270.0" height="145.0" fill="#f7f9fc" rx="12.0" stroke="#d7dde7" stroke-width="1.5"/>
+<text x="1080.0" y="190.0" text-anchor="start" class="label" style="font-weight:700;font-size:16px">Held for review</text>
+<text x="1080.0" y="245.0" text-anchor="start" class="label" style="fill:#172033;font-weight:700;font-size:40px">5</text>
+<text x="1080.0" y="277.0" text-anchor="start" class="note">meaning fits, vector evidence weaker</text>
+<text x="70.0" y="365.0" text-anchor="start" class="label" style="font-weight:700;font-size:20px">Re-induction result</text>
+<text x="260.0" y="436.0" text-anchor="end" class="label" style="font-size:16px">Category support</text>
+<rect x="285.0" y="415.0" width="664.5" height="24.0" fill="#e8edf5" rx="5.0"/>
+<rect x="285.0" y="446.0" width="780.5" height="24.0" fill="#138a72" rx="5.0"/>
+<text x="959.5" y="434.0" text-anchor="start" class="label" style="fill:#172033;font-weight:700;font-size:14px">86</text>
+<text x="1075.5" y="465.0" text-anchor="start" class="label" style="fill:#ffffff;font-weight:700;font-size:14px">101</text>
+<text x="260.0" y="514.0" text-anchor="end" class="label" style="font-size:16px">Held-out precision</text>
+<rect x="285.0" y="493.0" width="625.8" height="24.0" fill="#e8edf5" rx="5.0"/>
+<rect x="285.0" y="524.0" width="765.9" height="24.0" fill="#138a72" rx="5.0"/>
+<text x="920.8" y="512.0" text-anchor="start" class="label" style="fill:#172033;font-weight:700;font-size:14px">73.6%</text>
+<text x="1060.9" y="543.0" text-anchor="start" class="label" style="fill:#ffffff;font-weight:700;font-size:14px">90.1%</text>
+<text x="260.0" y="592.0" text-anchor="end" class="label" style="font-size:16px">Held-out recall</text>
+<rect x="285.0" y="571.0" width="662.2" height="24.0" fill="#e8edf5" rx="5.0"/>
+<rect x="285.0" y="602.0" width="690.1" height="24.0" fill="#138a72" rx="5.0"/>
+<text x="957.2" y="590.0" text-anchor="start" class="label" style="fill:#172033;font-weight:700;font-size:14px">77.9%</text>
+<text x="985.1" y="621.0" text-anchor="start" class="label" style="fill:#ffffff;font-weight:700;font-size:14px">81.2%</text>
+<text x="260.0" y="670.0" text-anchor="end" class="label" style="font-size:16px">MDL proxy</text>
+<rect x="285.0" y="649.0" width="528.5" height="24.0" fill="#e8edf5" rx="5.0"/>
+<rect x="285.0" y="680.0" width="773.9" height="24.0" fill="#138a72" rx="5.0"/>
+<text x="823.5" y="668.0" text-anchor="start" class="label" style="fill:#172033;font-weight:700;font-size:14px">1.37×</text>
+<text x="1068.9" y="699.0" text-anchor="start" class="label" style="fill:#ffffff;font-weight:700;font-size:14px">2.00×</text>
+<rect x="1130.0" y="405.0" width="200.0" height="190.0" fill="#f0fdf8" rx="12.0" stroke="#138a72" stroke-width="1.5"/>
+<text x="1230.0" y="445.0" text-anchor="middle" class="label" style="font-weight:700;font-size:17px">Paired execution</text>
+<text x="1230.0" y="492.0" text-anchor="middle" class="label" style="fill:#138a72;font-weight:700;font-size:31px">93.8%</text>
+<text x="1230.0" y="518.0" text-anchor="middle" class="note">reference precision</text>
+<text x="1230.0" y="558.0" text-anchor="middle" class="label" style="font-weight:700;font-size:17px">75.2% recall</text>
+<text x="70.0" y="772.0" text-anchor="start" class="note">Gray bars: original cluster only. Green bars: 15 cumulative-evidence expansions included. This is provisional in-sample feedback, not independent validation or registry promotion.</text>
+</svg>

@@ -182,16 +182,29 @@ npm run intent:large:materialize-pairs
 npm run intent:large:semgrep-before
 npm run intent:large:semgrep-after
 npm run intent:large:evaluate-semgrep
+npm run intent:large:audit-expansions
+npm run intent:large:induce-structure:expanded
+npm run intent:large:evaluate-semgrep:expanded
 ```
 
 The materializer reconstructs 3,130 complete before/after files, including 1,533 Python
 pairs. Semgrep runs independently on each revision, the evaluator joins matches by
-sample ID, and the category's learned GumTree clause verifies the actual edit. Python
-package setup reaches 75.3% precision and 70.9% recall after verification, compared with
+sample ID, and the category's learned GumTree clause verifies the actual edit. Against
+the initial discovery-cluster reference, Python package setup reaches 75.3% precision
+and 70.9% recall after verification, compared with
 70.3% and 90.7% for the source-only prefilter. Trove taxonomy metadata reaches 100%
 precision and 75% recall after verification, compared with 8.5% and 87.5% for its broad
 source-only prefilter. This is executable evidence that Semgrep should remain a fast
-prefilter rather than define change intent by itself. Zero rules are registered because
+prefilter rather than define change intent by itself.
+
+Cluster membership is not treated as exhaustive ground truth. The feedback stage sends
+traceable out-of-cluster matches through a cached LLM entailment audit and combines that
+judgment with fit to the grounded meaning vector. For package setup, all 20 executable
+out-of-cluster matches entail the category; 15 also clear the fifth-percentile member-fit
+floor and are provisionally added, while five remain review candidates. Re-induction on
+101 changes reaches 90.1% held-out precision, 81.2% recall, and 2.00x classification-MDL
+compression. The paired executable matcher reaches 93.8% precision and 75.2% recall
+against this expanded provisional reference. Zero rules are registered because
 independent-repository support and the final edit-script MDL gate remain unresolved.
 
 `intent:facets:additive` writes one record per retained change with four deliberately
