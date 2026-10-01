@@ -20,6 +20,19 @@
 - This correction invalidates the code-grounded description stage of the current
   semantic-first function pilot; retain that run only as an ablation.
 
+## Corpus eligibility
+
+- Sample complete diff-message and code-diff pairs rather than extracting after-state
+  functions before semantic discovery.
+- Prefer changes that are strongly **addition-dominant** or strongly
+  **removal-dominant**. Exclude changes with a balanced mixture of additions and
+  removals, where the natural-language message is less likely to map cleanly to one
+  code region or transformation.
+- Preserve the direction of the change as metadata, but do not use it as a semantic
+  clustering feature.
+- The exact dominance threshold and whether it is measured with changed lines or AST
+  node mass remain experimental choices. Evaluate both directions symmetrically.
+
 ## Cluster-to-structure transition
 
 - Once diff messages have been embedded and clustered, the cluster already has a
