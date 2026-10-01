@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "decision_date": "2026-10-01",
+  "status": "completed_clean_pilot_no_registered_terms",
+  "unit_level": "function",
+  "scope": {
+    "functions": 160,
+    "python": 80,
+    "javascript": 80,
+    "recorded_repository_families": 160,
+    "description_abstentions": 1
+  },
+  "semantic_membership": {
+    "representation": "code-grounded behavioral semantic_text only",
+    "excluded_inputs": [
+      "raw code",
+      "language",
+      "file path",
+      "commit text",
+      "AST features",
+      "edit actions",
+      "prior category labels"
+    ],
+    "method": "HDBSCAN over normalized text-embedding-3-small vectors",
+    "selected_min_cluster_size": 4,
+    "selected_min_samples": 2,
+    "clusters": 12,
+    "clustered_functions": 59,
+    "initial_residuals": 100,
+    "coverage": 0.371069,
+    "assigned_member_silhouette": 0.140355
+  },
+  "coherence_audit": {
+    "retained_candidate_count": 10,
+    "rejected_cluster_count": 2,
+    "excluded_member_count": 24,
+    "retained_member_count": 35,
+    "final_residual_count": 124
+  },
+  "candidates": [
+    {
+      "name": "Temporal value conversion",
+      "support": 4,
+      "mean_label_fit": 0.493518,
+      "own_label_vote_share": 1.0,
+      "mean_nearest_label_margin": 0.256409,
+      "confidence": "low"
+    },
+    {
+      "name": "Password intake",
+      "support": 3,
+      "mean_label_fit": 0.487891,
+      "own_label_vote_share": 1.0,
+      "mean_nearest_label_margin": 0.118226,
+      "confidence": "low"
+    },
+    {
+      "name": "Callback scheduling",
+      "support": 4,
+      "mean_label_fit": 0.466699,
+      "own_label_vote_share": 1.0,
+      "mean_nearest_label_margin": 0.206527,
+      "confidence": "low"
+    },
+    {
+      "name": "Incoming submission validation",
+      "support": 4,
+      "mean_label_fit": 0.43144,
+      "own_label_vote_share": 1.0,
+      "mean_nearest_label_margin": 0.125703,
+      "confidence": "low"
+    },
+    {
+      "name": "User-facing previews",
+      "support": 3,
+      "mean_label_fit": 0.506243,
+      "own_label_vote_share": 1.0,
+      "mean_nearest_label_margin": 0.177158,
+      "confidence": "low"
+    },
+    {
+      "name": "Execution diagnostic reporting",
+      "support": 3,
+      "mean_label_fit": 0.491619,
+      "own_label_vote_share": 1.0,
+      "mean_nearest_label_margin": 0.179638,
+      "confidence": "low"
+    },
+    {
+      "name": "Recursive file enumeration",
+      "support": 3,
+      "mean_label_fit": 0.578515,
+      "own_label_vote_share": 1.0,
+      "mean_nearest_label_margin": 0.257663,
+      "confidence": "low"
+    },
+    {
+      "name": "External command execution",
+      "support": 4,
+      "mean_label_fit": 0.526359,
+      "own_label_vote_share": 1.0,
+      "mean_nearest_label_margin": 0.145992,
+      "confidence": "low"
+    },
+    {
+      "name": "Web application initialization",
+      "support": 3,
+      "mean_label_fit": 0.536608,
+      "own_label_vote_share": 1.0,
+      "mean_nearest_label_margin": 0.167628,
+      "confidence": "low"
+    },
+    {
+      "name": "Browser page navigation",
+      "support": 4,
+      "mean_label_fit": 0.499419,
+      "own_label_vote_share": 1.0,
+      "mean_nearest_label_margin": 0.158046,
+      "confidence": "low"
+    }
+  ],
+  "registered_term_count": 0,
+  "structural_verification_run": false,
+  "decision": "inspect meanings, then scale the unchanged semantic-only pipeline to roughly 500 repository families before recursion or structural verification"
+}

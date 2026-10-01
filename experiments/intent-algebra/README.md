@@ -4,6 +4,51 @@ This directory contains the reproducible first pass from CommitPackFT file pairs
 GumTree edit scripts, observed-file change components, structural signatures, and a
 gSpan-compatible graph interchange file.
 
+## Semantic-first restart pilot
+
+The corrected pilot keeps semantic discovery separate from structural verification.
+It samples one function-level unit from each of 160 recorded repository families,
+describes behavior from code alone, embeds only those behavioral descriptions, forms
+density clusters with explicit residuals, audits cluster coherence, and scores each
+candidate meaning against every member and competing candidate label.
+
+```sh
+node experiments/intent-algebra/prepare-semantic-function-pilot.js \
+  --per-language 80 --candidate-rows 700
+
+.tools/concept-cluster-venv/bin/python experiments/intent-algebra/ground-semantic-functions.py \
+  --input .data/intent-semantic-first-pilot/function-units.jsonl \
+  --cache .data/intent-semantic-first-pilot/semantic-description-cache.json \
+  --output .data/intent-semantic-first-pilot/semantic-functions.jsonl \
+  --batch-size 16
+
+.tools/concept-cluster-venv/bin/python experiments/intent-algebra/cluster-semantic-functions.py \
+  --input .data/intent-semantic-first-pilot/semantic-functions.jsonl \
+  --embedding-cache .data/intent-semantic-first-pilot/semantic-embedding-cache.json \
+  --output .data/intent-semantic-first-pilot/semantic-clusters.json
+
+.tools/concept-cluster-venv/bin/python experiments/intent-algebra/ground-semantic-function-clusters.py \
+  --clusters .data/intent-semantic-first-pilot/semantic-clusters.json \
+  --cache .data/intent-semantic-first-pilot/semantic-cluster-grounding-cache.json \
+  --output .data/intent-semantic-first-pilot/semantic-term-candidates.json
+
+.tools/concept-cluster-venv/bin/python experiments/intent-algebra/score-semantic-term-candidates.py \
+  --functions .data/intent-semantic-first-pilot/semantic-functions.jsonl \
+  --candidates .data/intent-semantic-first-pilot/semantic-term-candidates.json \
+  --embedding-cache .data/intent-semantic-first-pilot/semantic-embedding-cache.json \
+  --output .data/intent-semantic-first-pilot/scored-semantic-terms.json
+
+python3 experiments/intent-algebra/plot-semantic-first-pilot.py \
+  --input .data/intent-semantic-first-pilot \
+  --output docs/figures/intent-semantic-first-pilot
+```
+
+Add `--offline` to the four Python model/embedding stages to replay their caches. The
+function sampler uses Tree-sitter only to locate callable boundaries; tree information,
+paths, languages, commits, code text, and prior labels are excluded from cluster
+membership. The 160-function run yields ten low-confidence semantic hypotheses and
+registers zero terms, so structural verification has deliberately not begun.
+
 ## Prerequisites
 
 - Java/Javac 17 or newer.

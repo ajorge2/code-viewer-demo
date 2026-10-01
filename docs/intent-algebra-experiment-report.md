@@ -1,6 +1,6 @@
 # CodeArchitect Intent Algebra: Bottom-Up Primitive Discovery for Human-Readable Code Explanations
 **September 30, 2026 – In progress**
-**Status**: In progress — corpus access verified; deterministic 200-, 1,000-, 4,000-, and 10,000-diff experiments have run through GumTree extraction, bounded gSpan discovery, semantic/code clustering, nested-sample stability analysis, downward semantic recursion, centroid-aware meaning grounding, TED-based expansion, semantic-first structural alignment, category-conditioned structural-rule induction, paired Semgrep/GumTree execution, a semantic–structural feedback loop, broad component-category induction, an 80-repository static-code holdout, open-vocabulary gap expansion, cross-language static-structure validation, and residual-aware recursive static refinement; human calibration, independent-repository enrichment, broader paired-rule coverage, complete edit-tree MDL, and product benchmarks remain open
+**Status**: In progress — the structure-influenced run is frozen as an ablation, and a clean 160-function semantic-first restart pilot has completed through code-grounded description, semantic-only density clustering, coherence review, and cumulative meaning confidence; recursive scale-up, downstream structural verification, human calibration, and product benchmarks remain open
 
 > **Methodological update — October 1, 2026:** The structure-influenced discovery run
 > documented below is retained as an exploratory ablation. The next pilot restarts
@@ -1145,6 +1145,52 @@ this small LLM-adjudicated sample.
 
 ![One-sided difference closure of current terms](figures/intent-algebra-sweep-5000/16-term-overlap-closure.svg)
 
+### Clean semantic-first restart pilot
+
+The replacement pilot uses **functions** as its only unit level. It deterministically
+samples 80 Python and 80 JavaScript functions from 160 distinct recorded repository
+families. Tree-sitter identifies callable boundaries but contributes no feature to
+semantic membership. The LLM sees code and language only long enough to produce a
+behavioral description; the embedding and clustering stages receive only that
+description. File paths, commit text, AST types, edit actions, raw code, language, and
+all labels from the prior run are excluded.
+
+One function is withheld because its bounded code lacks enough context for a responsible
+meaning. HDBSCAN sweeps 12 density configurations over the remaining 159 descriptions
+and selects a non-forcing solution with 12 clusters, 59 assigned functions, 100 initial
+residuals, 37.1% coverage, and 0.140 assigned-member silhouette. The low silhouette is
+reported rather than hidden: this deliberately diverse pilot is sparse, and semantic
+coherence must be established after retrieval rather than assumed from density alone.
+
+A constrained all-member review rejects two clusters, removes 24 semantically adjacent
+members from the other groups, and retains 35 functions across ten candidate meanings:
+
+| Candidate meaning | Independent functions | Status |
+|---|---:|---|
+| Temporal value conversion | 4 | Low-confidence hypothesis |
+| Password intake | 3 | Low-confidence hypothesis |
+| Callback scheduling | 4 | Low-confidence hypothesis |
+| Incoming submission validation | 4 | Low-confidence hypothesis |
+| User-facing previews | 3 | Low-confidence hypothesis |
+| Execution diagnostic reporting | 3 | Low-confidence hypothesis |
+| Recursive file enumeration | 3 | Low-confidence hypothesis |
+| External command execution | 4 | Low-confidence hypothesis |
+| Web application initialization | 3 | Low-confidence hypothesis |
+| Browser page navigation | 4 | Low-confidence hypothesis |
+
+Every retained member ranks its own candidate definition above all nine competing
+definitions, with positive mean margins from 0.118 to 0.258. Absolute mean definition
+fit ranges only from 0.431 to 0.579, however, and support never exceeds four independent
+repositories. The cumulative confidence gate therefore marks all ten meanings low and
+registers **zero terms**. The coherence gate leaves 124 explicit residuals, and no
+candidate has enough support for responsible recursive subdivision. Structural
+verification is intentionally not run: it is downstream of a semantic term surviving
+the meaning and support gates.
+
+![Semantic-first pilot funnel](figures/intent-semantic-first-pilot/01-semantic-pilot-funnel.svg)
+
+![Semantic candidate confidence](figures/intent-semantic-first-pilot/02-semantic-candidate-confidence.svg)
+
 ### Pre-registered quality comparison
 
 | Approach | Match coverage | Intent precision | Unique resolution | Human usefulness | vs Baseline | Notes |
@@ -1272,13 +1318,11 @@ Future result bullets must still wait for held-out human evaluation and must not
 
 ### Immediate next steps
 
-1. Freeze the current run as a structure-influenced ablation and create a separate semantic-first pilot output directory.
-2. Select one consistent code-unit level, generate code-grounded behavioral descriptions, and embed those semantic representations without structural features, paths, or generated category labels.
-3. Cluster the actual code examples by meaning, preserve residuals, and recursively cluster members inside coherent semantic groups.
-4. Name and score terms from all supporting examples, then apply the empty-set-aware one-sided difference audit to their actual membership sets.
-5. Use AST/GumTree/Semgrep evidence only after semantic discovery to verify whether surviving terms have one or more transferable structural realizations.
-6. Run a small clean pilot and inspect its clusters before authorizing the replacement final breadth sweep.
-7. After the semantic-first taxonomy freezes, run held-out repository coverage, human calibration, syntax-only/direct-LLM/CodeArchitect baselines, and product explanation benchmarks.
+1. Calibrate the ten semantic-first hypotheses for recognizable meaning while keeping all of them unregistered.
+2. Scale the same function-only semantic pipeline to roughly 500 repository families so recurrent terms can cross the pilot support floor and coherent parents can contain enough evidence for recursive subclustering.
+3. Retrieve and adjudicate additional semantic members—including bounded multi-membership—before applying the empty-set-aware overlap audit to actual term sets.
+4. Use AST/GumTree/Semgrep evidence only for semantic terms that survive support, confidence, recursion, and overlap gates; verify one or more transferable structural realizations on held-out repositories.
+5. Freeze the semantic-first taxonomy, then run repository coverage, human calibration, syntax-only/direct-LLM/CodeArchitect baselines, and product explanation benchmarks.
 
 ### Phase boundary
 
