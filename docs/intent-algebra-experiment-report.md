@@ -1072,6 +1072,35 @@ No second-level child is promoted to a structural primitive. This is the intende
 behavior of recursive composition: semantic parents remain useful descriptions while
 only recurrent, transferable code relationships are allowed into the structural layer.
 
+### First human calibration of component meanings
+
+An initial low-friction calibration presented eight code summaries spanning strong
+matches, borderline parents, open-vocabulary gaps, and the recursive normalization
+branch. The reviewer judged all eight proposed categories to express the **right
+semantic idea**, found no category clearly too narrow, and could not reliably judge
+over-breadth from a single flat label. This is positive evidence for recognizability,
+not a precision estimate: the batch is small, the reviewer saw summaries rather than
+raw code, and breadth requires seeing both the parent and its candidate child.
+
+The judge pass therefore separates two questions that the first prompt conflated:
+
+| Example | Parent membership | Recommended child or refinement | Judge assessment |
+|---|---|---|---|
+| Signup/sign-in routes and redirects | Routing and authentication | Authentication-aware routing | Correct composite parent; child would preserve the relationship between its two bases |
+| HTTP GET/POST response wrappers | Network communication interfaces | HTTP client utilities | Strong parent fit; reusable child is warranted |
+| React course controls and inputs | User interface | Form interface | Strong parent fit; child is useful if supported beyond this domain |
+| Cached module resolution and fallbacks | Build and development tooling | Module resolution | Parent family is correct but too broad to be the terminal explanation |
+| Device-performance statistic collection | System monitoring | Device telemetry | Strong parent fit; child carries the code-grounded mechanism |
+| Filtered retrieval from a search index | Content indexing | Search-index access | Family is plausible, but “indexing” overstates code that retrieves rather than constructs an index |
+| Password generation by random sampling | Random value generation | Credential generation | Correct mechanism parent; intent-level child is more informative |
+| Greek lowercasing and accent removal | Text normalization | Case and diacritic normalization | Strong parent fit and a clear, reusable child meaning |
+
+The resulting calibration rule is: **a broad label is not rejected merely because a
+more precise label exists**. The broad label is retained as a parent when membership is
+clear, while a child is proposed only when its meaning is reusable and supported by
+multiple independent code examples. Future human batches will ask separately whether
+the parent is correct and whether the proposed child adds useful specificity.
+
 ### Pre-registered quality comparison
 
 | Approach | Match coverage | Intent precision | Unique resolution | Human usefulness | vs Baseline | Notes |
@@ -1197,7 +1226,7 @@ Future result bullets must still wait for held-out human evaluation and must not
 
 ### Immediate next steps
 
-1. Human-label a stratified sample of the 80 static judgments—strong, plausible, and abstaining—to calibrate semantic precision and missing-category agreement.
+1. Expand the first human calibration across a stratified sample of the 80 static judgments—strong, plausible, and abstaining—using separate parent-membership and child-specificity questions to estimate semantic precision and missing-category agreement.
 2. Preserve Text normalization as a semantic parent, audit copied-code provenance for the two filename-safe title examples, and gather more independent evidence before retrying structural induction on any second-level child.
 3. Enrich the 101-change package category with parent SHAs, fork/mirror relationships, timestamps, and commit-wide changed-file lists to validate the observed provenance proxy.
 4. Run held-out semantic entailment and source-level mutation/reparse probes for package setup; its persisted-AST role-aware probes already pass globally.
