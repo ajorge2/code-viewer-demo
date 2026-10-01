@@ -190,6 +190,7 @@ npm run intent:large:structural-mdl
 npm run intent:large:probe-rules
 npm run intent:large:component-hierarchy
 npm run intent:large:static-coverage
+npm run intent:large:expand-static-gaps
 ```
 
 The materializer reconstructs 3,130 complete before/after files, including 1,533 Python
@@ -254,6 +255,15 @@ existing parents, and abstains on 25. Five gaps recur twice: database migrations
 content/search indexing, system monitoring, hardware input, and string/text processing.
 These are LLM-adjudicated exploratory results, not human-calibrated precision. Both API
 stages are content-addressed and replay with `-- --offline`.
+
+`intent:large:expand-static-gaps` closes the first open-vocabulary feedback loop. It
+uses the five recurring gaps as meaning-centroid retrieval seeds over 500 additional
+static files from 500 recorded-name-disjoint repositories, then audits the retrieved
+code before increasing support. Ten of 57 candidates entail their proposed category.
+String processing grows from two to seven examples and clears the provisional five-file
+feedback floor; content indexing and database migrations reach four, hardware input
+reaches three, and system monitoring remains at two. These remain discovery candidates,
+not registered categories or substitutes for the proposal's final support gates.
 
 `intent:facets:additive` writes one record per retained change with four deliberately
 separate fields: edit operation, noun-only edited entity, semantic container, and raw

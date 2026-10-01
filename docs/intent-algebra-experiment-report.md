@@ -959,6 +959,35 @@ separate module-, class-, and function-level components.
 
 ![Static component coverage on unseen repositories](figures/intent-algebra-sweep-5000/11-static-component-coverage.svg)
 
+### Open-vocabulary gap feedback
+
+The five recurring gaps then entered the same kind of retrieve-and-validate loop used
+for change categories. Their member-meaning vectors retrieved 57 files above
+seed-derived similarity floors from a larger pool of 500 files in 500
+recorded-name-disjoint repositories. The semantic audit accepted only code that
+materially implements the proposed responsibility; topical neighbors did not count.
+
+| Gap candidate | Initial files | Accepted expansions | Total support | Pilot status |
+|---|---:|---:|---:|---|
+| String processing algorithms | 2 | 5 | 7 | Expanded candidate |
+| Content indexing | 2 | 2 | 4 | Insufficient support |
+| Database schema migrations | 2 | 2 | 4 | Insufficient support |
+| Hardware input integration | 2 | 1 | 3 | Insufficient support |
+| System monitoring | 2 | 0 | 2 | Insufficient support |
+
+Only **String processing algorithms** clears the provisional five-file feedback floor.
+Its accepted examples include expression parsing, title normalization, capitalization
+and sanitization helpers, text-to-character-code conversion, and format validation.
+The other four meanings remain traceable hypotheses rather than being promoted by
+semantic similarity alone. Across all five searches, only 10 of 57 retrieved candidates
+were accepted, demonstrating that the semantic audit is doing real filtering.
+
+This is still a small support diagnostic, not the proposal's 50-repository/100-commit
+promotion gate. The expanded category must next acquire a structural description of
+the code relationships shared by its members and survive human meaning calibration.
+
+![Static gap feedback loop](figures/intent-algebra-sweep-5000/12-static-gap-feedback.svg)
+
 ### Pre-registered quality comparison
 
 | Approach | Match coverage | Intent precision | Unique resolution | Human usefulness | vs Baseline | Notes |
@@ -991,6 +1020,7 @@ The current working tree now contains an executable pilot in addition to existin
 - A repository-support analyzer now collapses multi-repository rows and shared repository names into observed provenance components instead of treating every listed alias as independent support.
 - A grounded component hierarchy now groups 41 of 49 reliable change meanings into 11 broad, traceable component categories with bounded multi-parent overlap and explicit abstention for unmatched meanings.
 - A repository-disjoint static transfer harness now evaluates complete source files without commit text, retrieves candidate parents from code embeddings, permits zero-to-two labels, and turns uncovered responsibilities into traceable growth candidates.
+- A cached static-gap feedback loop now searches 500 additional unseen-repository files and audits retrieved code before increasing category support, expanding one of five recurring gaps while leaving four below the pilot floor.
 - Held-out category-label MDL, structural-constituent MDL, and persisted-AST role-aware metamorphic probes are implemented for triage. Primitive registration, lattice resolution, source-reparse probes, complete edit-tree MDL, and explanation-quality benchmarks remain unimplemented.
 
 ## 5. Business / Practical Impact
@@ -1053,6 +1083,7 @@ Current, defensible pilot bullets:
 - Implemented role-aware metamorphic tests that preserved 589/589 clauses under local-name randomization and rejected 515/515 anchor mutations, including 100% results for package setup and Trove rules.
 - Induced 11 broad component categories above 49 reliable change meanings, covering 41 meanings while preserving eight abstentions and a traceable cross-cutting overlap between build tooling and web-server integration.
 - Evaluated the component vocabulary on 80 static Python/JavaScript files from 80 recorded-name-disjoint repositories, obtaining 68.8% exploratory coverage across all 11 parents while preserving 25 explicit gaps and surfacing five recurrent missing component concepts.
+- Closed the first open-vocabulary component loop by auditing 57 gap-retrieval candidates from a 500-repository pool, accepting 10 code-entailing expansions and growing string-processing components from two to seven examples without promoting four weaker gaps.
 - Separated minimal queue discovery from flexible composite expansion across 1,933 addition-dominant changes with up to 32 components, caught a 22.8%-precision constraint retriever before registration, and collapsed 67 exact-host candidates into 45 unique contexts including 13 multi-base lattice intersections.
 - Preserved directed edit semantics for undirected gSpan mining through relation-node encoding, then reduced 1,957 frequent fragments to 26 support-closed pilot candidates with structural-validity and labeled-supergraph checks.
 - Created an auditable grounding queue that joins every pilot candidate to commit text, code excerpts, and provenance while explicitly withholding meanings that do not yet meet semantic or independence requirements.
@@ -1078,7 +1109,7 @@ Future result bullets must still wait for held-out human evaluation and must not
 ### Immediate next steps
 
 1. Human-label a stratified sample of the 80 static judgments—strong, plausible, and abstaining—to calibrate semantic precision and missing-category agreement.
-2. Feed the five recurring static gaps back into code-grounded clustering and structural pattern induction, then retest whether the expanded vocabulary improves held-out coverage without weakening specificity.
+2. Induce a shared structural description for the seven-file string-processing candidate, and keep retrieving independent evidence for the four sub-threshold gaps before adding any broad parent to the hierarchy.
 3. Enrich the 101-change package category with parent SHAs, fork/mirror relationships, timestamps, and commit-wide changed-file lists to validate the observed provenance proxy.
 4. Run held-out semantic entailment and source-level mutation/reparse probes for package setup; its persisted-AST role-aware probes already pass globally.
 5. Generalize the semantic–structural feedback loop and paired matchers to additional Python and JavaScript categories; evaluate complete edit-tree MDL only for multi-atom composites.

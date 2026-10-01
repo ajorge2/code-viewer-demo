@@ -781,6 +781,36 @@ def plot_static_component_coverage(coverage: dict, output: Path) -> None:
     svg.finish(output)
 
 
+def plot_static_gap_expansion(expansion: dict, output: Path) -> None:
+    categories = expansion["categories"]
+    svg = Svg(
+        "Open-vocabulary feedback from recurring static gaps",
+        f"{expansion['summary']['retrieved_candidates']} similarity candidates audited; only code-entailing matches increase support",
+    )
+    left, right = 430, 1280
+    maximum = max(item["total_support"] for item in categories)
+    svg.text(70, 148, "Gap category", cls="axis")
+    svg.text(left, 148, "Independent held-out files", cls="axis")
+    for index, item in enumerate(categories):
+        y = 190 + index * 102
+        initial_width = (right - left) * item["initial_support"] / maximum
+        expansion_width = (right - left) * item["accepted_expansions"] / maximum
+        svg.text(left - 22, y + 31, item["name"], anchor="end", size=17, weight=700)
+        svg.rect(left, y, initial_width, 45, PALE, rx=7)
+        svg.rect(left + initial_width, y, expansion_width, 45, HIGH_CONFIDENCE, rx=7)
+        svg.text(left + initial_width + expansion_width + 14, y + 29, f"{item['total_support']} total", size=15, weight=700)
+        svg.text(
+            left,
+            y + 70,
+            f"2 seeds + {item['accepted_expansions']} accepted from {item['candidate_count']} retrieved · {item['status'].replace('_', ' ')}",
+            cls="note",
+        )
+    svg.rect(70, 720, 1260, 62, "#f7f9fc", rx=8, stroke=GRID)
+    svg.text(90, 747, "Gray = original recurring holdout evidence. Green = new code-entailing matches from the 500-file repository-disjoint pool.", cls="note")
+    svg.text(90, 771, "Only String processing algorithms reaches the provisional five-file support floor; no candidate is registered.", cls="note")
+    svg.finish(output)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -855,6 +885,13 @@ def main() -> None:
         plot_static_component_coverage(
             json.loads(static_coverage_path.read_text(encoding="utf-8")),
             args.output / "11-static-component-coverage.svg",
+        )
+        figure_count += 1
+    static_gap_path = args.input / "static-gap-expansions.json"
+    if static_gap_path.exists():
+        plot_static_gap_expansion(
+            json.loads(static_gap_path.read_text(encoding="utf-8")),
+            args.output / "12-static-gap-feedback.svg",
         )
         figure_count += 1
     print(f"Wrote {figure_count} figures to {args.output}")

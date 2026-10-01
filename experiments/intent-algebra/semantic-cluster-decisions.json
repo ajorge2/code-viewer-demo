@@ -580,7 +580,55 @@
       "decision": "retain_open_vocabulary_layer_and_feed_recurring_gaps_back_into_discovery",
       "reason": "All 11 induced parents transfer to at least one static file, while 25 explicit abstentions expose responsibilities the vocabulary does not yet cover. Five omissions recur across independent held-out files and should seed the next code-grounded clustering loop. The 68.75% rate is exploratory LLM-adjudicated coverage, not precision."
     },
-    "decision": "continue_to_static_gap_feedback_and_human_calibration",
-    "reason": "The repository-disjoint static holdout shows that the broad layer transfers beyond commit descriptions while remaining open to new categories. The next loop should derive code-grounded parents from recurrent gaps and use human labels to calibrate the semantic judge before making quality claims."
+    "static_gap_feedback_loop": {
+      "retrieval_pool_files": 500,
+      "recorded_name_disjoint_repository_count": 500,
+      "recurring_seed_gap_count": 5,
+      "retrieved_candidate_count": 57,
+      "accepted_expansion_count": 10,
+      "provisional_minimum_total_support": 5,
+      "categories": [
+        {
+          "name": "String processing algorithms",
+          "initial_support": 2,
+          "accepted_expansions": 5,
+          "total_support": 7,
+          "status": "expanded_candidate"
+        },
+        {
+          "name": "Content indexing",
+          "initial_support": 2,
+          "accepted_expansions": 2,
+          "total_support": 4,
+          "status": "insufficient_support"
+        },
+        {
+          "name": "Database schema migrations",
+          "initial_support": 2,
+          "accepted_expansions": 2,
+          "total_support": 4,
+          "status": "insufficient_support"
+        },
+        {
+          "name": "Hardware input integration",
+          "initial_support": 2,
+          "accepted_expansions": 1,
+          "total_support": 3,
+          "status": "insufficient_support"
+        },
+        {
+          "name": "System monitoring",
+          "initial_support": 2,
+          "accepted_expansions": 0,
+          "total_support": 2,
+          "status": "insufficient_support"
+        }
+      ],
+      "registered_count": 0,
+      "decision": "retain_string_processing_for_structural_induction_and_continue_evidence_collection_for_other_gaps",
+      "reason": "Only 10 of 57 high-similarity retrievals materially implement the proposed responsibility. The audit expands string processing to seven independent files while correctly leaving four attractive labels below even the small pilot support floor. Final promotion still requires structural traceability, human calibration, and the proposal's full support cutoffs."
+    },
+    "decision": "continue_to_static_structural_induction_and_human_calibration",
+    "reason": "The repository-disjoint holdout and selective gap feedback demonstrate an open vocabulary that can grow from code evidence without forcing every file into the nearest category. The seven-file string-processing candidate is ready for structural analysis; semantic precision still requires human calibration."
   }
 }
