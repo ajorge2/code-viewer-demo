@@ -1101,7 +1101,7 @@ clear, while a child is proposed only when its meaning is reusable and supported
 multiple independent code examples. Future human batches will ask separately whether
 the parent is correct and whether the proposed child adds useful specificity.
 
-### Preliminary overlap-closure audit
+### Reproducible overlap-closure audit
 
 The algebra treats the empty set as a valid silent zero term. For two non-disjoint
 terms `A` and `B`, their overlap is admissible when at least one directional difference
@@ -1115,16 +1115,29 @@ and does not count toward semantic support. If both differences are empty, the t
 are extensionally equal and are flagged as aliases instead of being treated as two
 independent discoveries.
 
-The saved 11-parent hierarchy contains one explicit cross-parent leaf:
-**Webpack-associated server configuration**, shared by **Build and development
-tooling** and **Web server integration**. The 80-file static holdout contains eight
-distinct multi-label parent pairs across 11 files. Every observed pair has non-empty
-evidence on both sides of the overlap, and a provisional semantic judge finds at least
-one coherent directional remainder for each pair. No two parents have identical
-holdout match sets. The current vocabulary therefore contains no observed violation of
-the one-sided difference rule, although this is only a preliminary audit over
-LLM-adjudicated matches. The final sweep must rerun the audit on the frozen, larger
-membership matrix and retain the code examples supporting every accepted remainder.
+The executable audit combines the 42 declared leaf-to-parent membership edges with the
+80-file static holdout. Among all 55 pairs of the 11 current parent terms, 46 are
+disjoint and nine have a genuine partial overlap. A constrained semantic judge sees
+only each intersection and its two evidence-backed remainders; it must name a positive
+software responsibility rather than restating a parent or using “A without B.” Six of
+the nine partial overlaps satisfy the rule and three fail. There are no empirical
+parent aliases and no insufficient-evidence outcomes in this pass.
+
+| Partial-overlap outcome | Count | Examples |
+|---|---:|---|
+| Passes through a valid directional difference | 6 | Remote-service integration adapters; route registration and dispatch control; application-serving runtime; behavioral test suites and harnesses |
+| Violates the one-sided difference rule | 3 | Authentication × Routing; User interface × Game application; Web server integration × Routing |
+| Alias or insufficient-evidence warning | 0 | None observed |
+
+The failures are actionable taxonomy defects, not matcher errors. **Game application**
+behaves like a domain umbrella crossing a functional UI term and should not remain an
+algebraic peer without refinement. **Authentication**, **Routing**, and **Web server
+integration** currently mix responsibilities broadly enough that removing their shared
+members leaves no newly coherent term; the final sweep should split or reclassify these
+regions before freezing the vocabulary. No automatic merge or promotion is made from
+this small LLM-adjudicated sample.
+
+![One-sided difference closure of current terms](figures/intent-algebra-sweep-5000/16-term-overlap-closure.svg)
 
 ### Pre-registered quality comparison
 
@@ -1251,13 +1264,14 @@ Future result bullets must still wait for held-out human evaluation and must not
 
 ### Immediate next steps
 
-1. Expand the first human calibration across a stratified sample of the 80 static judgments—strong, plausible, and abstaining—using separate parent-membership and child-specificity questions to estimate semantic precision and missing-category agreement.
-2. Preserve Text normalization as a semantic parent, audit copied-code provenance for the two filename-safe title examples, and gather more independent evidence before retrying structural induction on any second-level child.
-3. Enrich the 101-change package category with parent SHAs, fork/mirror relationships, timestamps, and commit-wide changed-file lists to validate the observed provenance proxy.
-4. Run held-out semantic entailment and source-level mutation/reparse probes for package setup; its persisted-AST role-aware probes already pass globally.
-5. Generalize the semantic–structural feedback loop and paired matchers to additional Python and JavaScript categories; evaluate complete edit-tree MDL only for multi-atom composites.
-6. Implement the versioned category registry, relation-cycle checks, bounded multi-parent resolution, and explicit abstention.
-7. Run the syntax-only, direct-LLM, retrieval, and current-CodeArchitect baselines before making explanation-quality or business-impact claims.
+1. In the final breadth sweep, split or reclassify the three overlap-rule failures—Authentication × Routing, User interface × Game application, and Web server integration × Routing—then rerun closure before freezing the vocabulary.
+2. Expand the first human calibration across a stratified sample of the 80 static judgments—strong, plausible, and abstaining—using separate parent-membership and child-specificity questions to estimate semantic precision and missing-category agreement.
+3. Preserve Text normalization as a semantic parent, audit copied-code provenance for the two filename-safe title examples, and gather more independent evidence before retrying structural induction on any second-level child.
+4. Enrich the 101-change package category with parent SHAs, fork/mirror relationships, timestamps, and commit-wide changed-file lists to validate the observed provenance proxy.
+5. Run held-out semantic entailment and source-level mutation/reparse probes for package setup; its persisted-AST role-aware probes already pass globally.
+6. Generalize the semantic–structural feedback loop and paired matchers to additional Python and JavaScript categories; evaluate complete edit-tree MDL only for multi-atom composites.
+7. Implement the versioned category registry, relation-cycle checks, bounded multi-parent resolution, and explicit abstention.
+8. Run the syntax-only, direct-LLM, retrieval, and current-CodeArchitect baselines before making explanation-quality or business-impact claims.
 
 ### Phase boundary
 
@@ -1285,6 +1299,7 @@ Future result bullets must still wait for held-out human evaluation and must not
 - Per-base structural expansion prototype: `experiments/intent-algebra/expand-base-coedits.py`
 - Semantic/structural alignment and downward-recursion harnesses: `experiments/intent-algebra/align-semantic-structural.py`, `refine-semantic-clusters.py`
 - Broad-category induction and static transfer evaluation: `experiments/intent-algebra/build-component-category-hierarchy.py`, `evaluate-static-component-coverage.py`
+- One-sided term-overlap audit: `experiments/intent-algebra/audit-term-overlap-closure.py`
 - Versioned semantic review policy and pilot/sweep decisions: `experiments/intent-algebra/semantic-cluster-decisions.json`
 - Human review interface and rubric: `experiments/intent-algebra/review-server.js`, `review-ui/`, and `HUMAN_REVIEW.md`
 - Ignored local pilot artifacts: `.data/intent-pilot/summary.json`, `sample-results.jsonl`, `eligible-change-graphs.data`, `gspan-labels.json`, `graph-index.json`, `mined-patterns.json`, and `grounding-queue.jsonl`

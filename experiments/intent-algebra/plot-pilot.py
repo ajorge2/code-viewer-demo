@@ -881,6 +881,44 @@ def plot_static_recursive_refinement(refinement: dict, expansion: dict, output: 
     svg.finish(output)
 
 
+def plot_term_overlap_closure(audit: dict, output: Path) -> None:
+    """Show which current parent-term relationships satisfy difference closure."""
+    counts = audit["summary"]["status_counts"]
+    bars = [
+        ("Disjoint", counts.get("passes_disjoint", 0), MEDIUM_CONFIDENCE, MEDIUM_CONFIDENCE),
+        ("Partial overlap passes", counts.get("passes_one_sided_difference", 0), HIGH_CONFIDENCE, HIGH_CONFIDENCE),
+        ("Partial overlap fails", counts.get("violates_one_sided_difference", 0), TOO_MANY, TOO_MANY),
+        ("Alias warnings", counts.get("alias_warning", 0), JAVASCRIPT, JAVASCRIPT),
+    ]
+    maximum = max(value for _name, value, _fill, _ink in bars) or 1
+    svg = Svg(
+        "One-sided difference closure of current terms",
+        "Observed parent pairs from discovered leaves and the 80-file static holdout",
+        height=800,
+    )
+    for index, (name, value, color, value_color) in enumerate(bars):
+        y = 165 + index * 90
+        svg.text(70, y + 25, name, size=17)
+        svg.rect(330, y, 820, 42, "#f2f4f7", rx=7)
+        if value:
+            svg.rect(330, y, 820 * value / maximum, 42, color, rx=7)
+        svg.text(1180, y + 29, value, weight=700, size=20, fill=value_color)
+
+    failures = [
+        f"{record['term_a']['name']} × {record['term_b']['name']}"
+        for record in audit["pairs"]
+        if record["closure_status"] == "violates_one_sided_difference"
+    ]
+    svg.rect(70, 545, 1260, 165, "#fff5f3", rx=12, stroke=TOO_MANY)
+    svg.text(95, 585, "Overlaps requiring revision", weight=700, size=20, fill=TOO_MANY)
+    for index, failure in enumerate(failures):
+        svg.text(105, 620 + index * 27, f"• {failure}", size=16)
+    if not failures:
+        svg.text(105, 620, "No observed violations", size=16)
+    svg.text(95, 690, "Subset edges pass through the silent empty-set term; equal extensions remain alias warnings.", cls="note")
+    svg.finish(output)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -985,6 +1023,13 @@ def main() -> None:
         plot_static_structure_validation(
             json.loads(static_normalization_structure_path.read_text(encoding="utf-8")),
             args.output / "15-static-normalization-structure.svg",
+        )
+        figure_count += 1
+    overlap_audit_path = args.input / "term-overlap-closure.json"
+    if overlap_audit_path.exists():
+        plot_term_overlap_closure(
+            json.loads(overlap_audit_path.read_text(encoding="utf-8")),
+            args.output / "16-term-overlap-closure.svg",
         )
         figure_count += 1
     print(f"Wrote {figure_count} figures to {args.output}")

@@ -298,6 +298,22 @@ title sanitization has two nearly identical examples and a provenance warning, c
 normalization fails child-specificity gain, tag capitalization falls to one member, and
 three residuals remain unassigned. No second-level child is promoted.
 
+The current parent terms can be checked against the one-sided difference rule with:
+
+```sh
+.tools/concept-cluster-venv/bin/python experiments/intent-algebra/audit-term-overlap-closure.py \
+  --hierarchy .data/intent-sweep-additive-5000/component-category-hierarchy.json \
+  --coverage .data/intent-sweep-additive-5000/static-component-coverage.json \
+  --cache .data/intent-sweep-additive-5000/term-overlap-audit-cache.json \
+  --output .data/intent-sweep-additive-5000/term-overlap-closure.json
+```
+
+The audit treats the empty set as a silent valid term, flags equal extensions as aliases,
+and sends only genuine partial overlaps to a constrained semantic difference judge. The
+current evidence has 46 disjoint parent pairs, six partial overlaps with a valid
+directional remainder, and three violations requiring split or reclassification. Add
+`--offline` to replay the cached judgment without a model request.
+
 `intent:facets:additive` writes one record per retained change with four deliberately
 separate fields: edit operation, noun-only edited entity, semantic container, and raw
 concept tokens. The first three form the orthogonal local representation. Concept tokens
