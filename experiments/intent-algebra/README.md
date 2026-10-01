@@ -192,6 +192,8 @@ npm run intent:large:component-hierarchy
 npm run intent:large:static-coverage
 npm run intent:large:expand-static-gaps
 npm run intent:large:induce-static-structure
+npm run intent:large:refine-static-category
+npm run intent:large:expand-static-children
 ```
 
 The materializer reconstructs 3,130 complete before/after files, including 1,533 Python
@@ -274,6 +276,20 @@ recovers none of seven held-out positives under leave-one-positive-out evaluatio
 therefore remains a semantic-only umbrella. The failed transfer is a useful stopping
 result: broad component meaning and precise structural primitives remain separate, and
 the next recursion should split transformation from analysis/parsing before retrying.
+
+`intent:large:refine-static-category` allows stable multi-member children while leaving
+singleton residuals unassigned. At distance 0.44, two core groups cover five of seven
+string-processing members with 0.898 subsample-stability ARI. Semantic audit retains
+Text normalization with two members and positive specificity gain, rejects Text filter
+pipelines after it falls to one member, and leaves palindrome search plus format
+validation as residuals.
+
+`intent:large:expand-static-children` audits the top 20 repository-disjoint retrievals
+for accepted children. Text normalization adds two true examples—username/channel
+canonicalization and blog-tag capitalization—but reaches only four files, below the
+five-file pilot floor. The command defaults to the verified 500-file scope. A proposed
+2,000-file run was not executed because sending that larger third-party source payload
+to OpenAI requires explicit user approval.
 
 `intent:facets:additive` writes one record per retained change with four deliberately
 separate fields: edit operation, noun-only edited entity, semantic container, and raw

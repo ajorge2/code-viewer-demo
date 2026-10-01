@@ -647,7 +647,38 @@
       "decision": "retain_as_semantic_only_umbrella_and_recursively_split_before_retrying_structure",
       "reason": "The category supports human-readable retrieval but the learned AST clauses cover only three of seven examples in-sample and recover no held-out positive. Broad semantic component categories must not be conflated with precise structural primitives; transformation and analysis/parsing children are the next defensible split hypotheses."
     },
-    "decision": "continue_to_recursive_static_semantic_split_and_human_calibration",
-    "reason": "Open-vocabulary feedback grew a useful semantic umbrella, while leave-one-out structural validation correctly prevented it from becoming a misleading primitive. The next loop should split the umbrella by meaning and retry structure only within coherent children."
+    "recursive_static_semantic_refinement": {
+      "parent": "String processing algorithms",
+      "parent_member_count": 7,
+      "selected_distance_threshold": 0.44,
+      "core_coverage": 0.714286,
+      "silhouette": 0.184057,
+      "subsample_stability_ari": 0.897792,
+      "residual_member_count": 2,
+      "residual_meanings": [
+        "Longest palindromic substring search",
+        "String-format validation predicate factory"
+      ],
+      "accepted_child": {
+        "name": "Text normalization",
+        "initial_support": 2,
+        "specificity_gain": 0.14271,
+        "audited_retrieval_count": 20,
+        "accepted_expansions": 2,
+        "total_support": 4,
+        "status": "insufficient_support"
+      },
+      "rejected_child": {
+        "name": "Text filter pipelines",
+        "support_after_semantic_exclusion": 1,
+        "status": "insufficient_support"
+      },
+      "larger_external_expansion_run": "not_authorized",
+      "registered_count": 0,
+      "decision": "retain_text_normalization_as_four_file_provisional_child_and_preserve_residuals",
+      "reason": "Residual-aware recursion finds one meaning-specific child with positive fit gain and two additional code-entailing examples, but support remains below the five-file pilot floor. The larger proposed OpenAI payload requires explicit user approval, so no additional external retrieval or structural promotion occurs."
+    },
+    "decision": "await_larger_payload_authorization_or_continue_local_only_evidence_collection",
+    "reason": "The verified 500-file recursion preserves a coherent four-file Text normalization child without forcing singleton meanings. Expanding external retrieval to 2,000 third-party source files requires explicit approval; otherwise the next safe route is local-only evidence collection and human calibration."
   }
 }

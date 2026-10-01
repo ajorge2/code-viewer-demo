@@ -1,6 +1,6 @@
 # CodeArchitect Intent Algebra: Bottom-Up Primitive Discovery for Human-Readable Code Explanations
 **September 30, 2026 – In progress**
-**Status**: In progress — corpus access verified; deterministic 200-, 1,000-, 4,000-, and 10,000-diff experiments have run through GumTree extraction, bounded gSpan discovery, semantic/code clustering, nested-sample stability analysis, downward semantic recursion, centroid-aware meaning grounding, TED-based expansion, semantic-first structural alignment, category-conditioned structural-rule induction, paired Semgrep/GumTree execution, a semantic–structural feedback loop, broad component-category induction, an 80-repository static-code holdout, open-vocabulary gap expansion, and cross-language static-structure validation; human calibration, independent-repository enrichment, broader paired-rule coverage, complete edit-tree MDL, and product benchmarks remain open
+**Status**: In progress — corpus access verified; deterministic 200-, 1,000-, 4,000-, and 10,000-diff experiments have run through GumTree extraction, bounded gSpan discovery, semantic/code clustering, nested-sample stability analysis, downward semantic recursion, centroid-aware meaning grounding, TED-based expansion, semantic-first structural alignment, category-conditioned structural-rule induction, paired Semgrep/GumTree execution, a semantic–structural feedback loop, broad component-category induction, an 80-repository static-code holdout, open-vocabulary gap expansion, cross-language static-structure validation, and residual-aware recursive static refinement; human calibration, independent-repository enrichment, broader paired-rule coverage, complete edit-tree MDL, and product benchmarks remain open
 
 ## 1. Business / Decision Context (The “Why”)
 
@@ -1013,6 +1013,33 @@ misleading structural primitive.
 
 ![Static structural validation](figures/intent-algebra-sweep-5000/13-static-structure-validation.svg)
 
+### Recursive split of the semantic-only umbrella
+
+The failed structural category was sent back through the within-cluster loop. A
+cosine-distance threshold sweep over the seven member meanings found a stable core at
+0.44: two non-singleton groups cover five of seven members, with 0.184 silhouette and
+0.898 subsample-stability ARI. Palindrome search and format validation remain residuals
+rather than being forced into either child.
+
+The semantic audit retained one two-file child, **Text normalization**, spanning title
+cleanup and capitalization/sanitization. Its definition improves mean member fit over
+the parent by 0.143. A proposed **Text filter pipelines** child loses the operator-parser
+example during semantic audit and falls to one member, so it is rejected.
+
+Text normalization then retrieved the top 20 candidates from the verified 500-file
+repository-disjoint pool. None clears the original seed-similarity floor, so retrieval
+uses a top-k fallback while preserving that fact in the audit record. Two files truly
+entail the child—username/channel canonicalization and blog-tag capitalization—raising
+support from two to **four independent files**. The child remains below the provisional
+five-file floor and receives no structural rule.
+
+A proposed 2,000-file external embedding expansion was not run because it would export
+substantially more third-party source excerpts to OpenAI than the verified 500-file
+scope. Explicit user approval is required before that larger transfer. The local
+pipeline and completed judgments remain cached and reproducible.
+
+![Recursive static-category refinement](figures/intent-algebra-sweep-5000/14-static-recursive-refinement.svg)
+
 ### Pre-registered quality comparison
 
 | Approach | Match coverage | Intent precision | Unique resolution | Human usefulness | vs Baseline | Notes |
@@ -1047,6 +1074,7 @@ The current working tree now contains an executable pilot in addition to existin
 - A repository-disjoint static transfer harness now evaluates complete source files without commit text, retrieves candidate parents from code embeddings, permits zero-to-two labels, and turns uncovered responsibilities into traceable growth candidates.
 - A cached static-gap feedback loop now searches 500 additional unseen-repository files and audits retrieved code before increasing category support, expanding one of five recurring gaps while leaving four below the pilot floor.
 - A cross-language static-structure inducer now abstracts Python/JavaScript ASTs into shared semantic roles and applies leave-one-positive-out validation, correctly withholding structural status from a seven-file category whose fitted rule does not transfer.
+- A residual-aware recursive refinement now preserves singleton meanings outside child clusters, accepts Text normalization as a coherent two-file child, rejects a one-file filter-pipeline child, and expands normalization to four audited repository-disjoint examples without lowering its support floor.
 - Held-out category-label MDL, structural-constituent MDL, and persisted-AST role-aware metamorphic probes are implemented for triage. Primitive registration, lattice resolution, source-reparse probes, complete edit-tree MDL, and explanation-quality benchmarks remain unimplemented.
 
 ## 5. Business / Practical Impact
@@ -1111,6 +1139,7 @@ Current, defensible pilot bullets:
 - Evaluated the component vocabulary on 80 static Python/JavaScript files from 80 recorded-name-disjoint repositories, obtaining 68.8% exploratory coverage across all 11 parents while preserving 25 explicit gaps and surfacing five recurrent missing component concepts.
 - Closed the first open-vocabulary component loop by auditing 57 gap-retrieval candidates from a 500-repository pool, accepting 10 code-entailing expansions and growing string-processing components from two to seven examples without promoting four weaker gaps.
 - Tested the seven-file string-processing umbrella against 493 static negatives with normalized cross-language AST clauses; rejected structural promotion after its 75.0%/42.9% in-sample precision/recall collapsed to zero held-out recall across seven leave-one-out folds.
+- Recursively split the failed structural umbrella with a 0.898-stability meaning partition, retained a higher-fit Text normalization child, and audited 20 retrievals to add two independent examples while withholding promotion at four-file support.
 - Separated minimal queue discovery from flexible composite expansion across 1,933 addition-dominant changes with up to 32 components, caught a 22.8%-precision constraint retriever before registration, and collapsed 67 exact-host candidates into 45 unique contexts including 13 multi-base lattice intersections.
 - Preserved directed edit semantics for undirected gSpan mining through relation-node encoding, then reduced 1,957 frequent fragments to 26 support-closed pilot candidates with structural-validity and labeled-supergraph checks.
 - Created an auditable grounding queue that joins every pilot candidate to commit text, code excerpts, and provenance while explicitly withholding meanings that do not yet meet semantic or independence requirements.
@@ -1137,7 +1166,7 @@ Future result bullets must still wait for held-out human evaluation and must not
 ### Immediate next steps
 
 1. Human-label a stratified sample of the 80 static judgments—strong, plausible, and abstaining—to calibrate semantic precision and missing-category agreement.
-2. Recursively split the seven-file string-processing umbrella into transformation and analysis/parsing candidates, then test whether either child has a transferable structural description; keep retrieving independent evidence for the four sub-threshold gaps.
+2. With explicit approval for the larger external payload, expand Text normalization over a 2,000-file repository-disjoint pool; otherwise keep the verified four-file child provisional and prioritize local-only evidence collection.
 3. Enrich the 101-change package category with parent SHAs, fork/mirror relationships, timestamps, and commit-wide changed-file lists to validate the observed provenance proxy.
 4. Run held-out semantic entailment and source-level mutation/reparse probes for package setup; its persisted-AST role-aware probes already pass globally.
 5. Generalize the semantic–structural feedback loop and paired matchers to additional Python and JavaScript categories; evaluate complete edit-tree MDL only for multi-atom composites.

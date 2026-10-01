@@ -839,6 +839,42 @@ def plot_static_structure_validation(structure: dict, output: Path) -> None:
     svg.finish(output)
 
 
+def plot_static_recursive_refinement(refinement: dict, expansion: dict, output: Path) -> None:
+    accepted = [item for item in refinement["children"] if item["status"] == "accepted_for_structural_validation"]
+    rejected = [item for item in refinement["children"] if item["status"] != "accepted_for_structural_validation"]
+    expanded_by_id = {item["child_id"]: item for item in expansion["children"]}
+    svg = Svg(
+        "Recursive refinement after structural transfer fails",
+        "Stable non-singleton meaning groups are named; residuals and one-example children remain outside promotion",
+    )
+    svg.rect(480, 135, 440, 90, "#eef2ff", rx=12, stroke=MEDIUM_CONFIDENCE)
+    svg.text(700, 173, refinement["parent"]["name"], anchor="middle", weight=700, size=21)
+    svg.text(700, 202, f"{refinement['member_count']} semantic members · structural transfer failed", anchor="middle", cls="note")
+    svg.line(700, 225, 700, 290, stroke=MEDIUM_CONFIDENCE, width=3)
+
+    x_positions = [180, 700, 1110]
+    blocks = []
+    for child in accepted:
+        expanded = expanded_by_id.get(child["child_id"], {})
+        blocks.append((child["name"], child["support"], expanded.get("accepted_expansions", 0), "accepted child", HIGH_CONFIDENCE))
+    for child in rejected:
+        blocks.append((child["name"], child["support"], 0, "insufficient child", JAVASCRIPT))
+    blocks.append(("Residual meanings", len(refinement.get("residual_members", [])), 0, "unassigned", ABSTAIN))
+    for x, (name, initial, added, status, color) in zip(x_positions, blocks, strict=False):
+        svg.rect(x - 165, 290, 330, 150, "#f7f9fc", rx=12, stroke=color, stroke_width=2)
+        svg.text(x, 330, name, anchor="middle", weight=700, size=18)
+        svg.text(x, 382, f"{initial} + {added}", anchor="middle", weight=700, size=34, fill=color)
+        svg.text(x, 412, "initial + audited expansion", anchor="middle", cls="note")
+        svg.text(x, 462, status, anchor="middle", size=14, weight=700, fill=color)
+
+    svg.rect(70, 545, 1260, 150, "#fff7ed", rx=12, stroke=JAVASCRIPT)
+    svg.text(95, 585, "Current decision", weight=700, size=20, fill=JAVASCRIPT)
+    svg.text(95, 622, "Text normalization is coherent and gained two independent matches, but totals four—below the five-file pilot floor.", size=16)
+    svg.text(95, 653, "Text filter pipelines retains one member; palindrome search and format validation remain residuals. No child receives a structural rule.", size=16)
+    svg.text(95, 681, "A larger external embedding run requires explicit approval because it would send more third-party source excerpts to OpenAI.", cls="note")
+    svg.finish(output)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -927,6 +963,15 @@ def main() -> None:
         plot_static_structure_validation(
             json.loads(static_structure_path.read_text(encoding="utf-8")),
             args.output / "13-static-structure-validation.svg",
+        )
+        figure_count += 1
+    static_refinement_path = args.input / "static-component-refinement.json"
+    static_child_expansion_path = args.input / "static-child-expansions.json"
+    if static_refinement_path.exists() and static_child_expansion_path.exists():
+        plot_static_recursive_refinement(
+            json.loads(static_refinement_path.read_text(encoding="utf-8")),
+            json.loads(static_child_expansion_path.read_text(encoding="utf-8")),
+            args.output / "14-static-recursive-refinement.svg",
         )
         figure_count += 1
     print(f"Wrote {figure_count} figures to {args.output}")
