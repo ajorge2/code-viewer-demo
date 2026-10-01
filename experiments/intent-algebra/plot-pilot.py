@@ -811,6 +811,34 @@ def plot_static_gap_expansion(expansion: dict, output: Path) -> None:
     svg.finish(output)
 
 
+def plot_static_structure_validation(structure: dict, output: Path) -> None:
+    train = structure["final_rule"]["in_sample_metrics"]
+    held_out = structure["cross_validation"]
+    svg = Svg(
+        "Structural validation of the expanded static category",
+        f"{structure['category']} · {structure['semantic_support']} positive files against {structure['negative_files']} pool negatives",
+    )
+    svg.text(70, 155, "A semantic umbrella must not become a structural primitive unless its rule transfers", weight=700, size=20)
+    metrics = [
+        ("Precision", train["precision"], held_out["precision"]),
+        ("Recall", train["recall"], held_out["recall"]),
+        ("F1", train["f1"], held_out["f1"]),
+    ]
+    left, width = 315, 900
+    for index, (label, in_sample, cross_validated) in enumerate(metrics):
+        y = 245 + index * 130
+        svg.text(left - 25, y + 25, label, anchor="end", size=18, weight=700)
+        svg.rect(left, y, width * in_sample, 35, MEDIUM_CONFIDENCE, rx=6)
+        svg.text(left + width * in_sample + 14, y + 25, f"{in_sample:.1%} in-sample", size=15, weight=700)
+        svg.rect(left, y + 52, width * cross_validated, 35, ABSTAIN, rx=6)
+        svg.text(left + max(width * cross_validated, 4) + 14, y + 77, f"{cross_validated:.1%} leave-one-out", size=15, weight=700)
+    svg.rect(70, 655, 1260, 112, "#fff7ed", rx=10, stroke=JAVASCRIPT, stroke_width=1.5)
+    svg.text(95, 692, "Decision: keep semantic-only", weight=700, size=20, fill=JAVASCRIPT)
+    svg.text(95, 724, "The fitted clauses cover 3/7 positives with one false positive, but no held-out positive is recovered across seven folds.", size=16)
+    svg.text(95, 752, "Next: split the broad semantic umbrella or collect more evidence; do not weaken the structural gate.", cls="note")
+    svg.finish(output)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -892,6 +920,13 @@ def main() -> None:
         plot_static_gap_expansion(
             json.loads(static_gap_path.read_text(encoding="utf-8")),
             args.output / "12-static-gap-feedback.svg",
+        )
+        figure_count += 1
+    static_structure_path = args.input / "static-component-structure.json"
+    if static_structure_path.exists():
+        plot_static_structure_validation(
+            json.loads(static_structure_path.read_text(encoding="utf-8")),
+            args.output / "13-static-structure-validation.svg",
         )
         figure_count += 1
     print(f"Wrote {figure_count} figures to {args.output}")

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="820" viewBox="0 0 1400 820" role="img" aria-labelledby="title desc">
+<title id="title">Structural validation of the expanded static category</title>
+<desc id="desc">String processing algorithms · 7 positive files against 493 pool negatives</desc>
+<rect width="1400" height="820" fill="#ffffff"/>
+<style>text{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.title{font-size:31px;font-weight:700;fill:#172033}.subtitle{font-size:17px;fill:#667085}.axis{font-size:15px;fill:#667085}.label{font-size:18px;fill:#172033}.value{font-size:18px;font-weight:700}.note{font-size:14px;fill:#667085}</style>
+<text x="70.0" y="65.0" text-anchor="start" class="title">Structural validation of the expanded static category</text>
+<text x="70.0" y="98.0" text-anchor="start" class="subtitle">String processing algorithms · 7 positive files against 493 pool negatives</text>
+<text x="70.0" y="155.0" text-anchor="start" class="label" style="font-weight:700;font-size:20px">A semantic umbrella must not become a structural primitive unless its rule transfers</text>
+<text x="290.0" y="270.0" text-anchor="end" class="label" style="font-weight:700;font-size:18px">Precision</text>
+<rect x="315.0" y="245.0" width="675.0" height="35.0" fill="#2563eb" rx="6.0"/>
+<text x="1004.0" y="270.0" text-anchor="start" class="label" style="font-weight:700;font-size:15px">75.0% in-sample</text>
+<rect x="315.0" y="297.0" width="0.0" height="35.0" fill="#70798c" rx="6.0"/>
+<text x="333.0" y="322.0" text-anchor="start" class="label" style="font-weight:700;font-size:15px">0.0% leave-one-out</text>
+<text x="290.0" y="400.0" text-anchor="end" class="label" style="font-weight:700;font-size:18px">Recall</text>
+<rect x="315.0" y="375.0" width="385.7" height="35.0" fill="#2563eb" rx="6.0"/>
+<text x="714.7" y="400.0" text-anchor="start" class="label" style="font-weight:700;font-size:15px">42.9% in-sample</text>
+<rect x="315.0" y="427.0" width="0.0" height="35.0" fill="#70798c" rx="6.0"/>
+<text x="333.0" y="452.0" text-anchor="start" class="label" style="font-weight:700;font-size:15px">0.0% leave-one-out</text>
+<text x="290.0" y="530.0" text-anchor="end" class="label" style="font-weight:700;font-size:18px">F1</text>
+<rect x="315.0" y="505.0" width="490.9" height="35.0" fill="#2563eb" rx="6.0"/>
+<text x="819.9" y="530.0" text-anchor="start" class="label" style="font-weight:700;font-size:15px">54.5% in-sample</text>
+<rect x="315.0" y="557.0" width="0.0" height="35.0" fill="#70798c" rx="6.0"/>
+<text x="333.0" y="582.0" text-anchor="start" class="label" style="font-weight:700;font-size:15px">0.0% leave-one-out</text>
+<rect x="70.0" y="655.0" width="1260.0" height="112.0" fill="#fff7ed" rx="10.0" stroke="#d97706" stroke-width="1.5"/>
+<text x="95.0" y="692.0" text-anchor="start" class="label" style="fill:#d97706;font-weight:700;font-size:20px">Decision: keep semantic-only</text>
+<text x="95.0" y="724.0" text-anchor="start" class="label" style="font-size:16px">The fitted clauses cover 3/7 positives with one false positive, but no held-out positive is recovered across seven folds.</text>
+<text x="95.0" y="752.0" text-anchor="start" class="note">Next: split the broad semantic umbrella or collect more evidence; do not weaken the structural gate.</text>
+</svg>

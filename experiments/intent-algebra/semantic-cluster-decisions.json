@@ -628,7 +628,26 @@
       "decision": "retain_string_processing_for_structural_induction_and_continue_evidence_collection_for_other_gaps",
       "reason": "Only 10 of 57 high-similarity retrievals materially implement the proposed responsibility. The audit expands string processing to seven independent files while correctly leaving four attractive labels below even the small pilot support floor. Final promotion still requires structural traceability, human calibration, and the proposal's full support cutoffs."
     },
-    "decision": "continue_to_static_structural_induction_and_human_calibration",
-    "reason": "The repository-disjoint holdout and selective gap feedback demonstrate an open vocabulary that can grow from code evidence without forcing every file into the nearest category. The seven-file string-processing candidate is ready for structural analysis; semantic precision still requires human calibration."
+    "static_string_processing_structural_validation": {
+      "semantic_support": 7,
+      "negative_pool_files": 493,
+      "representation": "cross-language normalized semantic-role AST features",
+      "rule_form": "OR of one-to-three-atom AND clauses",
+      "in_sample_precision": 0.75,
+      "in_sample_recall": 0.428571,
+      "in_sample_f1": 0.545455,
+      "leave_one_positive_out_folds": 7,
+      "held_out_true_positive": 0,
+      "held_out_false_negative": 7,
+      "repeated_false_positive": 9,
+      "held_out_precision": 0.0,
+      "held_out_recall": 0.0,
+      "held_out_f1": 0.0,
+      "registered_count": 0,
+      "decision": "retain_as_semantic_only_umbrella_and_recursively_split_before_retrying_structure",
+      "reason": "The category supports human-readable retrieval but the learned AST clauses cover only three of seven examples in-sample and recover no held-out positive. Broad semantic component categories must not be conflated with precise structural primitives; transformation and analysis/parsing children are the next defensible split hypotheses."
+    },
+    "decision": "continue_to_recursive_static_semantic_split_and_human_calibration",
+    "reason": "Open-vocabulary feedback grew a useful semantic umbrella, while leave-one-out structural validation correctly prevented it from becoming a misleading primitive. The next loop should split the umbrella by meaning and retry structure only within coherent children."
   }
 }

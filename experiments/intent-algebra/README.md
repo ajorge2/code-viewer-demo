@@ -191,6 +191,7 @@ npm run intent:large:probe-rules
 npm run intent:large:component-hierarchy
 npm run intent:large:static-coverage
 npm run intent:large:expand-static-gaps
+npm run intent:large:induce-static-structure
 ```
 
 The materializer reconstructs 3,130 complete before/after files, including 1,533 Python
@@ -264,6 +265,15 @@ String processing grows from two to seven examples and clears the provisional fi
 feedback floor; content indexing and database migrations reach four, hardware input
 reaches three, and system monitoring remains at two. These remain discovery candidates,
 not registered categories or substitutes for the proposal's final support gates.
+
+`intent:large:induce-static-structure` reconstructs the 500-file pool, parses complete
+files through CodeArchitect's Tree-sitter runtime, maps Python and JavaScript nodes to
+shared semantic roles, and learns bounded OR-of-AND structural clauses. The seven-file
+string-processing candidate obtains 75.0% precision and 42.9% recall in-sample, but
+recovers none of seven held-out positives under leave-one-positive-out evaluation. It
+therefore remains a semantic-only umbrella. The failed transfer is a useful stopping
+result: broad component meaning and precise structural primitives remain separate, and
+the next recursion should split transformation from analysis/parsing before retrying.
 
 `intent:facets:additive` writes one record per retained change with four deliberately
 separate fields: edit operation, noun-only edited entity, semantic container, and raw
