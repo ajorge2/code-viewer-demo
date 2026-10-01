@@ -189,6 +189,7 @@ npm run intent:large:provenance
 npm run intent:large:structural-mdl
 npm run intent:large:probe-rules
 npm run intent:large:component-hierarchy
+npm run intent:large:static-coverage
 ```
 
 The materializer reconstructs 3,130 complete before/after files, including 1,533 Python
@@ -241,10 +242,18 @@ and embeds those definitions to bound secondary memberships. The current pass pr
 11 categories—build tooling, package distribution, routing, user interface, web-server
 integration, browser testing, authentication, automated testing, user data management,
 game application, and network communication. They cover 41 leaves; eight abstain, and
-one Webpack/server leaf belongs to two parents. The cached run replays offline. This is
-not yet a universal vocabulary: coverage must be measured on static components from
-held-out repositories, with uncovered components feeding another bottom-up discovery
-round.
+one Webpack/server leaf belongs to two parents. The cached run replays offline.
+
+`intent:large:static-coverage` performs the first open-vocabulary transfer check. It
+selects 40 Python and 40 JavaScript files from 80 distinct repository families after
+excluding every repository alias observed in the 10,000-diff discovery corpus. Commit
+text is withheld. Code embeddings retrieve candidate parents, a constrained semantic
+judge chooses zero to two, and an abstention must name the missing responsibility for
+the next clustering loop. The first pass assigns 55 of 80 files (68.8%), uses all 11
+existing parents, and abstains on 25. Five gaps recur twice: database migrations,
+content/search indexing, system monitoring, hardware input, and string/text processing.
+These are LLM-adjudicated exploratory results, not human-calibrated precision. Both API
+stages are content-addressed and replay with `-- --offline`.
 
 `intent:facets:additive` writes one record per retained change with four deliberately
 separate fields: edit operation, noun-only edited entity, semantic container, and raw

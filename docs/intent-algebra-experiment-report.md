@@ -1,6 +1,6 @@
 # CodeArchitect Intent Algebra: Bottom-Up Primitive Discovery for Human-Readable Code Explanations
 **September 30, 2026 – In progress**
-**Status**: In progress — corpus access verified; deterministic 200-, 1,000-, 4,000-, and 10,000-diff experiments have run through GumTree extraction, bounded gSpan discovery, semantic/code clustering, nested-sample stability analysis, downward semantic recursion, centroid-aware meaning grounding, TED-based expansion, semantic-first structural alignment, category-conditioned structural-rule induction, paired Semgrep/GumTree execution, a semantic–structural feedback loop, and broad component-category induction; static-code coverage, independent-repository enrichment, broader paired-rule coverage, complete edit-tree MDL, and product benchmarks remain open
+**Status**: In progress — corpus access verified; deterministic 200-, 1,000-, 4,000-, and 10,000-diff experiments have run through GumTree extraction, bounded gSpan discovery, semantic/code clustering, nested-sample stability analysis, downward semantic recursion, centroid-aware meaning grounding, TED-based expansion, semantic-first structural alignment, category-conditioned structural-rule induction, paired Semgrep/GumTree execution, a semantic–structural feedback loop, broad component-category induction, and an 80-repository static-code holdout; human calibration, independent-repository enrichment, broader paired-rule coverage, complete edit-tree MDL, and product benchmarks remain open
 
 ## 1. Business / Decision Context (The “Why”)
 
@@ -78,6 +78,22 @@ Measured directly from the mounted JSONL files on September 30, 2026:
 The executable pilot pins the mounted bucket contents by SHA-256 because the storage-bucket mount does not expose a dataset revision id: Python `d167da37e1058371c48e057cd8815d03700c867dd8bcf58e61420d4dcd288d73`; JavaScript `968688a1163c2dbbced0d0f9cf1dd52bc0b626c2ad9b02ff23f5700b2e277f25`.
 
 Additional checks found zero invalid JSON records, no missing required fields, no empty `new_contents`, no observed file deletions, and no old/new path changes. Median old/new character counts are 653/961 for Python and 792/889 for JavaScript; 95th-percentile old/new counts are 1,379/1,907 and 1,408/1,535 respectively. The raw records contain neither commit timestamps nor PR descriptions, so a time range cannot be recovered from the bucket alone and grounding must initially use `subject`/`message` only.
+
+### Repository-disjoint static holdout
+
+The component-category evaluation uses a different unit from discovery: 80 complete
+post-change source files, split evenly between Python and JavaScript. It excludes all
+10,000 discovery rows and every held-out row whose recorded repository aliases overlap
+any alias observed in discovery. One deterministic bottom-hash file is retained per
+remaining repository family, yielding 80 files from 80 recorded-name-disjoint
+repositories. Test, generated, bundled, vendored, documentation, example, build, and
+lockfile paths are excluded. The evaluator receives the file path and at most 3,200
+characters of source, but no commit subject or message.
+
+This is a stricter novelty check than a random row split, but it is not perfect GitHub
+lineage isolation: disjoint names can still hide forks, mirrors, copied code, or renamed
+repositories. The holdout therefore measures exploratory transfer, not final
+independent-repository performance.
 
 ### Inclusion rules
 
@@ -312,6 +328,10 @@ This is more general than checking only `A.contains ∩ B.contains`, because the
 - **Human evaluation**: at least two independent reviewers per sampled match, with a third reviewer adjudicating disagreement. Measure raw agreement and Krippendorff's alpha or a suitable categorical alternative.
 - **Uncertainty**: bootstrap confidence intervals clustered by repository family, since commits within one repository are not independent.
 - **Ablations**: no MDL filter; no repository-support floor; no commit/PR metadata in grounding; identifier-only canonicalization; one-hop versus multi-hop expansion; tree adjacency versus control/data-flow adjacency.
+- **Static component transfer**: retrieve broad parents by code-to-definition embedding
+  similarity, then have a constrained semantic judge choose zero, one, or two parents.
+  A zero-parent decision must name the missing responsibility; those gaps are embedded
+  and clustered so recurring omissions feed the next bottom-up discovery loop.
 
 ### Key tools and design choices
 
@@ -902,6 +922,43 @@ them to static components from held-out repositories rather than more commit clu
 
 ![Broad component categories](figures/intent-algebra-sweep-5000/10-component-category-hierarchy.svg)
 
+### Static component transfer to unseen repositories
+
+The first transfer test applies the 11 broad parents to 80 static source files from 80
+recorded-name-disjoint repositories. Commit text is withheld. Embedding similarity
+retrieves candidate parents, but a constrained semantic adjudicator may reject every
+candidate and propose a missing noun category instead of accepting the nearest vector.
+
+| Static holdout outcome | Result | Interpretation |
+|---|---:|---|
+| Files / repository families | 80 / 80 | 40 Python and 40 JavaScript; no recorded alias overlap with discovery |
+| Strong existing-category match | 47 (58.8%) | Code clearly implements one or two existing component responsibilities |
+| Plausible existing-category match | 8 (10.0%) | Useful but partial category fit |
+| Explicit abstention / vocabulary gap | 25 (31.2%) | No adequate existing category was forced |
+| Total exploratory coverage | 55 (68.8%) | Strong plus plausible; not yet human-calibrated precision |
+| Existing categories used | 11 of 11 | No broad parent was completely dormant on this holdout |
+| Embedding recall@3 | 85.5% | A judged parent appeared among the top three vector candidates for 47 of 55 matched files |
+| Recurring gap clusters | 5 | Each appears in two independent held-out files |
+| Singleton gaps | 15 | Retained as evidence, not promoted from one example |
+
+The five recurring omissions are **database schema migrations**, **content/search
+indexing**, **system monitoring**, **hardware input integration**, and **string/text
+processing algorithms**. The singleton gaps include state persistence, encoding and
+compression, filesystem maintenance, image preprocessing, scientific data ingestion,
+chat commands, and external-service automation. These are exactly the kind of broader
+component responsibilities the next loop should discover from their code evidence.
+They should not be inserted as hand-authored categories merely because their names seem
+reasonable.
+
+This result is encouraging but deliberately incomplete. It shows that the induced
+parents transfer beyond change descriptions and that abstention exposes useful
+coverage gaps. It does **not** establish 68.8% precision: the semantic judgments are
+LLM-generated and require a human-labeled calibration sample. Static file excerpts are
+also coarser than the eventual CodeArchitect unit hierarchy, so future evaluation must
+separate module-, class-, and function-level components.
+
+![Static component coverage on unseen repositories](figures/intent-algebra-sweep-5000/11-static-component-coverage.svg)
+
 ### Pre-registered quality comparison
 
 | Approach | Match coverage | Intent precision | Unique resolution | Human usefulness | vs Baseline | Notes |
@@ -909,6 +966,7 @@ them to static components from held-out repositories rather than more commit clu
 | Syntax-only GumTree verbalizer | TBD | TBD | n/a | TBD | — | Required baseline |
 | Direct diff-to-label LLM | TBD | TBD | n/a | TBD | TBD | No reusable registry |
 | Current CodeArchitect explanation path | 100%* | TBD | n/a | TBD | TBD | *Can attempt any parsed selection; not equivalent to a precise primitive match |
+| Broad component vocabulary on static files | 68.8%† | TBD | Multi-label ≤2 | TBD | TBD | †Exploratory LLM-adjudicated coverage on 80 recorded-name-disjoint repositories |
 | Atomic primitives only | TBD | TBD | TBD | TBD | TBD | Tests value of composites |
 | Full Intent Algebra | TBD | TBD | TBD | TBD | TBD | Proposed final system |
 
@@ -932,6 +990,7 @@ The current working tree now contains an executable pilot in addition to existin
 - A cached cumulative-evidence audit now loops traceable out-of-cluster matches back into semantic membership using meaning-vector fit plus LLM entailment, then re-induces and re-evaluates the structural rule.
 - A repository-support analyzer now collapses multi-repository rows and shared repository names into observed provenance components instead of treating every listed alias as independent support.
 - A grounded component hierarchy now groups 41 of 49 reliable change meanings into 11 broad, traceable component categories with bounded multi-parent overlap and explicit abstention for unmatched meanings.
+- A repository-disjoint static transfer harness now evaluates complete source files without commit text, retrieves candidate parents from code embeddings, permits zero-to-two labels, and turns uncovered responsibilities into traceable growth candidates.
 - Held-out category-label MDL, structural-constituent MDL, and persisted-AST role-aware metamorphic probes are implemented for triage. Primitive registration, lattice resolution, source-reparse probes, complete edit-tree MDL, and explanation-quality benchmarks remain unimplemented.
 
 ## 5. Business / Practical Impact
@@ -993,6 +1052,7 @@ Current, defensible pilot bullets:
 - Distinguished predictive label compression from composite-pattern compression, evaluating 81 multi-atom clauses and retaining one 25-match Grunt/Gulp structure at 1.50× while correctly marking atomic package and Trove rules MDL-inapplicable.
 - Implemented role-aware metamorphic tests that preserved 589/589 clauses under local-name randomization and rejected 515/515 anchor mutations, including 100% results for package setup and Trove rules.
 - Induced 11 broad component categories above 49 reliable change meanings, covering 41 meanings while preserving eight abstentions and a traceable cross-cutting overlap between build tooling and web-server integration.
+- Evaluated the component vocabulary on 80 static Python/JavaScript files from 80 recorded-name-disjoint repositories, obtaining 68.8% exploratory coverage across all 11 parents while preserving 25 explicit gaps and surfacing five recurrent missing component concepts.
 - Separated minimal queue discovery from flexible composite expansion across 1,933 addition-dominant changes with up to 32 components, caught a 22.8%-precision constraint retriever before registration, and collapsed 67 exact-host candidates into 45 unique contexts including 13 multi-base lattice intersections.
 - Preserved directed edit semantics for undirected gSpan mining through relation-node encoding, then reduced 1,957 frequent fragments to 26 support-closed pilot candidates with structural-validity and labeled-supergraph checks.
 - Created an auditable grounding queue that joins every pilot candidate to commit text, code excerpts, and provenance while explicitly withholding meanings that do not yet meet semantic or independence requirements.
@@ -1013,11 +1073,12 @@ Future result bullets must still wait for held-out human evaluation and must not
 - Orthogonal primitives and architectural topics are different representational layers. Database, cache, authentication, and similar concepts should overlap freely rather than being forced into the primitive lattice.
 - Discovery-cluster membership is not exhaustive semantic ground truth. Structurally matched non-members must be audited as possible category expansions before they are counted as false positives.
 - Change intent and repository component identity are different levels. Narrow, code-grounded change meanings should support broader multi-label component categories rather than being stretched into universal labels themselves.
+- Repository-level breadth requires an open vocabulary. The first static transfer used all 11 induced parents but still abstained on 31.2% of files; recurring gaps are useful discovery input, not evaluation failures to hide with lower thresholds.
 
 ### Immediate next steps
 
-1. Build a held-out static-component benchmark from unfamiliar repositories, then measure how often the 11 broad parents provide a useful description, overlap appropriately, or abstain.
-2. Use uncovered static components to drive additional bottom-up discovery—especially storage, caching, observability, background work, and other concepts that should not be inserted without corpus evidence.
+1. Human-label a stratified sample of the 80 static judgments—strong, plausible, and abstaining—to calibrate semantic precision and missing-category agreement.
+2. Feed the five recurring static gaps back into code-grounded clustering and structural pattern induction, then retest whether the expanded vocabulary improves held-out coverage without weakening specificity.
 3. Enrich the 101-change package category with parent SHAs, fork/mirror relationships, timestamps, and commit-wide changed-file lists to validate the observed provenance proxy.
 4. Run held-out semantic entailment and source-level mutation/reparse probes for package setup; its persisted-AST role-aware probes already pass globally.
 5. Generalize the semantic–structural feedback loop and paired matchers to additional Python and JavaScript categories; evaluate complete edit-tree MDL only for multi-atom composites.
@@ -1049,6 +1110,7 @@ Future result bullets must still wait for held-out human evaluation and must not
 - Report figures and generators: `docs/figures/intent-algebra/`, `docs/figures/intent-algebra-additive/`, `docs/figures/intent-algebra-sweep-500/`, `docs/figures/intent-algebra-sweep-2000/`, `experiments/intent-algebra/plot-pilot.py`, `cluster-concepts.py`, `cluster-embedding-concepts.py`, and `compare-cluster-stability.py`
 - Per-base structural expansion prototype: `experiments/intent-algebra/expand-base-coedits.py`
 - Semantic/structural alignment and downward-recursion harnesses: `experiments/intent-algebra/align-semantic-structural.py`, `refine-semantic-clusters.py`
+- Broad-category induction and static transfer evaluation: `experiments/intent-algebra/build-component-category-hierarchy.py`, `evaluate-static-component-coverage.py`
 - Versioned semantic review policy and pilot/sweep decisions: `experiments/intent-algebra/semantic-cluster-decisions.json`
 - Human review interface and rubric: `experiments/intent-algebra/review-server.js`, `review-ui/`, and `HUMAN_REVIEW.md`
 - Ignored local pilot artifacts: `.data/intent-pilot/summary.json`, `sample-results.jsonl`, `eligible-change-graphs.data`, `gspan-labels.json`, `graph-index.json`, `mined-patterns.json`, and `grounding-queue.jsonl`

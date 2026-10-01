@@ -555,7 +555,32 @@
       "decision": "retain_as_candidate_component_layer_and_test_on_static_code",
       "reason": "The parent layer turns narrow traceable change meanings into broader component responsibilities without forcing every meaning into a closed taxonomy. Eight leaves abstain and one cross-cutting Webpack/server meaning receives two parents. General usefulness must now be measured against static components from held-out repositories."
     },
-    "decision": "continue_to_static_component_coverage_and_feedback_loop_expansion",
-    "reason": "The larger nested sample preserves or label-shifts 88 of 169 earlier clusters while exposing 81 unstable categories and 27 useful downward splits. Clear categories such as Python package setup, Grunt/Gulp workflows, and Django URL configuration strengthen, while broad mixed parents abstain. The new positive-specificity gate prevents recursive children from being promoted when their meaning adds no fit beyond the parent."
+    "repository_disjoint_static_component_transfer": {
+      "file_count": 80,
+      "recorded_name_disjoint_repository_count": 80,
+      "python_count": 40,
+      "javascript_count": 40,
+      "strong_match_count": 47,
+      "plausible_match_count": 8,
+      "covered_count": 55,
+      "coverage_rate": 0.6875,
+      "abstention_count": 25,
+      "abstention_rate": 0.3125,
+      "existing_categories_used": 11,
+      "embedding_recall_at_3": 0.854545,
+      "recurring_gap_category_count": 5,
+      "recurring_gap_categories": [
+        "Content indexing",
+        "Database schema migrations",
+        "Hardware input integration",
+        "String processing algorithms",
+        "System monitoring"
+      ],
+      "human_calibrated": false,
+      "decision": "retain_open_vocabulary_layer_and_feed_recurring_gaps_back_into_discovery",
+      "reason": "All 11 induced parents transfer to at least one static file, while 25 explicit abstentions expose responsibilities the vocabulary does not yet cover. Five omissions recur across independent held-out files and should seed the next code-grounded clustering loop. The 68.75% rate is exploratory LLM-adjudicated coverage, not precision."
+    },
+    "decision": "continue_to_static_gap_feedback_and_human_calibration",
+    "reason": "The repository-disjoint static holdout shows that the broad layer transfers beyond commit descriptions while remaining open to new categories. The next loop should derive code-grounded parents from recurrent gaps and use human labels to calibrate the semantic judge before making quality claims."
   }
 }

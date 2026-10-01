@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="980" viewBox="0 0 1400 980" role="img" aria-labelledby="title desc">
+<title id="title">Static component coverage on unseen repositories</title>
+<desc id="desc">Repository-disjoint exploratory holdout; commit text withheld and unmatched files remain explicit gaps</desc>
+<rect width="1400" height="980" fill="#ffffff"/>
+<style>text{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.title{font-size:31px;font-weight:700;fill:#172033}.subtitle{font-size:17px;fill:#667085}.axis{font-size:15px;fill:#667085}.label{font-size:18px;fill:#172033}.value{font-size:18px;font-weight:700}.note{font-size:14px;fill:#667085}</style>
+<text x="70.0" y="65.0" text-anchor="start" class="title">Static component coverage on unseen repositories</text>
+<text x="70.0" y="98.0" text-anchor="start" class="subtitle">Repository-disjoint exploratory holdout; commit text withheld and unmatched files remain explicit gaps</text>
+<rect x="70.0" y="135.0" width="290.0" height="118.0" fill="#f7f9fc" rx="10.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="88.0" y="170.0" text-anchor="start" class="note" style="font-weight:700">Held-out files</text>
+<text x="88.0" y="217.0" text-anchor="start" class="label" style="fill:#172033;font-weight:700;font-size:31px">80</text>
+<text x="88.0" y="239.0" text-anchor="start" class="note">80 unseen repositories</text>
+<rect x="390.0" y="135.0" width="290.0" height="118.0" fill="#f7f9fc" rx="10.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="408.0" y="170.0" text-anchor="start" class="note" style="font-weight:700">Useful existing match</text>
+<text x="408.0" y="217.0" text-anchor="start" class="label" style="fill:#138a72;font-weight:700;font-size:31px">68.8%</text>
+<text x="408.0" y="239.0" text-anchor="start" class="note">55 files</text>
+<rect x="710.0" y="135.0" width="290.0" height="118.0" fill="#f7f9fc" rx="10.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="728.0" y="170.0" text-anchor="start" class="note" style="font-weight:700">Explicit abstention</text>
+<text x="728.0" y="217.0" text-anchor="start" class="label" style="fill:#172033;font-weight:700;font-size:31px">31.2%</text>
+<text x="728.0" y="239.0" text-anchor="start" class="note">25 files</text>
+<rect x="1030.0" y="135.0" width="290.0" height="118.0" fill="#f7f9fc" rx="10.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="1048.0" y="170.0" text-anchor="start" class="note" style="font-weight:700">Embedding recall@3</text>
+<text x="1048.0" y="217.0" text-anchor="start" class="label" style="fill:#172033;font-weight:700;font-size:31px">85.5%</text>
+<text x="1048.0" y="239.0" text-anchor="start" class="note">against LLM-adjudicated matches</text>
+<text x="70.0" y="293.0" text-anchor="start" class="label" style="font-weight:700;font-size:19px">Semantic adjudication</text>
+<rect x="70.0" y="315.0" width="740.2" height="58.0" fill="#138a72" rx="0.0"/>
+<text x="440.1" y="352.0" text-anchor="middle" class="label" style="fill:#ffffff;font-weight:700;font-size:16px">Strong · 47</text>
+<rect x="810.2" y="315.0" width="126.0" height="58.0" fill="#2563eb" rx="0.0"/>
+<text x="873.2" y="352.0" text-anchor="middle" class="label" style="fill:#ffffff;font-weight:700;font-size:16px">Plausible · 8</text>
+<rect x="936.2" y="315.0" width="393.8" height="58.0" fill="#70798c" rx="0.0"/>
+<text x="1133.1" y="352.0" text-anchor="middle" class="label" style="fill:#ffffff;font-weight:700;font-size:16px">No adequate category · 25</text>
+<text x="70.0" y="440.0" text-anchor="start" class="label" style="font-weight:700;font-size:19px">Existing category usage</text>
+<text x="325.0" y="496.0" text-anchor="end" class="label" style="font-size:14px">Build and development tooling</text>
+<rect x="340.0" y="475.0" width="285.0" height="27.0" fill="#2563eb" rx="5.0"/>
+<text x="637.0" y="495.0" text-anchor="start" class="label" style="font-weight:700;font-size:14px">13</text>
+<text x="325.0" y="554.0" text-anchor="end" class="label" style="font-size:14px">User interface</text>
+<rect x="340.0" y="533.0" width="263.1" height="27.0" fill="#2563eb" rx="5.0"/>
+<text x="615.1" y="553.0" text-anchor="start" class="label" style="font-weight:700;font-size:14px">12</text>
+<text x="325.0" y="612.0" text-anchor="end" class="label" style="font-size:14px">Package distribution configuration</text>
+<rect x="340.0" y="591.0" width="197.3" height="27.0" fill="#2563eb" rx="5.0"/>
+<text x="549.3" y="611.0" text-anchor="start" class="label" style="font-weight:700;font-size:14px">9</text>
+<text x="325.0" y="670.0" text-anchor="end" class="label" style="font-size:14px">Network communication interfaces</text>
+<rect x="340.0" y="649.0" width="175.4" height="27.0" fill="#2563eb" rx="5.0"/>
+<text x="527.4" y="669.0" text-anchor="start" class="label" style="font-weight:700;font-size:14px">8</text>
+<text x="325.0" y="728.0" text-anchor="end" class="label" style="font-size:14px">Web server integration</text>
+<rect x="340.0" y="707.0" width="131.5" height="27.0" fill="#2563eb" rx="5.0"/>
+<text x="483.5" y="727.0" text-anchor="start" class="label" style="font-weight:700;font-size:14px">6</text>
+<text x="325.0" y="786.0" text-anchor="end" class="label" style="font-size:14px">Routing</text>
+<rect x="340.0" y="765.0" width="109.6" height="27.0" fill="#2563eb" rx="5.0"/>
+<text x="461.6" y="785.0" text-anchor="start" class="label" style="font-weight:700;font-size:14px">5</text>
+<text x="975.0" y="496.0" text-anchor="end" class="label" style="font-size:14px">Automated testing</text>
+<rect x="990.0" y="475.0" width="87.7" height="27.0" fill="#2563eb" rx="5.0"/>
+<text x="1089.7" y="495.0" text-anchor="start" class="label" style="font-weight:700;font-size:14px">4</text>
+<text x="975.0" y="554.0" text-anchor="end" class="label" style="font-size:14px">Authentication</text>
+<rect x="990.0" y="533.0" width="65.8" height="27.0" fill="#2563eb" rx="5.0"/>
+<text x="1067.8" y="553.0" text-anchor="start" class="label" style="font-weight:700;font-size:14px">3</text>
+<text x="975.0" y="612.0" text-anchor="end" class="label" style="font-size:14px">User data management</text>
+<rect x="990.0" y="591.0" width="65.8" height="27.0" fill="#2563eb" rx="5.0"/>
+<text x="1067.8" y="611.0" text-anchor="start" class="label" style="font-weight:700;font-size:14px">3</text>
+<text x="975.0" y="670.0" text-anchor="end" class="label" style="font-size:14px">Game application</text>
+<rect x="990.0" y="649.0" width="43.8" height="27.0" fill="#2563eb" rx="5.0"/>
+<text x="1045.8" y="669.0" text-anchor="start" class="label" style="font-weight:700;font-size:14px">2</text>
+<text x="975.0" y="728.0" text-anchor="end" class="label" style="font-size:14px">Browser testing infrastructure</text>
+<rect x="990.0" y="707.0" width="21.9" height="27.0" fill="#2563eb" rx="5.0"/>
+<text x="1023.9" y="727.0" text-anchor="start" class="label" style="font-weight:700;font-size:14px">1</text>
+<text x="70.0" y="830.0" text-anchor="start" class="label" style="font-weight:700;font-size:19px">Recurring uncovered responsibilities</text>
+<text x="70.0" y="868.0" text-anchor="start" class="label" style="fill:#7c3aed;font-weight:700;font-size:15px">Content indexing (2)  ·  Database schema migrations (2)  ·  Hardware input integration (2)  ·  String processing algorithms (2)  ·  System monitoring (2)</text>
+<rect x="70.0" y="900.0" width="1260.0" height="48.0" fill="#f7f9fc" rx="8.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="90.0" y="930.0" text-anchor="start" class="note">All 11 existing categories were used. Coverage is exploratory, not precision: judgments are LLM-generated and still require human calibration.</text>
+</svg>

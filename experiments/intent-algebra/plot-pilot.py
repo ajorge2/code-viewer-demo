@@ -712,6 +712,75 @@ def plot_component_category_hierarchy(hierarchy: dict, output: Path) -> None:
     svg.finish(output)
 
 
+def plot_static_component_coverage(coverage: dict, output: Path) -> None:
+    summary = coverage["summary"]
+    category_usage = sorted(
+        coverage["category_usage"], key=lambda item: (-item["files"], item["name"])
+    )
+    recurring_gaps = [item for item in coverage["gap_clusters"] if item["support"] >= 2]
+    svg = Svg(
+        "Static component coverage on unseen repositories",
+        "Repository-disjoint exploratory holdout; commit text withheld and unmatched files remain explicit gaps",
+        height=980,
+    )
+
+    cards = [
+        ("Held-out files", str(summary["files"]), f"{summary['repositories']} unseen repositories"),
+        ("Useful existing match", f"{summary['coverage_rate']:.1%}", f"{summary['covered_files']} files"),
+        ("Explicit abstention", f"{summary['abstention_rate']:.1%}", f"{summary['files'] - summary['covered_files']} files"),
+        ("Embedding recall@3", f"{summary['embedding_recall_at_3']:.1%}", "against LLM-adjudicated matches"),
+    ]
+    for index, (label, value, note) in enumerate(cards):
+        x = 70 + index * 320
+        svg.rect(x, 135, 290, 118, "#f7f9fc", rx=10, stroke=GRID)
+        svg.text(x + 18, 170, label, cls="note", weight=700)
+        svg.text(x + 18, 217, value, size=31, weight=700, fill=HIGH_CONFIDENCE if index == 1 else INK)
+        svg.text(x + 18, 239, note, cls="note")
+
+    total = summary["files"]
+    strong = round(summary["strong_match_rate"] * total)
+    plausible = round(summary["plausible_match_rate"] * total)
+    abstained = total - strong - plausible
+    bar_x, bar_y, bar_width = 70, 315, 1260
+    svg.text(bar_x, bar_y - 22, "Semantic adjudication", weight=700, size=19)
+    cursor = bar_x
+    for count, label, color in (
+        (strong, "Strong", HIGH_CONFIDENCE),
+        (plausible, "Plausible", MEDIUM_CONFIDENCE),
+        (abstained, "No adequate category", ABSTAIN),
+    ):
+        width = bar_width * count / total
+        svg.rect(cursor, bar_y, width, 58, color)
+        svg.text(cursor + width / 2, bar_y + 37, f"{label} · {count}", anchor="middle", fill="#ffffff", weight=700, size=16)
+        cursor += width
+
+    svg.text(70, 440, "Existing category usage", weight=700, size=19)
+    max_usage = max(item["files"] for item in category_usage)
+    for index, item in enumerate(category_usage):
+        column = 0 if index < 6 else 1
+        row = index if column == 0 else index - 6
+        x = 70 + column * 650
+        y = 475 + row * 58
+        label_width = 255
+        bar_width = 285 * item["files"] / max_usage
+        svg.text(x + label_width, y + 21, item["name"], anchor="end", size=14)
+        svg.rect(x + label_width + 15, y, bar_width, 27, MEDIUM_CONFIDENCE, rx=5)
+        svg.text(x + label_width + bar_width + 27, y + 20, item["files"], size=14, weight=700)
+
+    gap_y = 830
+    svg.text(70, gap_y, "Recurring uncovered responsibilities", weight=700, size=19)
+    gap_names = "  ·  ".join(f"{item['name']} ({item['support']})" for item in recurring_gaps)
+    svg.text(70, gap_y + 38, gap_names, size=15, fill=INTERSECTION, weight=700)
+    svg.rect(70, 900, 1260, 48, "#f7f9fc", rx=8, stroke=GRID)
+    svg.text(
+        90,
+        930,
+        "All 11 existing categories were used. Coverage is exploratory, not precision: judgments are LLM-generated and still require human calibration.",
+        cls="note",
+    )
+    svg.finish(output)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -779,6 +848,13 @@ def main() -> None:
         plot_component_category_hierarchy(
             json.loads(component_hierarchy_path.read_text(encoding="utf-8")),
             args.output / "10-component-category-hierarchy.svg",
+        )
+        figure_count += 1
+    static_coverage_path = args.input / "static-component-coverage.json"
+    if static_coverage_path.exists():
+        plot_static_component_coverage(
+            json.loads(static_coverage_path.read_text(encoding="utf-8")),
+            args.output / "11-static-component-coverage.svg",
         )
         figure_count += 1
     print(f"Wrote {figure_count} figures to {args.output}")
