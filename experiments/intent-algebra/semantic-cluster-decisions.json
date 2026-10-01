@@ -486,7 +486,7 @@
       "paired_reference_recall": 0.752475,
       "registered_count": 0,
       "decision": "retain_feedback_loop_and_expand_to_more_categories",
-      "reason": "The 20 apparent false positives were all code-grounded package setup changes, demonstrating that discovery-cluster membership was incomplete rather than that the matcher was uniformly wrong. Combining executable structural evidence, LLM entailment, and member-vector fit added 15 conservative members and materially improved held-out rule quality. The category's OR branches are atomic, so composite MDL is not applicable; registration remains blocked on external provenance, held-out semantic validation, and matcher robustness."
+      "reason": "The 20 apparent false positives were all code-grounded package setup changes, demonstrating that discovery-cluster membership was incomplete rather than that the matcher was uniformly wrong. Combining executable structural evidence, LLM entailment, and member-vector fit added 15 conservative members and materially improved held-out rule quality. The category's OR branches are atomic, so composite MDL is not applicable; registration remains blocked on external provenance, held-out semantic validation, and source-level mutation/reparse verification."
     },
     "observed_provenance_support": {
       "category_count": 49,
@@ -516,6 +516,19 @@
       "registered_count": 0,
       "decision": "retain_proxy_and_require_full_edit_tree_mdl_for_composites",
       "reason": "Classification-label compression is not composite-pattern compression. The separate constituent code grants no MDL credit to single-atom rules and finds only one multi-atom clause above 1.2x; that clause remains below support cutoffs and the proxy does not yet encode complete GumTree edit trees."
+    },
+    "role_aware_metamorphic_probes": {
+      "positive_local_name_probe_count": 589,
+      "positive_pass_count": 589,
+      "local_name_invariance_rate": 1.0,
+      "negative_anchor_probe_count": 515,
+      "negative_pass_count": 515,
+      "anchor_mutation_rejection_rate": 1.0,
+      "python_package_setup_passes": true,
+      "trove_taxonomy_passes": true,
+      "source_reparse_validated": false,
+      "decision": "retain_role_aware_policy_and_add_source_level_probes",
+      "reason": "Randomizing local labels while preserving semantic anchors keeps every persisted-AST clause matched, while mutating the anchors themselves breaks every tested clause. The distinction is empirically supported but still needs complete source mutation and GumTree/Semgrep reparsing."
     },
     "decision": "continue_to_feedback_loop_expansion_and_provenance",
     "reason": "The larger nested sample preserves or label-shifts 88 of 169 earlier clusters while exposing 81 unstable categories and 27 useful downward splits. Clear categories such as Python package setup, Grunt/Gulp workflows, and Django URL configuration strengthen, while broad mixed parents abstain. The new positive-specificity gate prevents recursive children from being promoted when their meaning adds no fit beyond the parent."

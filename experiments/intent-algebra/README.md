@@ -187,6 +187,7 @@ npm run intent:large:induce-structure:expanded
 npm run intent:large:evaluate-semgrep:expanded
 npm run intent:large:provenance
 npm run intent:large:structural-mdl
+npm run intent:large:probe-rules
 ```
 
 The materializer reconstructs 3,130 complete before/after files, including 1,533 Python
@@ -224,6 +225,13 @@ one passes 1.2x: a 25-match, three-atom Grunt/Gulp workflow clause at 1.50x. Pac
 setup and Trove are atomic-only OR rules, so composite MDL is explicitly not applicable
 to them. The proxy still uses structural atoms rather than a complete GumTree edit-tree
 code and cannot by itself promote the Grunt/Gulp clause.
+
+`intent:large:probe-rules` distinguishes stable API/keyword anchors from local names.
+It randomizes local identifier and string labels while preserving each clause's anchors,
+then runs a negative probe that mutates the anchors without changing AST shape. The
+current persisted-AST pass retains 589/589 positive matches and rejects 515/515 anchor
+mutations; package setup and Trove both pass at 100%. Complete source mutation followed
+by GumTree/Semgrep reparsing remains a stronger future gate.
 
 `intent:facets:additive` writes one record per retained change with four deliberately
 separate fields: edit operation, noun-only edited entity, semantic container, and raw

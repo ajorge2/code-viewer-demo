@@ -815,7 +815,7 @@ structural edit clause; all six were reference members. These results show why s
 patterns alone are insufficient and why the paired executor must keep structural edit
 verification. Neither category is registered: package setup has crossed the nominal
 100-change boundary but independent-repository support, held-out semantic validation,
-and matcher robustness remain unmeasured, while Trove still has only eight examples.
+and source-level matcher robustness remain unmeasured, while Trove still has only eight examples.
 Their learned rules contain only one atom per OR branch, so composite MDL is not
 applicable to either category.
 
@@ -850,6 +850,21 @@ package and Trove rules are atomic-only. This is still an intermediate atom-code
 an accepted composite must ultimately demonstrate savings under a complete GumTree
 edit-tree code and pass the same semantic and provenance gates.
 
+### Role-aware metamorphic probes
+
+The original 100% identifier-permutation requirement is now split by semantic role.
+Local identifiers and literals are randomized while stable API/keyword anchors named by
+the rule are preserved; the positive clause must still match. A complementary negative
+probe keeps the AST shape fixed but mutates the stable anchor; the clause must stop
+matching. Across the 49 category rules, **589/589 local-name probes remained matched**
+and **515/515 anchor mutations were rejected**. Package setup and Trove each pass both
+tests at 100%.
+
+This result validates the distinction inside the persisted GumTree subtrees and typed
+context frames. It does not yet mutate complete source files and reparse them through
+GumTree and Semgrep, so it is strong intermediate evidence rather than the final
+metamorphic gate.
+
 ![Category-conditioned structural rule performance](figures/intent-algebra-sweep-5000/08-structural-rule-performance.svg)
 
 ![Semantic–structural feedback loop](figures/intent-algebra-sweep-5000/09-semantic-structural-feedback-loop.svg)
@@ -883,7 +898,7 @@ The current working tree now contains an executable pilot in addition to existin
 - Semgrep 1.176.0 now executes two paired Python category prefilters across 1,533 reconstructed before/after pairs; a sample-ID join and GumTree clause verifier convert those source matches into change-pattern matches.
 - A cached cumulative-evidence audit now loops traceable out-of-cluster matches back into semantic membership using meaning-vector fit plus LLM entailment, then re-induces and re-evaluates the structural rule.
 - A repository-support analyzer now collapses multi-repository rows and shared repository names into observed provenance components instead of treating every listed alias as independent support.
-- Held-out category-label MDL and structural-constituent MDL proxies are implemented for triage. Primitive registration, lattice resolution, metamorphic probes, complete edit-tree MDL, and explanation-quality benchmarks remain unimplemented.
+- Held-out category-label MDL, structural-constituent MDL, and persisted-AST role-aware metamorphic probes are implemented for triage. Primitive registration, lattice resolution, source-reparse probes, complete edit-tree MDL, and explanation-quality benchmarks remain unimplemented.
 
 ## 5. Business / Practical Impact
 
@@ -942,6 +957,7 @@ Current, defensible pilot bullets:
 - Closed the first semantic–structural feedback loop by auditing 20 traceable out-of-cluster package changes, provisionally expanding 15, and re-inducing a 101-change rule with 90.1% held-out precision, 81.2% recall, and 2.00× classification-MDL compression.
 - Audited provenance for 49 grounded categories and found one that clears both observed support proxies: 101 patch-distinct Python package setup changes across 101 known-name components and 184 raw repository aliases.
 - Distinguished predictive label compression from composite-pattern compression, evaluating 81 multi-atom clauses and retaining one 25-match Grunt/Gulp structure at 1.50× while correctly marking atomic package and Trove rules MDL-inapplicable.
+- Implemented role-aware metamorphic tests that preserved 589/589 clauses under local-name randomization and rejected 515/515 anchor mutations, including 100% results for package setup and Trove rules.
 - Separated minimal queue discovery from flexible composite expansion across 1,933 addition-dominant changes with up to 32 components, caught a 22.8%-precision constraint retriever before registration, and collapsed 67 exact-host candidates into 45 unique contexts including 13 multi-base lattice intersections.
 - Preserved directed edit semantics for undirected gSpan mining through relation-node encoding, then reduced 1,957 frequent fragments to 26 support-closed pilot candidates with structural-validity and labeled-supergraph checks.
 - Created an auditable grounding queue that joins every pilot candidate to commit text, code excerpts, and provenance while explicitly withholding meanings that do not yet meet semantic or independence requirements.
@@ -965,7 +981,7 @@ Future result bullets must still wait for held-out human evaluation and must not
 ### Immediate next steps
 
 1. Enrich the 101-change package category with parent SHAs, fork/mirror relationships, timestamps, and commit-wide changed-file lists to validate the observed 101-component provenance proxy.
-2. Run held-out semantic entailment and anchor-aware metamorphic probes for package setup; its atomic OR branches do not require composite MDL, but they do require robust executable behavior.
+2. Run held-out semantic entailment and source-level mutation/reparse probes for package setup; its persisted-AST role-aware probes already pass 589/589 positive and 515/515 negative cases globally.
 3. Audit the five low-vector-fit but LLM-entailing package candidates and analyze the remaining 25 missed expanded-reference members without fitting rules to sample IDs.
 4. Generalize the feedback loop to additional strong semantic categories, compiling paired matchers only when structural clauses add discriminative evidence over the Semgrep prefilter; evaluate complete edit-tree MDL only for multi-atom composites.
 5. Preserve semantic categories as primary registry nodes and structural AND/OR rules as traceable implementation evidence; reject punctuation-only clauses and abstain when no discriminative structural rule can be induced.
