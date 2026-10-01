@@ -63,3 +63,49 @@
   regex over raw source text. It could provide named placeholders, optional elements,
   repetition, and alternatives while retaining tree nesting. This remains an open
   design choice to compare with Semgrep templates or another tree-pattern DSL.
+
+## Revised experiment workflow
+
+```mermaid
+flowchart TD
+    A[CommitPackFT Python and JavaScript records] --> B[Remove generated, lockfile, formatting-only, and unusable records]
+    B --> C[Preserve each complete record: natural-language diff message plus full code diff]
+
+    C --> D[Embed only the natural-language diff messages]
+    D --> E[Cluster messages by semantic meaning]
+    E --> F[LLM proposes a human-readable meaning from all member messages]
+    F --> G[Estimate meaning confidence from member agreement and embedding cohesion]
+    G --> H[Candidate semantic term]
+    G --> I{Stable semantic subgroups remain?}
+    I -- Yes --> J[Re-cluster member messages within this cluster]
+    J --> F
+    I -- No --> K[Stop semantic refinement on this branch]
+
+    C --> L[Parse before and after code and derive AST edit evidence]
+    L --> M[Partition each diff into localized edit objects at a flexible code scale]
+    M --> N[Group nearby or overlapping additions and removals as a likely shared object]
+    M --> O[Keep structurally separate edits as separate candidate objects]
+
+    H --> P[Align every member message and term meaning to its edit objects]
+    N --> P
+    O --> P
+    P --> Q{What does this message describe?}
+    Q -- One object --> R[One positive code alignment]
+    Q -- Several objects --> S[Several positive code alignments]
+    Q -- Their relationship --> T[One composite positive alignment]
+    R --> U[Mark only unmentioned edit objects as negative or contextual evidence]
+    S --> U
+    T --> U
+
+    U --> V[All-member structural audit for the semantic term]
+    V --> W[Infer a recurring AST edit rule with metavariables, options, repetition, and alternatives]
+    W --> X[Validate against positive and negative objects, repositories, commits, coverage, and confidence]
+    X --> Y{Does recurring code evidence support the semantic term?}
+    Y -- Yes --> Z[Register grounded term: meaning, structural rule, evidence, and confidence]
+    Y -- No --> AA[Reject, leave unresolved, or return messages to semantic refinement]
+    AA --> J
+
+    Z --> AB[Relate broader, narrower, overlapping, and set-difference terms in the taxonomy]
+
+    AC[Addition and removal balance] -. metadata and evaluation slice only .-> M
+```
