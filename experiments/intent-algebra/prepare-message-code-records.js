@@ -2,7 +2,7 @@
 
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { spawn, spawnSync } from "node:child_process";
 import os from "node:os";
@@ -41,6 +41,7 @@ function parseArguments(argv) {
     seed: "intent-message-code-v1",
     gumtreeJar: process.env.GUMTREE_JAR || DEFAULT_GUMTREE_JAR,
     maxSubsetLcas: 64,
+    gumtreeTimeoutMs: 30_000,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -55,6 +56,7 @@ function parseArguments(argv) {
     else if (argument === "--seed") options.seed = next();
     else if (argument === "--gumtree-jar") options.gumtreeJar = path.resolve(next());
     else if (argument === "--max-subset-lcas") options.maxSubsetLcas = Number.parseInt(next(), 10);
+    else if (argument === "--gumtree-timeout-ms") options.gumtreeTimeoutMs = Number.parseInt(next(), 10);
     else throw new Error(`Unknown argument: ${argument}`);
   }
   if (!options.output) throw new Error("--output is required");
@@ -196,6 +198,26 @@ class GumTreeWorker {
     if (!this.child || this.child.exitCode !== null) return;
     this.child.stdin.end();
     await new Promise((resolve) => this.child.once("exit", resolve));
+  }
+
+  async terminate() {
+    if (!this.child || this.child.exitCode !== null) return;
+    this.child.kill("SIGKILL");
+    await new Promise((resolve) => this.child.once("exit", resolve));
+  }
+}
+
+async function withTimeout(promise, milliseconds, label) {
+  let timeout;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timeout = setTimeout(() => reject(new Error(`${label} timed out after ${milliseconds}ms`)), milliseconds);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -442,13 +464,25 @@ async function main() {
   }
 
   const temporary = await mkdtemp(path.join(os.tmpdir(), "intent-message-code-"));
-  const worker = new GumTreeWorker(options.gumtreeJar);
-  const prepared = [];
+  let worker = new GumTreeWorker(options.gumtreeJar);
+  const partialPath = `${options.output}.partial`;
+  let prepared = [];
+  try {
+    prepared = (await readFile(partialPath, "utf8"))
+      .split("\n").filter(Boolean).map((line) => JSON.parse(line));
+  } catch {
+    prepared = [];
+  }
+  const preparedByKey = new Map(prepared.map((row) => [row.sample_key, row]));
   try {
     await worker.start();
     for (const [index, item] of selected.entries()) {
       const { language, candidate } = item;
       const { row } = candidate;
+      if (preparedByKey.has(candidate.sampleKey)) {
+        console.error(`Prepared ${index + 1}/${selected.length} (checkpoint)`);
+        continue;
+      }
       const extension = EXTENSIONS[language];
       const beforePath = path.join(temporary, `before${extension}`);
       const afterPath = path.join(temporary, `after${extension}`);
@@ -456,11 +490,24 @@ async function main() {
         writeFile(beforePath, row.old_contents || ""),
         writeFile(afterPath, row.new_contents || ""),
       ]);
-      const [analysis, beforeTree, afterTree] = await Promise.all([
-        worker.analyze(String(index), beforePath, afterPath),
+      const treePromise = Promise.all([
         parseToTree(row.old_contents || "", language),
         parseToTree(row.new_contents || "", language),
       ]);
+      let analysis;
+      try {
+        analysis = await withTimeout(
+          worker.analyze(String(index), beforePath, afterPath),
+          options.gumtreeTimeoutMs,
+          `GumTree record ${index + 1}`,
+        );
+      } catch (error) {
+        await worker.terminate();
+        worker = new GumTreeWorker(options.gumtreeJar);
+        await worker.start();
+        analysis = { ok: false, error: error.message, actions: [] };
+      }
+      const [beforeTree, afterTree] = await treePromise;
       const parseOk = Boolean(analysis.ok && beforeTree && afterTree
         && !analysis.source_error_nodes && !analysis.destination_error_nodes);
       let structural = { candidates: [], edit_observations: [] };
@@ -475,7 +522,7 @@ async function main() {
           ? `gumtree_error:${analysis.error}`
           : (!analysis.actions?.length ? "no_ast_actions" : "parse_error_nodes");
       }
-      prepared.push({
+      const preparedRow = {
         language,
         row_index: candidate.rowIndex,
         commit: row.commit,
@@ -497,7 +544,11 @@ async function main() {
           action_count: analysis.actions?.length || 0,
         },
         ...structural,
-      });
+      };
+      prepared.push(preparedRow);
+      preparedByKey.set(candidate.sampleKey, preparedRow);
+      await mkdir(path.dirname(options.output), { recursive: true });
+      await appendFile(partialPath, `${JSON.stringify(preparedRow)}\n`);
       console.error(`Prepared ${index + 1}/${selected.length}`);
     }
   } finally {
@@ -513,10 +564,12 @@ async function main() {
     sampling: "lowest sha256(seed, language, commit, canonical patch hash)",
     filters: "generated/lock/minified/formatting-only/test-setup/unusable; no add-remove balance gate",
     max_subset_lcas: options.maxSubsetLcas,
+    gumtree_timeout_ms: options.gumtreeTimeoutMs,
     sources,
   };
   await writeFile(options.output, prepared.map((row) => JSON.stringify(row)).join("\n") + "\n");
   await writeFile(`${options.output}.manifest.json`, JSON.stringify(manifest, null, 2) + "\n");
+  await rm(partialPath, { force: true });
   console.error(`Wrote ${prepared.length} prepared records to ${options.output}`);
 }
 
