@@ -1,6 +1,6 @@
 # CodeArchitect Intent Algebra: Bottom-Up Primitive Discovery for Human-Readable Code Explanations
 **September 30, 2026 – In progress**
-**Status**: In progress — earlier structure-influenced workflows are frozen as ablations; the current diff-message-derived semantic-claim extractor, AST candidate-set aligner, threshold-and-cap policy, resumable executor, and immutable notebook audit layer are implemented, while corpus-scale execution, clustering, structural-rule induction, and product benchmarks remain open
+**Status**: In progress — the 1,000-record structural snapshot is complete; API-backed claim extraction is resumably paused after the account exhausted its API credits, while semantic clustering, structural-rule induction, and product benchmarks remain open
 
 > **Current methodological update — October 2, 2026:** Both earlier discovery paths
 > documented below are retained as exploratory ablations. The current experiment derives
@@ -458,6 +458,36 @@ without discarding the other evaluations: 97 candidates were not independent sup
 23 were retained, and 17 qualified but were capped. This result validates the harness
 behavior only. A larger repository-disjoint calibration set is still needed to tune the
 0.75 threshold, three-datapoint cap, and broad-ancestor rejection policy.
+
+### 1,000-record structural preparation checkpoint
+
+The larger calibration has completed its full local preparation stage: 500 Python and
+500 JavaScript file-level diffs were parsed into order-neutral AST candidate sets. The
+API stage is paused because the account returned `insufficient_quota`; the run can resume
+from the same work directory after credits are added.
+
+| Preparation outcome | Result |
+|---|---:|
+| Records snapshotted | 1,000 |
+| Successfully prepared | 985 |
+| Parse-error records | 15 (2 Python, 13 JavaScript) |
+| AST candidates | 18,339 |
+| Median candidates per successful record | 14 |
+| 90th / 95th percentile | 39 / 49 |
+| Maximum candidates in one record | 153 |
+| Cached successful API responses before quota exhaustion | 7 |
+
+JavaScript candidate sets are visibly larger than Python candidate sets through most of
+the empirical distribution, and JavaScript also accounts for most parse failures. Path
+nodes are the largest candidate source, especially in JavaScript; this makes the
+confidence threshold and per-claim cap important protections against nested ancestors
+dominating later semantic clustering.
+
+![AST preparation outcomes](figures/intent-algebra-message-code/01-preparation-outcomes.svg)
+
+![Candidate-set size distribution](figures/intent-algebra-message-code/02-candidate-set-size.svg)
+
+![AST candidate generation roles](figures/intent-algebra-message-code/03-candidate-roles.svg)
 
 ### Deterministic corpus and AST pilot
 
@@ -1407,8 +1437,8 @@ Future result bullets must still wait for held-out human evaluation and must not
 
 ### Immediate next steps
 
-1. Run the resumable 1,000-record message-to-subtree calibration with the frozen
-   confidence threshold and three-datapoint cap.
+1. Add API credits and resume the already prepared 1,000-record message-to-subtree
+   calibration with the frozen confidence threshold and three-datapoint cap.
 2. Measure alignment order/batch sensitivity, broad-ancestor retention, per-claim
    datapoint counts, abstention, and language/side slices before beginning clustering.
 3. Embed the message-derived noun meanings for retained, traceable datapoints and run the
@@ -1445,6 +1475,7 @@ Future result bullets must still wait for held-out human evaluation and must not
 - Resumable message-claim and candidate-set executor: `experiments/intent-algebra/run-message-code-calibration.py`
 - GumTree/Tree-sitter candidate preparation: `experiments/intent-algebra/prepare-message-code-records.js`, `parse-tree-batch.js`
 - Candidate-set and threshold/cap regression tests: `experiments/intent-algebra/test-message-code-candidate-queue.js`, `test_message_code_calibration.py`
+- Structural-preparation plot generator and figures: `experiments/intent-algebra/plot-message-code-preparation.py`, `docs/figures/intent-algebra-message-code/`
 - Immutable run writer, stable-ID/link validator, and notebook helpers: `experiments/intent-algebra/audit_artifacts.py`, `audit_notebook.py`
 - Audit contract and local setup: `docs/intent-algebra-audit-notebook.md`, `experiments/intent-algebra/setup-audit-notebook.sh`
 - Pilot implementation and documentation: `experiments/intent-algebra/`
