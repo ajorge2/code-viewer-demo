@@ -55,10 +55,16 @@
   semantic clustering. The selected AST node or subtree becomes that pair's code label.
   Unresolved pairs must remain explicitly unresolved rather than entering the cluster as
   if their entire diff were labeled.
+- Repeat extraction and alignment across many records to build a corpus-level collection
+  of resolved, code-labeled semantic objects. Semantic clustering begins only after this
+  collection exists; it is not triggered separately after each individual diff.
 - Embed and cluster semantic objects only after their points carry traceable code labels.
   The semantic embedding still comes from the noun/object meaning, not from the code;
   the code label is retained so the code representations inside each resulting semantic
   cluster can be compared afterward.
+- Assign every resulting cluster its own noun-only term based on all of its members. Two
+  distinct clusters may not retain the same term; a collision requires merging the
+  clusters or choosing a more specific distinguishing noun.
 - Once those message-derived semantic objects have been embedded and clustered, the cluster
   already has a semantic meaning. Do not add a redundant “dense semantic group”
   artifact or a second all-member semantic audit.
@@ -168,9 +174,10 @@ flowchart TB
     S --> T[Select the supported node/subtree or leave the pair unresolved]
     T --> U[Attach the selected AST node/subtree as this pair's code label]
 
-    U --> V["3. Semantic clustering over code-labeled points<br/>Embed the noun/object meaning while preserving its verb and code label"]
+    U --> UA["Repeat steps 1–2 across many records<br/>Collect a corpus of resolved code-labeled semantic objects"]
+    UA --> V["3. Semantic clustering over the collected code-labeled objects<br/>Embed each noun/object meaning while preserving its verb and code label"]
     V --> W[Cluster semantic objects by meaning]
-    W --> X[LLM proposes a noun-only term from all cluster members]
+    W --> X["For each cluster, the LLM proposes its own noun-only term from all members<br/>No two distinct clusters share the same term"]
     X --> Y[Estimate confidence from member agreement and embedding cohesion]
     Y --> Z{Stable semantic subgroups remain?}
     Z -- Yes --> AA[Re-cluster member semantic objects inside this cluster]
