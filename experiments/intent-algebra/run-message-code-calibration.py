@@ -22,7 +22,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = PROJECT_ROOT / "experiments/intent-algebra/semantic-first-hyperparameters.json"
 PREPARE_SCRIPT = PROJECT_ROOT / "experiments/intent-algebra/prepare-message-code-records.js"
 CLAIM_PROMPT_VERSION = "message-claims/v1"
-ALIGNMENT_PROMPT_VERSION = "claim-subtree-alignment/v1"
+ALIGNMENT_PROMPT_VERSION = "claim-subtree-alignment/v2-minimal-object"
 
 
 def parse_args() -> argparse.Namespace:
@@ -170,6 +170,8 @@ def alignment_prompt(
         "Score whether each candidate AST subtree independently and specifically realizes the message-derived semantic claim.",
         "The semantic claim is already fixed from the message. Do not rename it from code or invent a broader code meaning.",
         "A candidate supports the claim only when its bounded subtree contains enough behavior or declaration content to justify that claim by itself.",
+        "Treat the directly edited subtree as supporting when it is the concrete object added, removed, or changed. It does not need unrelated siblings or file scaffolding merely to prove contextual words such as first, second, another, or existing.",
+        "Favor the smallest sufficient object boundary: a broader ancestor that mainly adds unrelated siblings or setup should be partial when a narrower candidate already contains the claimed object.",
         "Use partial when the subtree is relevant but needs a parent or sibling to express the claim. Use unrelated when it does not realize the claim.",
         "Score 0 to 1. Exact identifiers and comments are evidence but are not sufficient when structure contradicts them.",
         "Return exactly one evaluation for every supplied candidate_id.",
