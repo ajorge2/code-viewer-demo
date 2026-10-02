@@ -42,8 +42,7 @@
   contextual evidence. Competing ancestor scopes around a positive edit are alternative
   candidate boundaries, not negative examples.
 - A message may mention several semantic objects, but each receives its own alignment
-  process and its own AST-candidate queue. Do not package multiple semantic objects or
-  structurally separate code regions into a composite candidate at this stage.
+  process and its own AST-candidate queue.
 - Addition/removal dominance does not change this rule: even a strongly one-directional
   diff can contain several distinct objects that the message labels separately.
 
@@ -91,8 +90,8 @@
 - Generate relevant LCAs for subsets of edits rather than relying only on the single LCA
   of the entire diff, which may be an uninformative function, module, or file root.
 - For each message-derived semantic object, retain single-node or single-subtree
-  candidates at every meaningful scale. Structurally separate regions may both be
-  evaluated independently, but they are not packaged into a composite candidate.
+  candidates at every meaningful scale. Structurally separate regions are evaluated
+  independently.
 - Give each semantic object its own priority queue. Use the following lexicographic
   ordering rather than a blended structural-similarity score:
   1. Preserve an immutable intrinsic operation on each raw edited AST node: insertion is
@@ -189,5 +188,5 @@ flowchart TB
     AH --> AJ[Connect broader, narrower, overlapping, and set-difference terms]
     AJ --> AK[Evaluate taxonomy coverage on held-out repositories]
 
-    AL["Rules carried throughout:<br/>no add/remove corpus filter<br/>no composite candidates<br/>one queue per semantic object<br/>no semantic clustering before code labels exist<br/>single-edit upper boundary remains open"] -.-> I
+    AL["Rules carried throughout:<br/>mixed add/remove diffs remain eligible<br/>one queue per semantic object<br/>no semantic clustering before code labels exist<br/>single-edit upper boundary remains open"] -.-> I
 ```
