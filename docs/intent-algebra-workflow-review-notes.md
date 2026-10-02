@@ -81,10 +81,22 @@
 - For each message-derived semantic object, retain single-node or single-subtree
   candidates at every meaningful scale. Structurally separate regions may both be
   evaluated independently, but they are not packaged into a composite candidate.
-- Give each semantic object its own best-first priority queue instead of eliminating
-  broader or intermediate candidates upfront. Initial priority can combine proximity to
-  the edited nodes, subtree compactness, message/code lexical anchors, edit-operation
-  agreement, and recurrence across other records in the same semantic cluster.
+- Give each semantic object its own priority queue. Use the following lexicographic
+  ordering rather than a blended structural-similarity score:
+  1. If and only if the message verb unambiguously specifies addition or removal for
+     that semantic object, place AST edits with the matching operation first. This is a
+     priority rule, not an exclusion rule. When the verb is unclear, addition and
+     removal have equal priority.
+  2. Place the directly edited AST nodes first.
+  3. Place the LCA of the retained edit nodes next.
+  4. Place every distinct LCA produced by non-singleton proper subsets of the edit nodes
+     next, deduplicating subsets that resolve to the same AST node.
+  5. Place the remaining meaningful nodes on the paths from the overall LCA down toward
+     the edited nodes, traversed breadth-first in the downward direction.
+- Within equal queue positions, use stable source order as the deterministic tiebreaker.
+- The single-edit case needs an explicit upper boundary because its LCA is the edit node
+  itself and therefore produces no ancestor path. Preserve this as an open design edge
+  case so meaningful enclosing candidates such as a body are not accidentally omitted.
 - Queue priority controls evaluation order, not truth. Preserve competing candidates
   until alignment evidence clearly separates them, and leave a semantic object
   unresolved when the evidence is insufficient.
