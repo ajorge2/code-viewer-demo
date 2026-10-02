@@ -8,6 +8,8 @@
     "on_unclear_verb_sign": "neutral"
   },
   "code_alignment": {
+    "code_label_unit": "one_ast_subtree_from_one_diff_side",
+    "when_claim_maps_to_both_sides": "emit_two_linked_datapoints",
     "min_entailment_score": 0.75,
     "min_winner_margin": 0.05,
     "on_failed_alignment": "leave_unresolved",

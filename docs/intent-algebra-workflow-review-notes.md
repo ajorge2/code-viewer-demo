@@ -55,6 +55,11 @@
   semantic clustering. The selected AST node or subtree becomes that pair's code label.
   Unresolved pairs must remain explicitly unresolved rather than entering the cluster as
   if their entire diff were labeled.
+- A code label is exactly one AST subtree from exactly one side of the diff. Never combine
+  a before subtree and an after subtree into one paired code label. If one semantic claim
+  aligns to relevant structure on both sides, emit two linked datapoints—one carrying the
+  before-side subtree and one carrying the after-side subtree—while preserving their
+  shared claim and diff provenance.
 - Repeat extraction and alignment across many records to build a corpus-level collection
   of resolved, code-labeled semantic objects. Semantic clustering begins only after this
   collection exists; it is not triggered separately after each individual diff.

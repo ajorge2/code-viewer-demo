@@ -175,6 +175,9 @@ workflows retained later in this report as ablations:
 1. Split every diff message into independent `(verb, noun/object)` semantic claims.
 2. Build and evaluate an AST-candidate queue for each claim, leaving ambiguous claims
    unresolved rather than assigning the entire diff.
+   Each resolved datapoint carries exactly one AST subtree from one diff side; a claim
+   aligned to both old and new code produces two linked datapoints rather than one paired
+   before/after label.
 3. Repeat across the corpus, then embed only the noun/object meanings while retaining
    each point's verb, code label, message, diff, and provenance.
 4. Cluster the collected semantic objects, give every distinct cluster a unique noun,
