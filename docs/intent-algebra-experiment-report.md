@@ -1,6 +1,6 @@
 # CodeArchitect Intent Algebra: Bottom-Up Primitive Discovery for Human-Readable Code Explanations
 **September 30, 2026 – In progress**
-**Status**: In progress — the structure-influenced run and the 160-function code-description run are frozen as ablations; the current diff-message-derived, code-labeled semantic workflow and its pilot hyperparameters are specified, while implementation, corpus-scale execution, calibration, and product benchmarks remain open
+**Status**: In progress — the structure-influenced run and the 160-function code-description run are frozen as ablations; the current diff-message-derived, code-labeled semantic workflow, pilot hyperparameters, and immutable notebook audit layer are implemented or specified, while the new executor, corpus-scale execution, calibration, and product benchmarks remain open
 
 > **Current methodological update — October 1, 2026:** Both earlier discovery paths
 > documented below are retained as exploratory ablations. The current experiment derives
@@ -216,6 +216,15 @@ coverage, precision, support, robustness, and MDL gates above. Up to three high-
 `OR` clauses may cover distinct implementation families, with each added clause required
 to contribute at least 0.10 incremental coverage. The full design is specified in
 `docs/intent-algebra-ast-regex-induction.md`.
+
+Every calibration and sweep run is auditable as an immutable artifact graph. The
+executor persists stable record, claim, candidate, label, unresolved-outcome, and review
+IDs; validates every link and the single-sided-subtree invariant; and seals outputs with
+row counts and SHA-256 hashes. A read-only Python notebook reconstructs the complete path
+from message and highlighted diff through the verb+noun claim and full ordered AST queue
+to the selected code label. Notebook execution never calls a model or mutates a run.
+This makes both successes and abstentions reproducible rather than leaving critical
+alignment decisions only in logs or transient UI state.
 
 ### End-to-end approach
 
@@ -1401,6 +1410,9 @@ Future result bullets must still wait for held-out human evaluation and must not
 - Current workflow review notes: `docs/intent-algebra-workflow-review-notes.md`
 - AST-regex sample-infer-execute specification: `docs/intent-algebra-ast-regex-induction.md`
 - Pre-registered semantic-first defaults: `experiments/intent-algebra/semantic-first-hyperparameters.json`
+- Read-only calibration audit notebook: `experiments/intent-algebra/notebooks/01_steps_1_2_calibration_audit.ipynb`
+- Immutable run writer, stable-ID/link validator, and notebook helpers: `experiments/intent-algebra/audit_artifacts.py`, `audit_notebook.py`
+- Audit contract and local setup: `docs/intent-algebra-audit-notebook.md`, `experiments/intent-algebra/setup-audit-notebook.sh`
 - Pilot implementation and documentation: `experiments/intent-algebra/`
 - Reproducible baseline, refinement, and scale-up commands: `npm run intent:pilot`, `intent:pilot:additive`, `intent:mine:additive`, `intent:facets:additive`, `intent:cluster:additive`, `intent:cluster:embeddings:additive`, `intent:sweep:*`, `intent:scale:*`, `intent:large:*`, and `intent:review`
 - Report figures and generators: `docs/figures/intent-algebra/`, `docs/figures/intent-algebra-additive/`, `docs/figures/intent-algebra-sweep-500/`, `docs/figures/intent-algebra-sweep-2000/`, `experiments/intent-algebra/plot-pilot.py`, `cluster-concepts.py`, `cluster-embedding-concepts.py`, and `compare-cluster-stability.py`
@@ -1414,7 +1426,7 @@ Future result bullets must still wait for held-out human evaluation and must not
 
 ### Planned
 
-- Corpus manifest with repository family, license, commit SHA, language, split, and exclusion reason.
+- Populate the implemented run manifest with repository family, license, commit SHA, language, split, and exclusion reason during the first calibration execution.
 - Frozen canonical before/after change-graph schema and cross-language fixtures.
 - Candidate-level semantic-boundary expansion and behavior-bearing context gate.
 - gSpan discovery output and candidate-pruning report.

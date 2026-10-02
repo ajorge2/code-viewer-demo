@@ -139,6 +139,26 @@ The full AST-regex grammar sketch, RANSAC-like sample-infer-execute loop, residu
 OR-clause procedure, negative-corpus evaluation, and scaling strategy are specified in
 `docs/intent-algebra-ast-regex-induction.md`.
 
+## Run auditability
+
+- The experiment executor writes a new immutable run directory; it never uses the
+  notebook as a hidden computation step and never silently overwrites an artifact.
+- Every record, message-derived claim, AST candidate, selected code label, unresolved
+  outcome, and review judgment has a stable ID. Foreign-key links preserve the complete
+  route from a displayed result back to the original message, diff, and selected
+  single-sided subtree.
+- The run manifest freezes dataset identity, source hashes, Git revision, configuration,
+  prompt and model versions, seeds, and environment metadata.
+- Finalization validates linkage and the one-subtree/one-side invariant, then writes an
+  artifact index containing byte lengths, row counts, and SHA-256 hashes. Any later file
+  change becomes visible as a hash mismatch.
+- The Python notebook is a read-only audit view. It displays the calibration funnel,
+  highlighted diff, extracted verb+noun claims, the entire deduplicated candidate queue,
+  selected subtree and AST, abstentions, review sample, and metric slices. Rerunning it
+  cannot change experiment results.
+- Human review adds append-only judgments linked to model output; it does not replace or
+  erase the original model decision.
+
 ## Edit-object candidate generation
 
 - Do not force one definitive AST partition before message-to-code alignment. Generate
