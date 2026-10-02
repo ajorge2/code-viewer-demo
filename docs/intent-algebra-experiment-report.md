@@ -206,6 +206,17 @@ permutation retention, and at least 0.95 unrelated-mutation rejection. All numer
 choices may be tuned on repository-disjoint validation data only and are frozen before
 the final test evaluation.
 
+Recurring code evidence is induced with a bounded AST-regex rather than raw-source regex
+or all-pairs subtree clustering. For each semantic cluster, the harness draws ten small,
+repository-stratified samples of six to ten single-sided member subtrees, proposes up to
+three simple patterns from each sample, and executes them across all cluster members and
+the out-of-cluster corpus. Rules must be reproducible across samples (mean match-set
+Jaccard at least 0.80), remain within an inspectable complexity budget, and satisfy the
+coverage, precision, support, robustness, and MDL gates above. Up to three high-precision
+`OR` clauses may cover distinct implementation families, with each added clause required
+to contribute at least 0.10 incremental coverage. The full design is specified in
+`docs/intent-algebra-ast-regex-induction.md`.
+
 ### End-to-end approach
 
 1. **Collect and snapshot** commits and metadata into a versioned manifest.
@@ -1387,6 +1398,9 @@ Future result bullets must still wait for held-out human evaluation and must not
 ### Created in this design pass
 
 - Intent Algebra project and experiment report: `docs/intent-algebra-experiment-report.md`
+- Current workflow review notes: `docs/intent-algebra-workflow-review-notes.md`
+- AST-regex sample-infer-execute specification: `docs/intent-algebra-ast-regex-induction.md`
+- Pre-registered semantic-first defaults: `experiments/intent-algebra/semantic-first-hyperparameters.json`
 - Pilot implementation and documentation: `experiments/intent-algebra/`
 - Reproducible baseline, refinement, and scale-up commands: `npm run intent:pilot`, `intent:pilot:additive`, `intent:mine:additive`, `intent:facets:additive`, `intent:cluster:additive`, `intent:cluster:embeddings:additive`, `intent:sweep:*`, `intent:scale:*`, `intent:large:*`, and `intent:review`
 - Report figures and generators: `docs/figures/intent-algebra/`, `docs/figures/intent-algebra-additive/`, `docs/figures/intent-algebra-sweep-500/`, `docs/figures/intent-algebra-sweep-2000/`, `experiments/intent-algebra/plot-pilot.py`, `cluster-concepts.py`, `cluster-embedding-concepts.py`, and `compare-cluster-stability.py`

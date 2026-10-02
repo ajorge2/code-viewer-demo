@@ -68,6 +68,29 @@
     },
     "on_low_or_abstain": "skip_cluster_and_continue"
   },
+  "structural_rule_induction": {
+    "representation": "bounded_ast_regex",
+    "sample_draws": 10,
+    "sample_size_formula": "min(10, max(6, ceil(sqrt(cluster_size))))",
+    "sample_strategy": "repository_stratified_central_boundary_and_random_members",
+    "candidate_rules_per_sample": 3,
+    "proposal_methods": [
+      "tree_anti_unification",
+      "grammar_constrained_llm"
+    ],
+    "max_required_ast_atoms_per_clause": 12,
+    "max_metavariables_per_clause": 4,
+    "max_optional_groups_per_clause": 2,
+    "max_internal_alternations_per_clause": 1,
+    "max_pattern_tree_depth": 5,
+    "max_descendant_gap_depth": 3,
+    "max_or_clauses_per_term": 3,
+    "min_incremental_coverage_per_clause": 0.1,
+    "min_matchset_jaccard_across_draws": 0.8,
+    "residual_policy": "remove_covered_positives_then_induce_next_or_clause",
+    "negative_evaluation": "execute_compiled_matcher_across_out_of_cluster_corpus",
+    "index_policy": "fingerprints_may_prefilter_but_never_determine_final_match"
+  },
   "structural_validation": {
     "min_semantic_member_coverage": 0.6,
     "min_rule_precision": 0.9,

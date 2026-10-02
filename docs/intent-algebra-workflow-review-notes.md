@@ -120,6 +120,10 @@ repository-disjoint validation split, and frozen before the final test evaluatio
 | Split quality | cohesion gain ≥ 0.03; silhouette ≥ 0.10 | Require semantic improvement rather than arbitrary subdivision |
 | Split stability | 20 repeats on 80% subsamples; mean ARI ≥ 0.70 | Reject fragile child memberships |
 | Meaning confidence | accept medium/high; skip low/abstain | Spend structural-audit work only on identifiable meanings |
+| AST-regex induction | 10 draws of 6–10 subtrees; ≤3 candidates per draw | Require a rule to be inferable from several small samples rather than all members at once |
+| AST-regex complexity | ≤12 required atoms, 4 metavariables, 2 optional groups, depth 5 | Keep every rule inspectable and resistant to memorization |
+| Rule-family size | ≤3 OR clauses; each adds ≥0.10 coverage | Permit several implementations without creating an unconstrained union |
+| Sample stability | mean match-set Jaccard ≥0.80 | Reject rules that depend on a lucky small sample |
 | Structural rule | coverage ≥ 0.60; precision ≥ 0.90 | Require the code rule to explain the category without becoming generic |
 | Registry support | ≥ 100 patch-distinct commits and ≥ 50 independent repository families | Preserve the proposal's recurrence standard |
 | Structural robustness | 100% identifier-permutation retention; ≥ 95% unrelated-mutation rejection | Verify that rules encode structure rather than names |
@@ -130,6 +134,10 @@ small for two non-trivial children, every child is below the minimum size, no ca
 split passes cohesion/silhouette/stability, every produced child is later skipped by the
 confidence or structural gates, or a membership set repeats and would create a cycle.
 “No child candidates” is therefore only one of several stopping conditions.
+
+The full AST-regex grammar sketch, RANSAC-like sample-infer-execute loop, residual
+OR-clause procedure, negative-corpus evaluation, and scaling strategy are specified in
+`docs/intent-algebra-ast-regex-induction.md`.
 
 ## Edit-object candidate generation
 
@@ -228,10 +236,11 @@ flowchart TB
     X --> Y[Estimate confidence from member agreement and embedding cohesion]
     Y --> YQ{Is semantic confidence high enough?}
     YQ -- No --> SKIP[Skip this cluster and continue with the next candidate cluster]
-    YQ -- Yes --> AC["4. Structurally validate this semantic cluster<br/>Collect the member code labels"]
-    AC --> AD[Run the all-member structural audit]
-    AD --> AE[Infer a recurring AST edit rule with metavariables and optional elements]
-    AE --> AF[Validate coverage, negative evidence, repository and commit support, confidence, and MDL]
+    YQ -- Yes --> AC["4. Structurally validate this semantic cluster<br/>Collect its single-sided AST-subtree code labels"]
+    AC --> AD[Draw 10 small repository-stratified samples of 6–10 member subtrees]
+    AD --> AE["Infer up to 3 bounded AST-regex candidates per sample<br/>using metavariables, optional elements, and bounded gaps"]
+    AE --> AE2["Execute every rule across all member subtrees and the out-of-cluster corpus<br/>Fit up to 3 OR clauses to high-precision residual families"]
+    AE2 --> AF[Validate coverage, precision, cross-sample stability, support, robustness, and MDL]
     AF --> AG{Does recurring code evidence support the semantic term?}
     AG -- Yes --> AH[Register noun-only meaning, structural rule, evidence, and confidence]
     AG -- No --> SKIP
