@@ -65,13 +65,18 @@
 - Assign every resulting cluster its own noun-only term based on all of its members. Two
   distinct clusters may not retain the same term; a collision requires merging the
   clusters or choosing a more specific distinguishing noun.
+- Estimate semantic confidence immediately after naming. If confidence is below the
+  acceptance threshold, skip that cluster and continue with the next candidate rather
+  than spending structural-audit work on it.
 - After naming a cluster, run the all-member structural audit before attempting any
   recursive clustering inside it. The audit determines whether the proposed semantic
   cluster corresponds to a recurring code pattern.
 - Only a cluster that passes structural validation may be registered and searched for
-  narrower semantic subclusters. Every proposed subcluster must then pass through the
-  same naming and structural-validation sequence before it can recurse further. Reject
-  or leave an invalid cluster ungrounded; do not recursively cluster it.
+  narrower semantic subclusters. After registration, make only that cluster's member
+  embeddings the active embedding view and run clustering again inside that scoped view.
+  Send every resulting child-cluster candidate back through the same naming, confidence,
+  and structural-validation loop. Low-confidence or structurally invalid children are
+  skipped; only valid children become terms and create another scoped embedding view.
 - Once those message-derived semantic objects have been embedded and clustered, the cluster
   already has a semantic meaning. Do not add a redundant “dense semantic group”
   artifact or a second all-member semantic audit.
@@ -186,20 +191,22 @@ flowchart TB
     V --> W[Cluster semantic objects by meaning]
     W --> X["For each cluster, the LLM proposes its own noun-only term from all members<br/>No two distinct clusters share the same term"]
     X --> Y[Estimate confidence from member agreement and embedding cohesion]
-    Y --> AC["4. Structurally validate this semantic cluster before any further clustering<br/>Collect the member code labels"]
+    Y --> YQ{Is semantic confidence high enough?}
+    YQ -- No --> SKIP[Skip this cluster and continue with the next candidate cluster]
+    YQ -- Yes --> AC["4. Structurally validate this semantic cluster<br/>Collect the member code labels"]
     AC --> AD[Run the all-member structural audit]
     AD --> AE[Infer a recurring AST edit rule with metavariables and optional elements]
     AE --> AF[Validate coverage, negative evidence, repository and commit support, confidence, and MDL]
     AF --> AG{Does recurring code evidence support the semantic term?}
     AG -- Yes --> AH[Register noun-only meaning, structural rule, evidence, and confidence]
-    AG -- No --> AI["Reject or leave this cluster ungrounded<br/>Do not recursively cluster it"]
+    AG -- No --> SKIP
 
-    AH --> Z{"Does this validated cluster contain multiple stable semantic subclusters?"}
-    Z -- Yes --> AA["Split its members into candidate subclusters<br/>Run each one through naming and structural validation"]
-    AA --> X
-
-    Z -- No --> AJ[Connect broader, narrower, overlapping, and set-difference terms]
-    AJ --> AK[Evaluate taxonomy coverage on held-out repositories]
+    AH --> AJ[Link this valid term to the current parent scope]
+    AJ --> Z["Make this validated cluster's member embeddings the new embedding view"]
+    Z --> AA[Cluster the new embedding view to generate narrower candidate clusters]
+    AA -- Each child candidate --> X
+    AA -- No child candidates --> AK[This recursive branch is complete]
+    AK --> AM[After all branches finish, connect overlaps and set differences and evaluate held-out coverage]
 
     AL["Key constraints:<br/>mixed add/remove diffs remain eligible<br/>one queue per semantic object"] -.-> I
 ```
