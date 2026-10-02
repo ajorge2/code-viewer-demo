@@ -83,19 +83,28 @@
   evaluated independently, but they are not packaged into a composite candidate.
 - Give each semantic object its own priority queue. Use the following lexicographic
   ordering rather than a blended structural-similarity score:
-  1. If and only if the message verb unambiguously specifies addition or removal for
+  1. Before sorting, assign every candidate—including LCAs and intermediate path
+     nodes—exactly one operation label. A directly inserted node is `add`, a directly
+     deleted node is `remove`, and a directly updated or moved node is `neutral`. For a
+     non-edit candidate, count all edited descendants. Label it `add` when at least half
+     of those descendants are additions; otherwise label it `remove` when more than half
+     are removals; otherwise label it `neutral`. This deliberately assigns a 50/50
+     add/remove tie to `add`. A candidate with no edited descendants is `neutral`.
+  2. If and only if the message verb unambiguously specifies addition or removal for
      that semantic object, create exactly three operation buckets. For an additive verb,
      order them `add`, `neutral`, `remove`; for a removal verb, order them `remove`,
-     `neutral`, `add`. Inserted nodes belong to `add`, deleted nodes belong to `remove`,
-     and updates, moves, LCAs, and unchanged ancestor/path nodes belong to `neutral`.
-     Do not create a mixed or fourth bucket. If the verb is neutral or unclear, skip
-     operation bucketing entirely and begin with the structural ordering below.
-  2. Place the directly edited AST nodes first.
-  3. Place the LCA of the retained edit nodes next.
-  4. Place every distinct LCA produced by non-singleton proper subsets of the edit nodes
-     next, deduplicating subsets that resolve to the same AST node.
-  5. Place the remaining meaningful nodes on the paths from the overall LCA down toward
-     the edited nodes, traversed breadth-first in the downward direction.
+     `neutral`, `add`. Do not create a mixed or fourth bucket. If the verb is neutral or
+     unclear, skip operation bucketing entirely and begin with the structural ordering.
+  3. Give directly edited AST nodes structural tier 1.
+  4. Give the overall LCA of the retained edit nodes structural tier 2.
+  5. Give every distinct LCA produced by non-singleton proper subsets of the edit nodes
+     structural tier 3, deduplicating subsets that resolve to the same AST node.
+  6. Give the remaining meaningful nodes on the paths from the overall LCA down toward
+     the edited nodes structural tier 4, traversed breadth-first in the downward
+     direction.
+  7. When operation buckets are active, sort by operation bucket first and structural
+     tier inside each bucket. When buckets are inactive, sort directly by structural
+     tier.
 - Within equal queue positions, use stable source order as the deterministic tiebreaker.
 - Deduplicate across the entire queue by canonical AST-node identity, not only within an
   individual priority tier. If the same node is produced as a direct edit, an LCA, a
