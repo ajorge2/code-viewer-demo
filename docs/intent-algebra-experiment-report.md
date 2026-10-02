@@ -1,11 +1,12 @@
 # CodeArchitect Intent Algebra: Bottom-Up Primitive Discovery for Human-Readable Code Explanations
 **September 30, 2026 – In progress**
-**Status**: In progress — the structure-influenced run and the 160-function code-description run are frozen as ablations; the current diff-message-derived, code-labeled semantic workflow, pilot hyperparameters, and immutable notebook audit layer are implemented or specified, while the new executor, corpus-scale execution, calibration, and product benchmarks remain open
+**Status**: In progress — earlier structure-influenced workflows are frozen as ablations; the current diff-message-derived semantic-claim extractor, AST candidate-set aligner, threshold-and-cap policy, resumable executor, and immutable notebook audit layer are implemented, while corpus-scale execution, clustering, structural-rule induction, and product benchmarks remain open
 
-> **Current methodological update — October 1, 2026:** Both earlier discovery paths
+> **Current methodological update — October 2, 2026:** Both earlier discovery paths
 > documented below are retained as exploratory ablations. The current experiment derives
 > independent `(verb, noun/object)` claims from each natural-language diff message, aligns
-> every claim to an AST node or subtree, and collects many such code-labeled objects before
+> every claim to an order-neutral set of AST-subtree candidates, and retains up to three
+> independently supported meaning–subtree datapoints per claim before
 > semantic clustering. A cluster is named, confidence-gated, and structurally validated
 > before it can be registered or recursively clustered. Recursion scopes the embedding
 > view to the validated cluster's members and sends each eligible child through the same
@@ -173,11 +174,12 @@ The current experiment supersedes the older structure-first and code-description
 workflows retained later in this report as ablations:
 
 1. Split every diff message into independent `(verb, noun/object)` semantic claims.
-2. Build and evaluate an AST-candidate queue for each claim, leaving ambiguous claims
-   unresolved rather than assigning the entire diff.
-   Each resolved datapoint carries exactly one AST subtree from one diff side; a claim
-   aligned to both old and new code produces two linked datapoints rather than one paired
-   before/after label.
+2. Build and evaluate an order-neutral AST candidate set for each claim, leaving claims
+   unresolved when no candidate independently clears the confidence threshold. Retain
+   at most three mappings per claim, preserving both diff sides when both qualify and
+   preferring higher confidence followed by a smaller subtree. Each datapoint carries
+   exactly one AST subtree from one diff side; a claim aligned to both old and new code
+   produces linked datapoints rather than one paired before/after label.
 3. Repeat across the corpus, then embed only the noun/object meanings while retaining
    each point's verb, code label, message, diff, and provenance.
 4. Cluster the collected semantic objects, give every distinct cluster a unique noun,
@@ -221,8 +223,8 @@ Every calibration and sweep run is auditable as an immutable artifact graph. The
 executor persists stable record, claim, candidate, label, unresolved-outcome, and review
 IDs; validates every link and the single-sided-subtree invariant; and seals outputs with
 row counts and SHA-256 hashes. A read-only Python notebook reconstructs the complete path
-from message and highlighted diff through the verb+noun claim and full ordered AST queue
-to the selected code label. Notebook execution never calls a model or mutates a run.
+from message and highlighted diff through the verb+noun claim and full AST candidate set
+to every retained meaning–subtree datapoint. Notebook execution never calls a model or mutates a run.
 This makes both successes and abstentions reproducible rather than leaving critical
 alignment decisions only in logs or transient UI state.
 
@@ -432,6 +434,30 @@ The first executable pass now pins and records the following choices:
 - **Semantic-cluster review**: a separate local workflow shows every member diff for each embedding cluster alongside three competing noun-only interpretations and a custom option, then records shared-concept validity, fit, breadth, confidence, and notes without promoting the cluster into the primitive lattice.
 
 ## 4. Results (The Gold Mine for Resume Bullets)
+
+### Audited message-to-subtree calibration smoke test
+
+The current workflow has completed an API-backed, immutable 10-record smoke run spanning
+five Python and five JavaScript diffs. This is an implementation and calibration check,
+not an accuracy result or evidence that the taxonomy is complete.
+
+| Outcome | Result | Interpretation |
+|---|---:|---|
+| Input records | 10 | Five per language |
+| Message-derived semantic claims | 10 | One identifiable claim per smoke record |
+| AST candidates evaluated | 137 | Every candidate was independently scored; enumeration order did not select winners |
+| Candidates clearing the 0.75 threshold | 40 | Preserved in the audit artifact whether retained or capped |
+| Meaning–subtree datapoints retained after cap | 23 | Maximum three per claim; 17 additional qualifying mappings were marked `qualified_but_capped` |
+| Claims with at least one retained datapoint | 10 / 10 | No smoke claims were unresolved |
+| New API requests for the cached cap replay | 0 | The cap was evaluated deterministically from sealed model outputs |
+
+The uncapped run averaged four qualifying subtrees per claim and reached ten for one
+claim, confirming that confidence thresholding alone permits nested AST variants to
+overweight later clustering. The three-datapoint cap reduced the handoff from 40 to 23
+without discarding the other evaluations: 97 candidates were not independent support,
+23 were retained, and 17 qualified but were capped. This result validates the harness
+behavior only. A larger repository-disjoint calibration set is still needed to tune the
+0.75 threshold, three-datapoint cap, and broad-ancestor rejection policy.
 
 ### Deterministic corpus and AST pilot
 
@@ -1381,11 +1407,16 @@ Future result bullets must still wait for held-out human evaluation and must not
 
 ### Immediate next steps
 
-1. Calibrate the ten semantic-first hypotheses for recognizable meaning while keeping all of them unregistered.
-2. Scale the same function-only semantic pipeline to roughly 500 repository families so recurrent terms can cross the pilot support floor and coherent parents can contain enough evidence for recursive subclustering.
-3. Retrieve and adjudicate additional semantic members—including bounded multi-membership—before applying the empty-set-aware overlap audit to actual term sets.
-4. Use AST/GumTree/Semgrep evidence only for semantic terms that survive support, confidence, recursion, and overlap gates; verify one or more transferable structural realizations on held-out repositories.
-5. Freeze the semantic-first taxonomy, then run repository coverage, human calibration, syntax-only/direct-LLM/CodeArchitect baselines, and product explanation benchmarks.
+1. Run the resumable 1,000-record message-to-subtree calibration with the frozen
+   confidence threshold and three-datapoint cap.
+2. Measure alignment order/batch sensitivity, broad-ancestor retention, per-claim
+   datapoint counts, abstention, and language/side slices before beginning clustering.
+3. Embed the message-derived noun meanings for retained, traceable datapoints and run the
+   repository-aware semantic clustering and recursive validation loop.
+4. Infer and execute bounded AST-regex rules only for semantic clusters that survive
+   meaning-confidence, support, recursion, and overlap gates.
+5. Freeze the semantic-first taxonomy, then run repository coverage, human calibration,
+   syntax-only/direct-LLM/CodeArchitect baselines, and product explanation benchmarks.
 
 ### Phase boundary
 
@@ -1411,6 +1442,9 @@ Future result bullets must still wait for held-out human evaluation and must not
 - AST-regex sample-infer-execute specification: `docs/intent-algebra-ast-regex-induction.md`
 - Pre-registered semantic-first defaults: `experiments/intent-algebra/semantic-first-hyperparameters.json`
 - Read-only calibration audit notebook: `experiments/intent-algebra/notebooks/01_steps_1_2_calibration_audit.ipynb`
+- Resumable message-claim and candidate-set executor: `experiments/intent-algebra/run-message-code-calibration.py`
+- GumTree/Tree-sitter candidate preparation: `experiments/intent-algebra/prepare-message-code-records.js`, `parse-tree-batch.js`
+- Candidate-set and threshold/cap regression tests: `experiments/intent-algebra/test-message-code-candidate-queue.js`, `test_message_code_calibration.py`
 - Immutable run writer, stable-ID/link validator, and notebook helpers: `experiments/intent-algebra/audit_artifacts.py`, `audit_notebook.py`
 - Audit contract and local setup: `docs/intent-algebra-audit-notebook.md`, `experiments/intent-algebra/setup-audit-notebook.sh`
 - Pilot implementation and documentation: `experiments/intent-algebra/`

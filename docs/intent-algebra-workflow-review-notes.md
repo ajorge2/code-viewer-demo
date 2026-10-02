@@ -112,7 +112,7 @@ repository-disjoint validation split, and frozen before the final test evaluatio
 |---|---|---|
 | Verb-sign use | confidence ≥ 0.80 | Otherwise treat the verb as neutral and skip sign buckets |
 | Semantic-object extraction | confidence ≥ 0.65 | Otherwise leave that object unresolved |
-| Message-to-code alignment | independent-support confidence ≥ 0.75 | Retain every sufficiently supported meaning–subtree pairing rather than forcing one winner |
+| Message-to-code alignment | independent-support confidence ≥ 0.75; retain ≤3 per claim | Keep several plausible mappings without allowing nested variants from one claim to dominate clustering |
 | Embeddings | `text-embedding-3-large`, 1,024 dimensions, normalized cosine | Stable common space for nouns and candidate meanings |
 | Local cluster size | `min(50, max(8, ceil(1% × view size)))` | Never create singleton or tiny semantic terms |
 | Density requirement | `max(2, ceil(min cluster size / 3))` | Keep HDBSCAN from accepting weak chains |
@@ -189,9 +189,11 @@ OR-clause procedure, negative-corpus evaluation, and scaling strategy are specif
   subset LCA, or path traversal reaches the same node, retain it once and merge every
   generation route as provenance.
 - There is no semantic queue order. Assign a stable enumeration only for reproducible
-  artifacts and API batching. Evaluate every candidate independently and emit every
-  meaning–subtree pair whose support confidence reaches the threshold. Leave a semantic
-  object unresolved only when no candidate qualifies.
+  artifacts and API batching. Evaluate every candidate independently, then retain at
+  most three qualifying meaning–subtree pairs per claim. Rank the cap by confidence,
+  preserve both diff sides when each has qualifying evidence, and prefer the smaller
+  subtree on ties. Preserve additional qualifying candidates as `qualified_but_capped`
+  audit evidence. Leave a semantic object unresolved only when no candidate qualifies.
 
 ## Revised experiment workflow
 
@@ -212,7 +214,7 @@ flowchart TB
     Q --> R[Assign a stable enumeration for audit and batching only]
     R --> S[Evaluate every candidate independently against this semantic object]
     S --> T[Score every candidate independently against this semantic object]
-    T --> U[Emit every meaning–subtree datapoint above the confidence threshold; otherwise leave the pair unresolved]
+    T --> U["From candidates above the confidence threshold, retain at most 3 per claim<br/>preserve both sides, then prefer confidence and smaller subtrees<br/>otherwise leave the pair unresolved"]
 
     U --> UA["Repeat steps 1–2 across many records<br/>Collect a corpus of accepted meaning–subtree datapoints"]
     UA --> V["3. Semantic clustering over the collected datapoints<br/>Embed each noun/object meaning while preserving its verb, subtree, and alignment confidence"]

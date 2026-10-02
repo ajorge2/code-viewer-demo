@@ -9,9 +9,11 @@
   },
   "code_alignment": {
     "code_label_unit": "one_ast_subtree_from_one_diff_side",
-    "accepted_outputs": "emit_every_independently_supported_meaning_subtree_pair",
+    "accepted_outputs": "retain_up_to_cap_from_independently_supported_meaning_subtree_pairs",
     "when_claim_maps_to_multiple_subtrees_or_sides": "emit_multiple_linked_datapoints",
     "min_meaning_subtree_confidence": 0.75,
+    "max_datapoints_per_claim": 3,
+    "cap_selection": "highest_confidence_with_diff_side_coverage_then_smallest_subtree",
     "on_failed_alignment": "leave_unresolved",
     "single_edit_candidate_extent": "edited_node_through_file_root",
     "multi_edit_subset_lcas": "all_unique_proper_subset_lcas_capped_at_64_per_side",

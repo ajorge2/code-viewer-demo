@@ -97,6 +97,7 @@ class MultiDatapointAlignmentTests(unittest.TestCase):
             candidates,
             batch_size=8,
             minimum_confidence=0.75,
+            maximum_datapoints=3,
         )
 
         self.assertEqual([row["candidate_id"] for row in accepted], ["candidate-a", "candidate-b"])
@@ -116,11 +117,27 @@ class MultiDatapointAlignmentTests(unittest.TestCase):
             candidates,
             batch_size=8,
             minimum_confidence=0.75,
+            maximum_datapoints=3,
         )
 
         self.assertEqual(accepted, [])
         self.assertEqual(unresolved, "supported_candidates_below_confidence_threshold")
         self.assertEqual(candidates[0]["decision"], "below_confidence_threshold")
+
+    def test_cap_preserves_both_sides_and_then_uses_confidence(self):
+        candidates = [
+            {**scored_candidate("after-best", 0), "start": 0, "end": 20, "alignment_confidence": 0.99},
+            {**scored_candidate("after-second", 1), "start": 0, "end": 10, "alignment_confidence": 0.97},
+            {**scored_candidate("after-third", 2), "start": 0, "end": 5, "alignment_confidence": 0.96},
+            {**scored_candidate("before-best", 3, side="before"), "start": 0, "end": 15, "alignment_confidence": 0.90},
+        ]
+
+        retained = calibration.cap_datapoints(candidates, maximum_datapoints=3)
+
+        self.assertEqual(
+            {row["candidate_id"] for row in retained},
+            {"after-best", "after-second", "before-best"},
+        )
 
 
 if __name__ == "__main__":

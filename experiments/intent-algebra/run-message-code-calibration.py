@@ -311,8 +311,9 @@ def evaluate_candidate_set(
     candidates: list[dict[str, Any]],
     batch_size: int,
     minimum_confidence: float,
+    maximum_datapoints: int,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], str | None]:
-    accepted: list[dict[str, Any]] = []
+    qualified: list[dict[str, Any]] = []
     model_calls: list[dict[str, Any]] = []
     for start in range(0, len(candidates), batch_size):
         pending = candidates[start:start + batch_size]
@@ -335,19 +336,56 @@ def evaluate_candidate_set(
                 "acceptance_threshold": minimum_confidence,
             })
             if evaluation["relation"] == "supports" and confidence >= minimum_confidence:
-                candidate["decision"] = "accepted_meaning_subtree_datapoint"
-                accepted.append(candidate)
+                candidate["decision"] = "qualified_meaning_subtree_datapoint"
+                qualified.append(candidate)
             elif evaluation["relation"] != "supports":
                 candidate["decision"] = "not_independent_support"
             else:
                 candidate["decision"] = "below_confidence_threshold"
-    if accepted:
-        return accepted, model_calls, None
+    if qualified:
+        retained = cap_datapoints(qualified, maximum_datapoints)
+        retained_ids = {row["candidate_id"] for row in retained}
+        for candidate in qualified:
+            candidate["decision"] = (
+                "retained_meaning_subtree_datapoint"
+                if candidate["candidate_id"] in retained_ids
+                else "qualified_but_capped"
+            )
+        return retained, model_calls, None
     if not candidates:
         return [], model_calls, "no_ast_candidates"
     if any(row["alignment_relation"] == "supports" for row in candidates):
         return [], model_calls, "supported_candidates_below_confidence_threshold"
     return [], model_calls, "no_independently_supported_candidate"
+
+
+def cap_datapoints(
+    qualified: list[dict[str, Any]], maximum_datapoints: int
+) -> list[dict[str, Any]]:
+    if maximum_datapoints < 1:
+        raise ValueError("maximum_datapoints must be positive")
+
+    def preference(candidate: dict[str, Any]) -> tuple[Any, ...]:
+        span = candidate.get("end", 0) - candidate.get("start", 0)
+        return (-candidate["alignment_confidence"], span, candidate["candidate_id"])
+
+    ranked = sorted(qualified, key=preference)
+    retained: list[dict[str, Any]] = []
+    retained_ids: set[str] = set()
+    for side in sorted({row["side"] for row in qualified}):
+        best_for_side = min((row for row in qualified if row["side"] == side), key=preference)
+        retained.append(best_for_side)
+        retained_ids.add(best_for_side["candidate_id"])
+        if len(retained) == maximum_datapoints:
+            return retained
+    for candidate in ranked:
+        if candidate["candidate_id"] in retained_ids:
+            continue
+        retained.append(candidate)
+        retained_ids.add(candidate["candidate_id"])
+        if len(retained) == maximum_datapoints:
+            break
+    return retained
 
 
 def git_revision() -> str:
@@ -429,6 +467,7 @@ def main() -> None:
     labels: list[dict[str, Any]] = []
     minimum_object_confidence = config["claim_extraction"]["semantic_object_min_confidence"]
     minimum_confidence = config["code_alignment"]["min_meaning_subtree_confidence"]
+    maximum_datapoints = config["code_alignment"]["max_datapoints_per_claim"]
     def align_claim(claim: dict[str, Any]) -> dict[str, Any]:
         record = records_by_id[claim["record_id"]]
         if claim["claim_kind"] == "abstention":
@@ -455,7 +494,13 @@ def main() -> None:
                 }}
         candidate_set = build_candidate_set(claim, record["candidates"], claim["claim_id"])
         accepted, model_calls, unresolved_reason = evaluate_candidate_set(
-            cache, record, claim, candidate_set, args.alignment_batch_size, minimum_confidence
+            cache,
+            record,
+            claim,
+            candidate_set,
+            args.alignment_batch_size,
+            minimum_confidence,
+            maximum_datapoints,
         )
         for candidate in candidate_set:
             candidate.pop("candidate_key", None)
@@ -556,6 +601,7 @@ def main() -> None:
             "semantic_object_min_confidence": minimum_object_confidence,
             "verb_sign_min_confidence": config["claim_extraction"]["verb_sign_min_confidence"],
             "min_meaning_subtree_confidence": minimum_confidence,
+            "max_datapoints_per_claim": maximum_datapoints,
         },
     }
 
