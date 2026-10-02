@@ -45,9 +45,12 @@
 
 ## Cluster-to-structure transition
 
-- Once diff messages have been embedded and clustered, the cluster already has a
-  semantic meaning. Do not add a redundant “dense semantic group” artifact or a second
-  all-member semantic audit.
+- Split each diff message into one or more semantically separable claims while retaining
+  the claim-to-message and message-to-diff links. Do not split a meaning whose substance
+  is itself a relationship between multiple changes.
+- Once those message-derived claims have been embedded and clustered, the cluster
+  already has a semantic meaning. Do not add a redundant “dense semantic group”
+  artifact or a second all-member semantic audit.
 - Replace the all-member semantic audit with an **all-member structural audit** over the
   code diffs belonging to that semantic cluster.
 - The structural audit must infer what the message-derived meaning looks like in code
@@ -71,41 +74,43 @@ flowchart TD
     A[CommitPackFT Python and JavaScript records] --> B[Remove generated, lockfile, formatting-only, and unusable records]
     B --> C[Preserve each complete record: natural-language diff message plus full code diff]
 
-    C --> D[Embed only the natural-language diff messages]
-    D --> E[Cluster messages by semantic meaning]
-    E --> F[LLM proposes a human-readable meaning from all member messages]
-    F --> G[Estimate meaning confidence from member agreement and embedding cohesion]
-    G --> H[Candidate semantic term]
-    G --> I{Stable semantic subgroups remain?}
-    I -- Yes --> J[Re-cluster member messages within this cluster]
-    J --> F
-    I -- No --> K[Stop semantic refinement on this branch]
+    C --> D[Split each message into semantically separable claims while preserving record links]
+    D --> E[Embed only the message-derived claims]
+    E --> F[Cluster claims by semantic meaning]
+    F --> G[LLM proposes a human-readable meaning from all member claims]
+    G --> H[Estimate meaning confidence from member agreement and embedding cohesion]
+    H --> I[Candidate semantic term]
+    H --> J{Stable semantic subgroups remain?}
+    J -- Yes --> K[Re-cluster member claims within this cluster]
+    K --> G
+    J -- No --> L[Stop semantic refinement on this branch]
 
-    C --> L[Parse before and after code and derive AST edit evidence]
-    L --> M[Partition each diff into localized edit objects at a flexible code scale]
-    M --> N[Group nearby or overlapping additions and removals as a likely shared object]
-    M --> O[Keep structurally separate edits as separate candidate objects]
+    C --> M[Parse before and after code and derive AST edit evidence]
+    M --> N[Partition each diff into localized edit objects at a flexible code scale]
+    N --> O[Group nearby or overlapping additions and removals as a likely shared object]
+    N --> P[Keep structurally separate edits as separate candidate objects]
 
-    H --> P[Align every member message and term meaning to its edit objects]
-    N --> P
-    O --> P
-    P --> Q{What does this message describe?}
-    Q -- One object --> R[One positive code alignment]
-    Q -- Several objects --> S[Several positive code alignments]
-    Q -- Their relationship --> T[One composite positive alignment]
-    R --> U[Mark only unmentioned edit objects as negative or contextual evidence]
-    S --> U
-    T --> U
+    I --> Q[For every member claim, align it with edit objects from the same record]
+    O --> Q
+    P --> Q
+    Q --> R{How is this claim realized in code?}
+    R -- One object --> S[One localized object independently supports the claim]
+    R -- Multiple independent objects --> T[Each object independently supports the claim]
+    R -- Multiple jointly necessary objects --> U[Only the combined objects support the claim]
+    S --> V[For this claim, unaligned objects are negative or contextual evidence]
+    T --> V
+    U --> V
+    V --> V2[The same object may still be positive for another claim from the message]
 
-    U --> V[All-member structural audit for the semantic term]
-    V --> W[Infer a recurring AST edit rule with metavariables, options, repetition, and alternatives]
-    W --> X[Validate against positive and negative objects, repositories, commits, coverage, and confidence]
-    X --> Y{Does recurring code evidence support the semantic term?}
-    Y -- Yes --> Z[Register grounded term: meaning, structural rule, evidence, and confidence]
-    Y -- No --> AA[Reject, leave unresolved, or return messages to semantic refinement]
-    AA --> J
+    V2 --> W[All-member structural audit for the semantic term]
+    W --> X[Infer a recurring AST edit rule with metavariables, options, repetition, and alternatives]
+    X --> Y[Validate against positive and negative objects, repositories, commits, coverage, and confidence]
+    Y --> Z{Does recurring code evidence support the semantic term?}
+    Z -- Yes --> AA[Register grounded term: meaning, structural rule, evidence, and confidence]
+    Z -- No --> AB[Reject, leave unresolved, or return claims to semantic refinement]
+    AB --> K
 
-    Z --> AB[Relate broader, narrower, overlapping, and set-difference terms in the taxonomy]
+    AA --> AC[Relate broader, narrower, overlapping, and set-difference terms in the taxonomy]
 
-    AC[Addition and removal balance] -. metadata and evaluation slice only .-> M
+    AD[Addition and removal balance] -. metadata and evaluation slice only .-> N
 ```
