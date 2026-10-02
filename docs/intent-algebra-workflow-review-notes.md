@@ -84,7 +84,12 @@
 - Give each semantic object its own priority queue. Use the following lexicographic
   ordering rather than a blended structural-similarity score:
   1. Before sorting, assign every candidate—including LCAs and intermediate path
-     nodes—exactly one operation label. A directly inserted node is `add`, a directly
+     nodes—exactly one operation label. First collect the candidate's own add/remove
+     sign, when present, plus all add/remove signs in its edited descendants. If both
+     signs occur anywhere in that set, label the candidate `add`. This conflict override
+     means a higher removed node containing an added descendant is classified as `add`,
+     and any candidate containing both signs is classified as `add` regardless of the
+     counts. When there is no conflict, a directly inserted node is `add`, a directly
      deleted node is `remove`, and a directly updated or moved node is `neutral`. For a
      non-edit candidate, count all edited descendants. Label it `add` when at least half
      of those descendants are additions; otherwise label it `remove` when more than half
