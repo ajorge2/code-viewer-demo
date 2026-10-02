@@ -83,18 +83,19 @@
   evaluated independently, but they are not packaged into a composite candidate.
 - Give each semantic object its own priority queue. Use the following lexicographic
   ordering rather than a blended structural-similarity score:
-  1. Before sorting, assign every candidate—including LCAs and intermediate path
-     nodes—exactly one operation label. First collect the candidate's own add/remove
-     sign, when present, plus all add/remove signs in its edited descendants. If both
-     signs occur anywhere in that set, label the candidate `add`. This conflict override
-     means a higher removed node containing an added descendant is classified as `add`,
-     and any candidate containing both signs is classified as `add` regardless of the
-     counts. When there is no conflict, a directly inserted node is `add`, a directly
-     deleted node is `remove`, and a directly updated or moved node is `neutral`. For a
-     non-edit candidate, count all edited descendants. Label it `add` when at least half
-     of those descendants are additions; otherwise label it `remove` when more than half
-     are removals; otherwise label it `neutral`. This deliberately assigns a 50/50
-     add/remove tie to `add`. A candidate with no edited descendants is `neutral`.
+  1. Preserve an immutable intrinsic operation on each raw edited AST node: insertion is
+     `add`, deletion is `remove`, and update or move is `neutral`. Before queue sorting,
+     derive a separate queue-only operation label for every candidate. A directly edited
+     node that contains nested edits is aggregated like an LCA or intermediate path
+     node: collect its own intrinsic operation plus the immutable intrinsic operations
+     of all edited descendants. If both add and remove occur, its queue-only label is
+     `add`. Otherwise label it `add` when additions are at least half of all collected
+     edit operations; label it `remove` when removals are more than half; otherwise label
+     it `neutral`. A directly edited node with no nested edits keeps its intrinsic label,
+     and a candidate with no edits is `neutral`. The derived label must never overwrite
+     the node's intrinsic operation or become input to an ancestor's calculation. Every
+     ancestor independently aggregates the original immutable operations, preventing a
+     queue-only relabeling from cascading upward.
   2. If and only if the message verb unambiguously specifies addition or removal for
      that semantic object, create exactly three operation buckets. For an additive verb,
      order them `add`, `neutral`, `remove`; for a removal verb, order them `remove`,
