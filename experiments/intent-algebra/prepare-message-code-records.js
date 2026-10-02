@@ -10,7 +10,6 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
-import { parseToTree } from "../../server/ingest/parseTree.js";
 import { canonicalPatchHash, sha256 } from "./lib/pilot.js";
 
 const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -20,6 +19,7 @@ const DEFAULT_GUMTREE_JAR = path.join(
   ".tools/gumtree-src/dist/build/install/gumtree/lib/gumtree.jar",
 );
 const JAVA_SOURCE = path.join(PROJECT_ROOT, "experiments/intent-algebra/GumTreeBatch.java");
+const TREE_WORKER_SCRIPT = path.join(PROJECT_ROOT, "experiments/intent-algebra/parse-tree-batch.js");
 const CLASS_DIR = path.join(PROJECT_ROOT, ".tools/intent-algebra/classes");
 const EXTENSIONS = { python: ".py", javascript: ".js" };
 const ROOT_TYPES = new Set(["module", "program"]);
@@ -207,6 +207,55 @@ class GumTreeWorker {
   }
 }
 
+class TreeSitterWorker {
+  constructor() {
+    this.pending = [];
+    this.stderr = "";
+  }
+
+  async start() {
+    this.child = spawn(process.execPath, [TREE_WORKER_SCRIPT], { stdio: ["pipe", "pipe", "pipe"] });
+    this.child.stderr.on("data", (chunk) => { this.stderr += chunk.toString(); });
+    this.lines = createInterface({ input: this.child.stdout });
+    this.lines.on("line", (line) => {
+      const waiter = this.pending.shift();
+      if (!waiter) return;
+      try { waiter.resolve(JSON.parse(line)); }
+      catch (error) { waiter.reject(error); }
+    });
+    this.child.on("exit", (code) => {
+      const error = new Error(`Tree-sitter worker exited with ${code}: ${this.stderr}`);
+      while (this.pending.length) this.pending.shift().reject(error);
+    });
+    const ready = await this.readNext();
+    if (!ready.ready) throw new Error(`Tree-sitter did not become ready: ${JSON.stringify(ready)}`);
+  }
+
+  readNext() {
+    return new Promise((resolve, reject) => this.pending.push({ resolve, reject }));
+  }
+
+  analyze(id, language, beforeSource, afterSource) {
+    const response = this.readNext();
+    this.child.stdin.write(`${JSON.stringify({
+      id, language, before_source: beforeSource, after_source: afterSource,
+    })}\n`);
+    return response;
+  }
+
+  async close() {
+    if (!this.child || this.child.exitCode !== null) return;
+    this.child.stdin.end();
+    await new Promise((resolve) => this.child.once("exit", resolve));
+  }
+
+  async terminate() {
+    if (!this.child || this.child.exitCode !== null) return;
+    this.child.kill("SIGKILL");
+    await new Promise((resolve) => this.child.once("exit", resolve));
+  }
+}
+
 async function withTimeout(promise, milliseconds, label) {
   let timeout;
   try {
@@ -318,7 +367,14 @@ function intrinsicOperation(actionName) {
   return "neutral";
 }
 
-function buildCandidateUniverse(beforeTree, afterTree, analysis, beforeSource, afterSource, maxSubsetLcas) {
+export function buildCandidateUniverse(
+  beforeTree,
+  afterTree,
+  analysis,
+  beforeSource,
+  afterSource,
+  maxSubsetLcas,
+) {
   const allNodes = [
     ...flattenTree(beforeTree, "before"),
     ...flattenTree(afterTree, "after"),
@@ -382,8 +438,10 @@ function buildCandidateUniverse(beforeTree, afterTree, analysis, beforeSource, a
       if (!sideDirect.length) continue;
       const root = ancestors(sideDirect[0], byId).at(-1);
       if (sideDirect.length === 1) {
-        const chain = ancestors(sideDirect[0], byId).slice(1).reverse();
-        chain.forEach((node, depth) => addRole(node, "path", [3, depth, side, node.start]));
+        const chain = ancestors(sideDirect[0], byId).slice(1);
+        chain.forEach((node, upwardDistance) => {
+          addRole(node, "path", [3, upwardDistance + 1, side, node.start]);
+        });
         continue;
       }
       const overall = lowestCommonAncestor(sideDirect, byId);
@@ -400,20 +458,35 @@ function buildCandidateUniverse(beforeTree, afterTree, analysis, beforeSource, a
         });
       }
       const origin = overall || root;
-      const pathIds = new Set();
+      const upwardDistances = new Map();
       for (const direct of sideDirect) {
-        let current = direct;
+        let current = direct.parent_id ? byId.get(direct.parent_id) : null;
+        let upwardDistance = 1;
         while (current && current.id !== origin.id) {
-          if (!directIds.has(current.id)) pathIds.add(current.id);
+          if (!directIds.has(current.id)) {
+            upwardDistances.set(
+              current.id,
+              Math.min(upwardDistances.get(current.id) || Number.POSITIVE_INFINITY, upwardDistance),
+            );
+          }
           current = current.parent_id ? byId.get(current.parent_id) : null;
+          upwardDistance += 1;
         }
-        pathIds.add(origin.id);
+        if (origin) {
+          upwardDistances.set(
+            origin.id,
+            Math.min(upwardDistances.get(origin.id) || Number.POSITIVE_INFINITY, upwardDistance),
+          );
+        }
       }
-      [...pathIds]
-        .map((id) => byId.get(id))
-        .filter((node) => !directIds.has(node.id))
-        .sort((a, b) => a.depth - b.depth || a.start - b.start || a.end - b.end)
-        .forEach((node) => addRole(node, "path", [3, node.depth, side, node.start, node.end]));
+      [...upwardDistances.entries()]
+        .map(([id, upwardDistance]) => ({ node: byId.get(id), upwardDistance }))
+        .filter(({ node }) => node && !directIds.has(node.id))
+        .sort((a, b) => a.upwardDistance - b.upwardDistance
+          || a.node.start - b.node.start || a.node.end - b.node.end)
+        .forEach(({ node, upwardDistance }) => {
+          addRole(node, "path", [3, upwardDistance, side, node.start, node.end]);
+        });
     }
   }
 
@@ -465,6 +538,7 @@ async function main() {
 
   const temporary = await mkdtemp(path.join(os.tmpdir(), "intent-message-code-"));
   let worker = new GumTreeWorker(options.gumtreeJar);
+  let treeWorker = new TreeSitterWorker();
   const partialPath = `${options.output}.partial`;
   let prepared = [];
   try {
@@ -475,7 +549,7 @@ async function main() {
   }
   const preparedByKey = new Map(prepared.map((row) => [row.sample_key, row]));
   try {
-    await worker.start();
+    await Promise.all([worker.start(), treeWorker.start()]);
     for (const [index, item] of selected.entries()) {
       const { language, candidate } = item;
       const { row } = candidate;
@@ -490,24 +564,40 @@ async function main() {
         writeFile(beforePath, row.old_contents || ""),
         writeFile(afterPath, row.new_contents || ""),
       ]);
-      const treePromise = Promise.all([
-        parseToTree(row.old_contents || "", language),
-        parseToTree(row.new_contents || "", language),
-      ]);
-      let analysis;
-      try {
-        analysis = await withTimeout(
+      const [gumtreeResult, treeResult] = await Promise.allSettled([
+        withTimeout(
           worker.analyze(String(index), beforePath, afterPath),
           options.gumtreeTimeoutMs,
           `GumTree record ${index + 1}`,
-        );
-      } catch (error) {
+        ),
+        withTimeout(
+          treeWorker.analyze(
+            String(index), language, row.old_contents || "", row.new_contents || "",
+          ),
+          options.gumtreeTimeoutMs,
+          `Tree-sitter record ${index + 1}`,
+        ),
+      ]);
+      let analysis;
+      if (gumtreeResult.status === "rejected") {
         await worker.terminate();
         worker = new GumTreeWorker(options.gumtreeJar);
         await worker.start();
-        analysis = { ok: false, error: error.message, actions: [] };
+        analysis = { ok: false, error: gumtreeResult.reason.message, actions: [] };
+      } else {
+        analysis = gumtreeResult.value;
       }
-      const [beforeTree, afterTree] = await treePromise;
+      let trees;
+      if (treeResult.status === "rejected") {
+        await treeWorker.terminate();
+        treeWorker = new TreeSitterWorker();
+        await treeWorker.start();
+        trees = { ok: false, error: treeResult.reason.message };
+      } else {
+        trees = treeResult.value;
+      }
+      const beforeTree = trees.before_tree;
+      const afterTree = trees.after_tree;
       const parseOk = Boolean(analysis.ok && beforeTree && afterTree
         && !analysis.source_error_nodes && !analysis.destination_error_nodes);
       let structural = { candidates: [], edit_observations: [] };
@@ -518,9 +608,11 @@ async function main() {
           options.maxSubsetLcas,
         );
       } else {
-        preparationError = !analysis.ok
+        preparationError = !trees.ok
+          ? `treesitter_error:${trees.error || "parse_failed"}`
+          : (!analysis.ok
           ? `gumtree_error:${analysis.error}`
-          : (!analysis.actions?.length ? "no_ast_actions" : "parse_error_nodes");
+          : (!analysis.actions?.length ? "no_ast_actions" : "parse_error_nodes"));
       }
       const preparedRow = {
         language,
@@ -552,7 +644,7 @@ async function main() {
       console.error(`Prepared ${index + 1}/${selected.length}`);
     }
   } finally {
-    await worker.close();
+    await Promise.all([worker.close(), treeWorker.close()]);
     await rm(temporary, { recursive: true, force: true });
   }
 
@@ -573,7 +665,9 @@ async function main() {
   console.error(`Wrote ${prepared.length} prepared records to ${options.output}`);
 }
 
-main().catch((error) => {
-  console.error(error.stack || error.message);
-  process.exitCode = 1;
-});
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((error) => {
+    console.error(error.stack || error.message);
+    process.exitCode = 1;
+  });
+}
