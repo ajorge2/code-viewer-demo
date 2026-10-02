@@ -99,10 +99,13 @@
      aggregates the original immutable operations, preventing a queue-only relabeling
      from cascading upward.
   2. If and only if the message verb unambiguously specifies addition or removal for
-     that semantic object, create exactly three operation buckets. For an additive verb,
-     order them `add`, `neutral`, `remove`; for a removal verb, order them `remove`,
-     `neutral`, `add`. Do not create a mixed or fourth bucket. If the verb is neutral or
-     unclear, skip operation bucketing entirely and begin with the structural ordering.
+     that semantic object, create exactly two operation buckets. The first bucket
+     contains candidates whose queue-only label matches the verb's sign. The second
+     contains every nonmatching candidate, combining the other sign and `neutral`
+     candidates without distinguishing them further. Thus an additive verb yields
+     `add` then `not-add`, while a removal verb yields `remove` then `not-remove`. If the
+     verb is neutral or unclear, skip operation bucketing entirely and begin with the
+     structural ordering.
   3. Give directly edited AST nodes structural tier 1.
   4. Give the overall LCA of the retained edit nodes structural tier 2.
   5. Give every distinct LCA produced by non-singleton proper subsets of the edit nodes
