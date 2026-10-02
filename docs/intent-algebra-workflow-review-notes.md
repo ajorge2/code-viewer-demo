@@ -87,15 +87,17 @@
      `add`, deletion is `remove`, and update or move is `neutral`. Before queue sorting,
      derive a separate queue-only operation label for every candidate. A directly edited
      node that contains nested edits is aggregated like an LCA or intermediate path
-     node: collect its own intrinsic operation plus the immutable intrinsic operations
-     of all edited descendants. If both add and remove occur, its queue-only label is
-     `add`. Otherwise label it `add` when additions are at least half of all collected
-     edit operations; label it `remove` when removals are more than half; otherwise label
-     it `neutral`. A directly edited node with no nested edits keeps its intrinsic label,
-     and a candidate with no edits is `neutral`. The derived label must never overwrite
-     the node's intrinsic operation or become input to an ancestor's calculation. Every
-     ancestor independently aggregates the original immutable operations, preventing a
-     queue-only relabeling from cascading upward.
+     node: collect the immutable intrinsic operations of the candidate itself, when it
+     is directly edited, and of all edited descendants. Treat the candidate's own
+     operation as one item in the same multiset as its descendant operations. Label the
+     queue entry `add` when additions are at least half of all collected edit operations;
+     otherwise label it `remove` when removals are more than half; otherwise label it
+     `neutral`. Thus a removed node containing one added descendant has one add among
+     two operations and receives the queue-only label `add`. A candidate with no edits
+     is `neutral`. The derived label must never overwrite the node's intrinsic operation
+     or become input to an ancestor's calculation. Every ancestor independently
+     aggregates the original immutable operations, preventing a queue-only relabeling
+     from cascading upward.
   2. If and only if the message verb unambiguously specifies addition or removal for
      that semantic object, create exactly three operation buckets. For an additive verb,
      order them `add`, `neutral`, `remove`; for a removal verb, order them `remove`,
