@@ -94,6 +94,11 @@
   5. Place the remaining meaningful nodes on the paths from the overall LCA down toward
      the edited nodes, traversed breadth-first in the downward direction.
 - Within equal queue positions, use stable source order as the deterministic tiebreaker.
+- Deduplicate across the entire queue by canonical AST-node identity, not only within an
+  individual priority tier. If the same node is produced as a direct edit, an LCA, a
+  subset LCA, or a path node, keep one queue entry at its highest-priority position and
+  attach every generation path as provenance. A node may never be evaluated twice for
+  the same semantic object.
 - The single-edit case needs an explicit upper boundary because its LCA is the edit node
   itself and therefore produces no ancestor path. Preserve this as an open design edge
   case so meaningful enclosing candidates such as a body are not accidentally omitted.
