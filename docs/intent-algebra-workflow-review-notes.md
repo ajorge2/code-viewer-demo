@@ -65,10 +65,13 @@
 - Assign every resulting cluster its own noun-only term based on all of its members. Two
   distinct clusters may not retain the same term; a collision requires merging the
   clusters or choosing a more specific distinguishing noun.
-- After naming a cluster, test whether the members of that current cluster form multiple
-  stable semantic subclusters. If they do, split that cluster and repeat naming and
-  confidence estimation separately inside each resulting subcluster. If they do not,
-  send the current cluster to structural comparison.
+- After naming a cluster, run the all-member structural audit before attempting any
+  recursive clustering inside it. The audit determines whether the proposed semantic
+  cluster corresponds to a recurring code pattern.
+- Only a cluster that passes structural validation may be registered and searched for
+  narrower semantic subclusters. Every proposed subcluster must then pass through the
+  same naming and structural-validation sequence before it can recurse further. Reject
+  or leave an invalid cluster ungrounded; do not recursively cluster it.
 - Once those message-derived semantic objects have been embedded and clustered, the cluster
   already has a semantic meaning. Do not add a redundant “dense semantic group”
   artifact or a second all-member semantic audit.
@@ -183,21 +186,19 @@ flowchart TB
     V --> W[Cluster semantic objects by meaning]
     W --> X["For each cluster, the LLM proposes its own noun-only term from all members<br/>No two distinct clusters share the same term"]
     X --> Y[Estimate confidence from member agreement and embedding cohesion]
-    Y --> Z{"Does this current cluster contain multiple stable semantic subclusters?"}
-    Z -- Yes --> AA["Split this cluster into those subclusters<br/>Then name and evaluate each subcluster separately"]
-    AA --> X
-    Z -- No --> AB[This cluster is ready for structural comparison]
-
-    AB --> AC["4. Compare cluster code representations<br/>Collect the member code labels"]
+    Y --> AC["4. Structurally validate this semantic cluster before any further clustering<br/>Collect the member code labels"]
     AC --> AD[Run the all-member structural audit]
     AD --> AE[Infer a recurring AST edit rule with metavariables and optional elements]
     AE --> AF[Validate coverage, negative evidence, repository and commit support, confidence, and MDL]
     AF --> AG{Does recurring code evidence support the semantic term?}
     AG -- Yes --> AH[Register noun-only meaning, structural rule, evidence, and confidence]
-    AG -- No --> AI[Leave ungrounded or refine the message-derived semantic cluster]
-    AI --> AA
+    AG -- No --> AI["Reject or leave this cluster ungrounded<br/>Do not recursively cluster it"]
 
-    AH --> AJ[Connect broader, narrower, overlapping, and set-difference terms]
+    AH --> Z{"Does this validated cluster contain multiple stable semantic subclusters?"}
+    Z -- Yes --> AA["Split its members into candidate subclusters<br/>Run each one through naming and structural validation"]
+    AA --> X
+
+    Z -- No --> AJ[Connect broader, narrower, overlapping, and set-difference terms]
     AJ --> AK[Evaluate taxonomy coverage on held-out repositories]
 
     AL["Key constraints:<br/>mixed add/remove diffs remain eligible<br/>one queue per semantic object"] -.-> I
