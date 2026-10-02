@@ -15,6 +15,10 @@
 - The LLM should not interpret source code to create the semantic description used for
   clustering.
 - Semantic meaning should come from the natural-language diff message.
+- Before any AST-sign computation, split each message into independent `(verb,
+  noun/object)` pairs. Preserve the verb as `add`, `remove`, or `neutral/unclear`
+  metadata for the later candidate-queue ordering. Embed and cluster the noun/object
+  meaning as the semantic object.
 - Code remains traceable evidence and is used later to verify whether the message-derived
   semantic idea corresponds to a recurring code pattern.
 - This correction invalidates the code-grounded description stage of the current
@@ -132,41 +136,50 @@
 ## Revised experiment workflow
 
 ```mermaid
-flowchart TD
+flowchart TB
     A[CommitPackFT Python and JavaScript records] --> B[Remove generated, lockfile, formatting-only, and unusable records]
     B --> C[Preserve each complete record: natural-language diff message plus full code diff]
 
-    C --> D[Extract each semantic object mentioned in the message and preserve record links]
-    D --> E[Embed the message-derived semantic objects]
-    E --> F[Cluster semantic objects by meaning]
-    F --> G[LLM proposes a human-readable term from all cluster members]
-    G --> H[Estimate meaning confidence from member agreement and embedding cohesion]
-    H --> I[Candidate semantic term]
-    H --> J{Stable semantic subgroups remain?}
-    J -- Yes --> K[Re-cluster member semantic objects within this cluster]
-    K --> G
-    J -- No --> L[Stop semantic refinement on this branch]
+    C --> D["1. Message semantics<br/>Split each message into independent verb + noun/object pairs"]
+    D --> E["For every pair:<br/>verb = add, remove, or neutral/unclear<br/>noun/object phrase = semantic object"]
+    E --> F[Embed the noun/object meaning while preserving the verb with the record]
+    F --> G[Cluster semantic objects by meaning]
+    G --> H[LLM proposes a noun-only term from all cluster members]
+    H --> I[Estimate confidence from member agreement and embedding cohesion]
+    I --> J{Stable semantic subgroups remain?}
+    J -- Yes --> K[Re-cluster member semantic objects inside this cluster]
+    K --> H
+    J -- No --> L[Semantic cluster branch ready for structural grounding]
 
-    C --> M[Parse before and after code and derive AST edit evidence]
-    M --> N[Seed candidates with the directly edited AST nodes]
-    N --> O[Expand through every meaningful ancestor up to relevant lowest common ancestors]
-    O --> P[Maintain one priority queue of single-node or single-subtree candidates per semantic object]
+    L --> M["2. Structural evidence<br/>Retrieve every member pair's complete code diff"]
+    M --> N[Parse before and after code into ASTs]
+    N --> O["Locate raw edited AST nodes and store immutable intrinsic operations:<br/>insert = add, delete = remove, update or move = neutral"]
 
-    I --> Q[For every cluster member, evaluate its semantic object's candidate queue]
-    P --> Q
-    Q --> R[Select the best-supported AST node or subtree, or leave the alignment unresolved]
-    R --> V[Retain alternate scopes; only separate unsupported edit regions become negative or context]
-    V --> V2[The same code region may still align with another semantic object from the message]
+    O --> P["3. Per-object alignment<br/>Create one independent candidate queue for each verb + noun/object pair"]
+    P --> Q["Generate single-node or single-subtree candidates only:<br/>tier 1 = direct edit nodes<br/>tier 2 = overall LCA<br/>tier 3 = unique subset LCAs<br/>tier 4 = remaining LCA-to-edit path nodes in downward BFS"]
+    Q --> R["Derive each candidate's queue-only sign from immutable operations:<br/>include the candidate itself if edited plus every edited descendant<br/>add if additions are at least half; remove if removals are over half; otherwise neutral<br/>never write this derived sign back"]
+    R --> S{Does this pair's verb clearly specify add or remove?}
+    S -- Yes --> T["Create exactly two buckets:<br/>matching queue sign first<br/>every nonmatching sign second"]
+    S -- No --> U[Do not create sign buckets]
+    T --> V[Sort by structural tier inside each bucket]
+    U --> W[Sort directly by structural tier]
+    V --> X[Deduplicate globally by canonical AST-node identity]
+    W --> X
+    X --> Y[Keep each node once at its highest-priority position and merge its provenance]
+    Y --> Z[Evaluate candidates in queue order against this semantic object]
+    Z --> AA[Select the supported node/subtree or leave the pair unresolved]
 
-    V2 --> W[All-member structural audit for the semantic term]
-    W --> X[Infer a recurring AST edit rule with metavariables, options, repetition, and alternatives]
-    X --> Y[Validate against positive and negative objects, repositories, commits, coverage, and confidence]
-    Y --> Z{Does recurring code evidence support the semantic term?}
-    Z -- Yes --> AA[Register grounded term: meaning, structural rule, evidence, and confidence]
-    Z -- No --> AB[Reject, leave unresolved, or return semantic objects to refinement]
-    AB --> K
+    AA --> AB["4. Structural verification<br/>Collect selected alignments from all members of the semantic cluster"]
+    AB --> AC[Run the all-member structural audit]
+    AC --> AD[Infer a recurring AST edit rule with metavariables and optional elements]
+    AD --> AE[Validate coverage, negative evidence, repository and commit support, confidence, and MDL]
+    AE --> AF{Does recurring code evidence support the semantic term?}
+    AF -- Yes --> AG[Register noun-only meaning, structural rule, evidence, and confidence]
+    AF -- No --> AH[Leave ungrounded or refine the message-derived semantic cluster]
+    AH --> K
 
-    AA --> AC[Relate broader, narrower, overlapping, and set-difference terms in the taxonomy]
+    AG --> AI[Connect broader, narrower, overlapping, and set-difference terms]
+    AI --> AJ[Evaluate taxonomy coverage on held-out repositories]
 
-    AD[Addition and removal balance] -. metadata and evaluation slice only .-> M
+    AK["Rules carried throughout:<br/>no add/remove corpus filter<br/>no composite candidates<br/>one queue per semantic object<br/>single-edit upper boundary remains open"] -.-> P
 ```
