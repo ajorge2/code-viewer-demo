@@ -65,6 +65,10 @@
 - Assign every resulting cluster its own noun-only term based on all of its members. Two
   distinct clusters may not retain the same term; a collision requires merging the
   clusters or choosing a more specific distinguishing noun.
+- After naming a cluster, test whether the members of that current cluster form multiple
+  stable semantic subclusters. If they do, split that cluster and repeat naming and
+  confidence estimation separately inside each resulting subcluster. If they do not,
+  send the current cluster to structural comparison.
 - Once those message-derived semantic objects have been embedded and clustered, the cluster
   already has a semantic meaning. Do not add a redundant “dense semantic group”
   artifact or a second all-member semantic audit.
@@ -179,10 +183,10 @@ flowchart TB
     V --> W[Cluster semantic objects by meaning]
     W --> X["For each cluster, the LLM proposes its own noun-only term from all members<br/>No two distinct clusters share the same term"]
     X --> Y[Estimate confidence from member agreement and embedding cohesion]
-    Y --> Z{Stable semantic subgroups remain?}
-    Z -- Yes --> AA[Re-cluster member semantic objects inside this cluster]
+    Y --> Z{"Does this current cluster contain multiple stable semantic subclusters?"}
+    Z -- Yes --> AA["Split this cluster into those subclusters<br/>Then name and evaluate each subcluster separately"]
     AA --> X
-    Z -- No --> AB[Semantic cluster branch ready for structural comparison]
+    Z -- No --> AB[This cluster is ready for structural comparison]
 
     AB --> AC["4. Compare cluster code representations<br/>Collect the member code labels"]
     AC --> AD[Run the all-member structural audit]
