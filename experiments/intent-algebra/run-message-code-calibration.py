@@ -5,12 +5,14 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from hashlib import sha256
 import json
 import os
 from pathlib import Path
 import subprocess
+import threading
 from typing import Any
 
 from openai import OpenAI
@@ -34,6 +36,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model", default="gpt-6-astra")
     parser.add_argument("--claim-batch-size", type=int, default=10)
     parser.add_argument("--alignment-batch-size", type=int, default=8)
+    parser.add_argument("--alignment-workers", type=int, default=6)
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--prepared-input", type=Path)
     parser.add_argument("--offline", action="store_true")
@@ -189,6 +192,8 @@ class CachedResponses:
         self.model = model
         self.offline = offline
         self.client: OpenAI | None = None
+        self.local = threading.local()
+        self.lock = threading.Lock()
         if path.exists():
             self.cache = json.loads(path.read_text(encoding="utf-8"))
         else:
@@ -199,7 +204,8 @@ class CachedResponses:
 
     def request(self, prompt: str, schema: dict[str, Any], schema_name: str) -> tuple[dict, dict]:
         key = prompt_hash(prompt, schema, self.model)
-        cached = self.cache["responses"].get(key)
+        with self.lock:
+            cached = self.cache["responses"].get(key)
         if cached is not None:
             return cached["parsed"], {
                 "cache_key": key,
@@ -208,9 +214,9 @@ class CachedResponses:
             }
         if self.offline:
             raise RuntimeError(f"Missing offline response cache entry: {key}")
-        if self.client is None:
-            self.client = OpenAI()
-        response = self.client.responses.create(
+        if not hasattr(self.local, "client"):
+            self.local.client = OpenAI()
+        response = self.local.client.responses.create(
             model=self.model,
             input=prompt,
             store=False,
@@ -229,17 +235,25 @@ class CachedResponses:
         usage = getattr(response, "usage", None)
         input_tokens = int(getattr(usage, "input_tokens", 0) or 0)
         output_tokens = int(getattr(usage, "output_tokens", 0) or 0)
-        self.input_tokens += input_tokens
-        self.output_tokens += output_tokens
-        self.new_requests += 1
-        self.cache["responses"][key] = {
-            "response_id": response.id,
-            "parsed": parsed,
-            "input_tokens": input_tokens,
-            "output_tokens": output_tokens,
-        }
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(json.dumps(self.cache, separators=(",", ":")) + "\n", encoding="utf-8")
+        with self.lock:
+            already_cached = self.cache["responses"].get(key)
+            if already_cached is not None:
+                return already_cached["parsed"], {
+                    "cache_key": key,
+                    "response_id": already_cached.get("response_id"),
+                    "cached": True,
+                }
+            self.input_tokens += input_tokens
+            self.output_tokens += output_tokens
+            self.new_requests += 1
+            self.cache["responses"][key] = {
+                "response_id": response.id,
+                "parsed": parsed,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+            }
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            self.path.write_text(json.dumps(self.cache, separators=(",", ":")) + "\n", encoding="utf-8")
         return parsed, {"cache_key": key, "response_id": response.id, "cached": False}
 
 
@@ -434,33 +448,30 @@ def main() -> None:
     minimum_object_confidence = config["claim_extraction"]["semantic_object_min_confidence"]
     minimum_score = config["code_alignment"]["min_entailment_score"]
     minimum_margin = config["code_alignment"]["min_winner_margin"]
-    for claim in claims:
+    def align_claim(claim: dict[str, Any]) -> dict[str, Any]:
         record = records_by_id[claim["record_id"]]
         if claim["claim_kind"] == "abstention":
-            unresolved.append({
-                "claim_id": claim["claim_id"],
-                "record_id": claim["record_id"],
-                "reason": "message_claim_abstention",
-                "detail": claim["evidence_text"],
-                "stage": "claim_extraction",
-            })
-            continue
+            return {"claim": claim, "queue": [], "selected": [], "unresolved": {
+                    "claim_id": claim["claim_id"],
+                    "record_id": claim["record_id"],
+                    "reason": "message_claim_abstention",
+                    "detail": claim["evidence_text"],
+                    "stage": "claim_extraction",
+                }}
         if record.get("preparation_error"):
-            unresolved.append({
-                "claim_id": claim["claim_id"],
-                "record_id": claim["record_id"],
-                "reason": record["preparation_error"],
-                "stage": "ast_preparation",
-            })
-            continue
+            return {"claim": claim, "queue": [], "selected": [], "unresolved": {
+                    "claim_id": claim["claim_id"],
+                    "record_id": claim["record_id"],
+                    "reason": record["preparation_error"],
+                    "stage": "ast_preparation",
+                }}
         if claim["object_confidence"] < minimum_object_confidence:
-            unresolved.append({
-                "claim_id": claim["claim_id"],
-                "record_id": claim["record_id"],
-                "reason": "low_object_confidence",
-                "stage": "claim_extraction",
-            })
-            continue
+            return {"claim": claim, "queue": [], "selected": [], "unresolved": {
+                    "claim_id": claim["claim_id"],
+                    "record_id": claim["record_id"],
+                    "reason": "low_object_confidence",
+                    "stage": "claim_extraction",
+                }}
         queue = order_candidates(claim, record["candidates"], claim["claim_id"])
         selected, model_calls, unresolved_reason = evaluate_queue(
             cache, record, claim, queue, args.alignment_batch_size, minimum_score, minimum_margin
@@ -470,18 +481,19 @@ def main() -> None:
             candidate["record_id"] = claim["record_id"]
             candidate["start_offset"] = candidate["start"]
             candidate["end_offset"] = candidate["end"]
-        all_candidates.extend(queue)
+        unresolved_row = None
         if unresolved_reason:
-            unresolved.append({
+            unresolved_row = {
                 "claim_id": claim["claim_id"],
                 "record_id": claim["record_id"],
                 "reason": unresolved_reason,
                 "stage": "code_alignment",
                 "model_calls": model_calls,
-            })
+            }
+        label_rows = []
         for candidate in selected:
             source = record["before_source"] if candidate["side"] == "before" else record["after_source"]
-            labels.append({
+            label_rows.append({
                 "label_id": stable_id("lbl", claim["claim_id"], candidate["candidate_id"]),
                 "record_id": claim["record_id"],
                 "claim_id": claim["claim_id"],
@@ -501,6 +513,28 @@ def main() -> None:
                 "alignment_response_id": candidate["alignment_response_id"],
                 "alignment_cache_key": candidate["alignment_cache_key"],
             })
+        return {"claim": claim, "queue": queue, "selected": label_rows, "unresolved": unresolved_row}
+
+    alignment_results = []
+    with ThreadPoolExecutor(max_workers=args.alignment_workers) as executor:
+        for index, result in enumerate(executor.map(align_claim, claims), start=1):
+            alignment_results.append(result)
+            if index % 25 == 0 or index == len(claims):
+                print(f"Aligned {index}/{len(claims)} claims", flush=True)
+                progress = {
+                    "stage": "code_alignment",
+                    "completed_claims": index,
+                    "total_claims": len(claims),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
+                (args.work_root / "progress.json").write_text(
+                    json.dumps(progress, indent=2) + "\n", encoding="utf-8"
+                )
+    for result in alignment_results:
+        all_candidates.extend(result["queue"])
+        labels.extend(result["selected"])
+        if result["unresolved"]:
+            unresolved.append(result["unresolved"])
 
     valid_claim_ids = {row["claim_id"] for row in claims}
     unresolved = [row for row in unresolved if row["claim_id"] in valid_claim_ids]
@@ -567,7 +601,11 @@ def main() -> None:
         ],
     }
     writer = AuditRunWriter(run_root, manifest)
-    writer.write_jsonl("records.jsonl", records)
+    persisted_records = [
+        {key: value for key, value in row.items() if key != "candidates"}
+        for row in records
+    ]
+    writer.write_jsonl("records.jsonl", persisted_records)
     writer.write_jsonl("claims.jsonl", claims)
     writer.write_jsonl("ast-candidates.jsonl", all_candidates)
     writer.write_jsonl("code-labels.jsonl", labels)
