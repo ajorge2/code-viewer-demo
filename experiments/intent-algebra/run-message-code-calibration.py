@@ -24,7 +24,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = PROJECT_ROOT / "experiments/intent-algebra/semantic-first-hyperparameters.json"
 PREPARE_SCRIPT = PROJECT_ROOT / "experiments/intent-algebra/prepare-message-code-records.js"
 CLAIM_PROMPT_VERSION = "message-claims/v1"
-ALIGNMENT_PROMPT_VERSION = "claim-subtree-alignment/v2-minimal-object"
+ALIGNMENT_PROMPT_VERSION = "claim-subtree-alignment/v3-multiple-thresholded-datapoints"
 
 
 def parse_args() -> argparse.Namespace:
@@ -134,10 +134,10 @@ def alignment_schema() -> dict[str, Any]:
         "properties": {
             "candidate_id": {"type": "string"},
             "relation": {"type": "string", "enum": ["supports", "partial", "unrelated"]},
-            "entailment_score": {"type": "number"},
+            "alignment_confidence": {"type": "number"},
             "reason": {"type": "string"},
         },
-        "required": ["candidate_id", "relation", "entailment_score", "reason"],
+        "required": ["candidate_id", "relation", "alignment_confidence", "reason"],
         "additionalProperties": False,
     }
     return {
@@ -174,7 +174,7 @@ def alignment_prompt(
         "The semantic claim is already fixed from the message. Do not rename it from code or invent a broader code meaning.",
         "A candidate supports the claim only when its bounded subtree contains enough behavior or declaration content to justify that claim by itself.",
         "Treat the directly edited subtree as supporting when it is the concrete object added, removed, or changed. It does not need unrelated siblings or file scaffolding merely to prove contextual words such as first, second, another, or existing.",
-        "Favor the smallest sufficient object boundary: a broader ancestor that mainly adds unrelated siblings or setup should be partial when a narrower candidate already contains the claimed object.",
+        "Favor precise sufficient object boundaries: a broader ancestor that mainly adds unrelated siblings or setup should be partial. Multiple candidates may independently support the same claim, and each is scored separately rather than forced into a single-winner choice.",
         "Use partial when the subtree is relevant but needs a parent or sibling to express the claim. Use unrelated when it does not realize the claim.",
         "Score 0 to 1. Exact identifiers and comments are evidence but are not sufficient when structure contradicts them.",
         "Return exactly one evaluation for every supplied candidate_id.",
@@ -308,19 +308,12 @@ def evaluate_queue(
     claim: dict[str, Any],
     candidates: list[dict[str, Any]],
     batch_size: int,
-    minimum_score: float,
-    minimum_margin: float,
+    minimum_confidence: float,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], str | None]:
-    selected: list[dict[str, Any]] = []
-    side_state = {
-        "before": {"done": False, "previous_best": 0.0},
-        "after": {"done": False, "previous_best": 0.0},
-    }
+    accepted: list[dict[str, Any]] = []
     model_calls: list[dict[str, Any]] = []
     for start in range(0, len(candidates), batch_size):
-        pending = [row for row in candidates[start:start + batch_size] if not side_state[row["side"]]["done"]]
-        if not pending:
-            continue
+        pending = candidates[start:start + batch_size]
         prompt = alignment_prompt(record, claim, pending)
         parsed, call = cache.request(prompt, alignment_schema(), "claim_ast_candidate_scores")
         model_calls.append(call)
@@ -330,42 +323,29 @@ def evaluate_queue(
             raise RuntimeError(f"Alignment candidate IDs differ: expected {expected}, got {set(by_id)}")
         for candidate in pending:
             evaluation = by_id[candidate["candidate_id"]]
-            score = max(0.0, min(1.0, float(evaluation["entailment_score"])))
+            confidence = max(0.0, min(1.0, float(evaluation["alignment_confidence"])))
             candidate.update({
                 "alignment_relation": evaluation["relation"],
-                "alignment_score": score,
+                "alignment_confidence": confidence,
                 "alignment_reason": evaluation["reason"],
                 "alignment_response_id": call["response_id"],
                 "alignment_cache_key": call["cache_key"],
-                "decision": "evaluated_not_selected",
+                "acceptance_threshold": minimum_confidence,
             })
-            state = side_state[candidate["side"]]
-            if state["done"]:
-                candidate["decision"] = "evaluated_after_side_resolved"
-                continue
-            margin = score - state["previous_best"]
-            if evaluation["relation"] == "supports" and score >= minimum_score:
-                state["done"] = True
-                if margin >= minimum_margin:
-                    candidate["decision"] = "selected"
-                    candidate["winner_margin"] = margin
-                    selected.append(candidate)
-                else:
-                    candidate["decision"] = "ambiguous_winner_margin"
-                continue
-            state["previous_best"] = max(state["previous_best"], score)
-        if all(state["done"] for state in side_state.values()):
-            break
-    for candidate in candidates:
-        if "decision" not in candidate:
-            candidate["decision"] = "not_evaluated_after_side_resolved" if side_state[candidate["side"]]["done"] else "not_evaluated"
-    if selected:
-        return selected, model_calls, None
+            if evaluation["relation"] == "supports" and confidence >= minimum_confidence:
+                candidate["decision"] = "accepted_meaning_subtree_datapoint"
+                accepted.append(candidate)
+            elif evaluation["relation"] != "supports":
+                candidate["decision"] = "not_independent_support"
+            else:
+                candidate["decision"] = "below_confidence_threshold"
+    if accepted:
+        return accepted, model_calls, None
     if not candidates:
         return [], model_calls, "no_ast_candidates"
-    if any(row["decision"] == "ambiguous_winner_margin" for row in candidates):
-        return [], model_calls, "ambiguous_winner_margin"
-    return [], model_calls, "no_supported_candidate"
+    if any(row["alignment_relation"] == "supports" for row in candidates):
+        return [], model_calls, "supported_candidates_below_confidence_threshold"
+    return [], model_calls, "no_independently_supported_candidate"
 
 
 def git_revision() -> str:
@@ -446,8 +426,7 @@ def main() -> None:
     all_candidates: list[dict[str, Any]] = []
     labels: list[dict[str, Any]] = []
     minimum_object_confidence = config["claim_extraction"]["semantic_object_min_confidence"]
-    minimum_score = config["code_alignment"]["min_entailment_score"]
-    minimum_margin = config["code_alignment"]["min_winner_margin"]
+    minimum_confidence = config["code_alignment"]["min_meaning_subtree_confidence"]
     def align_claim(claim: dict[str, Any]) -> dict[str, Any]:
         record = records_by_id[claim["record_id"]]
         if claim["claim_kind"] == "abstention":
@@ -473,8 +452,8 @@ def main() -> None:
                     "stage": "claim_extraction",
                 }}
         queue = order_candidates(claim, record["candidates"], claim["claim_id"])
-        selected, model_calls, unresolved_reason = evaluate_queue(
-            cache, record, claim, queue, args.alignment_batch_size, minimum_score, minimum_margin
+        accepted, model_calls, unresolved_reason = evaluate_queue(
+            cache, record, claim, queue, args.alignment_batch_size, minimum_confidence
         )
         for candidate in queue:
             candidate.pop("candidate_key", None)
@@ -491,7 +470,7 @@ def main() -> None:
                 "model_calls": model_calls,
             }
         label_rows = []
-        for candidate in selected:
+        for candidate in accepted:
             source = record["before_source"] if candidate["side"] == "before" else record["after_source"]
             label_rows.append({
                 "label_id": stable_id("lbl", claim["claim_id"], candidate["candidate_id"]),
@@ -507,8 +486,8 @@ def main() -> None:
                 "ast_sexpr": candidate["ast_sexpr"],
                 "queue_rank": candidate["queue_rank"],
                 "queue_sign": candidate["queue_sign"],
-                "alignment_score": candidate["alignment_score"],
-                "winner_margin": candidate["winner_margin"],
+                "alignment_confidence": candidate["alignment_confidence"],
+                "acceptance_threshold": candidate["acceptance_threshold"],
                 "alignment_reason": candidate["alignment_reason"],
                 "alignment_response_id": candidate["alignment_response_id"],
                 "alignment_cache_key": candidate["alignment_cache_key"],
@@ -573,8 +552,7 @@ def main() -> None:
         "thresholds": {
             "semantic_object_min_confidence": minimum_object_confidence,
             "verb_sign_min_confidence": config["claim_extraction"]["verb_sign_min_confidence"],
-            "min_entailment_score": minimum_score,
-            "min_winner_margin": minimum_margin,
+            "min_meaning_subtree_confidence": minimum_confidence,
         },
     }
 

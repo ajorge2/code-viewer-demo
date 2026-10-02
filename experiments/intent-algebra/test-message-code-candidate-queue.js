@@ -52,3 +52,31 @@ test("multi-edit path candidates are ordered bottom-up from edits toward the LCA
     ["left_block", "right_block", "left_branch", "right_branch"],
   );
 });
+
+test("subset-LCA discovery remains bounded when many edits share the same LCA", () => {
+  const directEdits = Array.from({ length: 20 }, (_, index) =>
+    node(`edit_${index}`, index * 4 + 5, index * 4 + 7));
+  const afterTree = node("module", 0, 100, [
+    node("shared_block", 1, 90, directEdits),
+  ]);
+  const analysis = {
+    actions: directEdits.map((edit) => ({
+      action: "insert-node",
+      side: "after",
+      node: edit,
+    })),
+  };
+
+  const { candidates } = buildCandidateUniverse(
+    node("module", 0, 0),
+    afterTree,
+    analysis,
+    "",
+    "x".repeat(100),
+    64,
+  );
+
+  assert.equal(candidates.filter((candidate) => candidate.roles.includes("direct_edit")).length, 20);
+  assert.equal(candidates.filter((candidate) => candidate.roles.includes("overall_lca")).length, 1);
+  assert.equal(candidates.filter((candidate) => candidate.roles.includes("subset_lca")).length, 0);
+});

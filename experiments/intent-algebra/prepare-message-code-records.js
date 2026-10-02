@@ -321,12 +321,14 @@ function lowestCommonAncestor(nodes, byId) {
 
 function combinations(items, size, callback, start = 0, chosen = []) {
   if (chosen.length === size) {
-    callback(chosen);
-    return;
+    return callback(chosen) !== false;
   }
   for (let index = start; index <= items.length - (size - chosen.length); index += 1) {
-    combinations(items, size, callback, index + 1, [...chosen, items[index]]);
+    if (!combinations(items, size, callback, index + 1, [...chosen, items[index]])) {
+      return false;
+    }
   }
+  return true;
 }
 
 function compareSortValues(left, right) {
@@ -447,14 +449,21 @@ export function buildCandidateUniverse(
       const overall = lowestCommonAncestor(sideDirect, byId);
       addRole(overall, "overall_lca", [1, side, overall?.start || 0]);
       let subsetCount = 0;
-      for (let size = 2; size < sideDirect.length && subsetCount < maxSubsetLcas; size += 1) {
+      let subsetAttempts = 0;
+      const maxSubsetAttempts = Math.max(maxSubsetLcas * 64, maxSubsetLcas);
+      for (let size = 2;
+        size < sideDirect.length
+        && subsetCount < maxSubsetLcas
+        && subsetAttempts < maxSubsetAttempts;
+        size += 1) {
         combinations(sideDirect, size, (subset) => {
-          if (subsetCount >= maxSubsetLcas) return;
+          subsetAttempts += 1;
           const lca = lowestCommonAncestor(subset, byId);
           if (lca && lca.id !== overall.id && !directIds.has(lca.id)) {
             addRole(lca, "subset_lca", [2, size, side, lca.depth, lca.start]);
             subsetCount += 1;
           }
+          return subsetCount < maxSubsetLcas && subsetAttempts < maxSubsetAttempts;
         });
       }
       const origin = overall || root;

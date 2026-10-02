@@ -9,13 +9,14 @@
   },
   "code_alignment": {
     "code_label_unit": "one_ast_subtree_from_one_diff_side",
-    "when_claim_maps_to_both_sides": "emit_two_linked_datapoints",
-    "min_entailment_score": 0.75,
-    "min_winner_margin": 0.05,
+    "accepted_outputs": "emit_every_independently_supported_meaning_subtree_pair",
+    "when_claim_maps_to_multiple_subtrees_or_sides": "emit_multiple_linked_datapoints",
+    "min_meaning_subtree_confidence": 0.75,
     "on_failed_alignment": "leave_unresolved",
     "single_edit_ancestor_limit": "file_root",
     "single_edit_order": "edited_node_then_each_ancestor_upward",
     "multi_edit_subset_lcas": "all_unique_proper_subset_lcas_capped_at_64_per_side",
+    "multi_edit_subset_lca_attempt_cap": 4096,
     "multi_edit_remaining_path_order": "bottom_up_breadth_first_from_edit_nodes_toward_lca",
     "candidate_deduplication": "canonical_ast_node_identity"
   },

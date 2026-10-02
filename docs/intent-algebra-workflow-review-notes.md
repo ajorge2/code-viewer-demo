@@ -52,7 +52,8 @@
   object-to-message and message-to-diff links. Process every mentioned semantic object
   separately.
 - Run the AST candidate-queue alignment for every `(verb, noun/object)` pair before
-  semantic clustering. The selected AST node or subtree becomes that pair's code label.
+  semantic clustering. Every independently supported AST node or subtree above the
+  confidence threshold becomes a separate meaning–subtree datapoint for that pair.
   Unresolved pairs must remain explicitly unresolved rather than entering the cluster as
   if their entire diff were labeled.
 - A code label is exactly one AST subtree from exactly one side of the diff. Never combine
@@ -61,7 +62,7 @@
   before-side subtree and one carrying the after-side subtree—while preserving their
   shared claim and diff provenance.
 - Repeat extraction and alignment across many records to build a corpus-level collection
-  of resolved, code-labeled semantic objects. Semantic clustering begins only after this
+  of accepted meaning–subtree datapoints. Semantic clustering begins only after this
   collection exists; it is not triggered separately after each individual diff.
 - Embed and cluster semantic objects only after their points carry traceable code labels.
   The semantic embedding still comes from the noun/object meaning, not from the code;
@@ -111,7 +112,7 @@ repository-disjoint validation split, and frozen before the final test evaluatio
 |---|---|---|
 | Verb-sign use | confidence ≥ 0.80 | Otherwise treat the verb as neutral and skip sign buckets |
 | Semantic-object extraction | confidence ≥ 0.65 | Otherwise leave that object unresolved |
-| Message-to-code alignment | entailment ≥ 0.75 and winner margin ≥ 0.05 | Avoid attaching an ambiguous AST candidate |
+| Message-to-code alignment | independent-support confidence ≥ 0.75 | Retain every sufficiently supported meaning–subtree pairing rather than forcing one winner |
 | Embeddings | `text-embedding-3-large`, 1,024 dimensions, normalized cosine | Stable common space for nouns and candidate meanings |
 | Local cluster size | `min(50, max(8, ceil(1% × view size)))` | Never create singleton or tiny semantic terms |
 | Density requirement | `max(2, ceil(min cluster size / 3))` | Keep HDBSCAN from accepting weak chains |
@@ -143,9 +144,9 @@ OR-clause procedure, negative-corpus evaluation, and scaling strategy are specif
 
 - The experiment executor writes a new immutable run directory; it never uses the
   notebook as a hidden computation step and never silently overwrites an artifact.
-- Every record, message-derived claim, AST candidate, selected code label, unresolved
+- Every record, message-derived claim, AST candidate, accepted code label, unresolved
   outcome, and review judgment has a stable ID. Foreign-key links preserve the complete
-  route from a displayed result back to the original message, diff, and selected
+  route from a displayed result back to the original message, diff, and each accepted
   single-sided subtree.
 - The run manifest freezes dataset identity, source hashes, Git revision, configuration,
   prompt and model versions, seeds, and environment metadata.
@@ -154,7 +155,7 @@ OR-clause procedure, negative-corpus evaluation, and scaling strategy are specif
   change becomes visible as a hash mismatch.
 - The Python notebook is a read-only audit view. It displays the calibration funnel,
   highlighted diff, extracted verb+noun claims, the entire deduplicated candidate queue,
-  selected subtree and AST, abstentions, review sample, and metric slices. Rerunning it
+  all accepted subtrees and ASTs, abstentions, review sample, and metric slices. Rerunning it
   cannot change experiment results.
 - Human review adds append-only judgments linked to model output; it does not replace or
   erase the original model decision.
@@ -205,7 +206,9 @@ OR-clause procedure, negative-corpus evaluation, and scaling strategy are specif
   4. When multiple AST nodes are edited, give directly edited AST nodes structural tier 1.
   5. Give the overall LCA of the retained edit nodes structural tier 2.
   6. Give every distinct LCA produced by non-singleton proper subsets of the edit nodes
-     structural tier 3, deduplicating subsets that resolve to the same AST node.
+     structural tier 3, deduplicating subsets that resolve to the same AST node. Bound
+     this search at 64 distinct subset LCAs or 4,096 attempted subsets per side so a
+     large edit cannot create a combinatorial stall.
   7. Give the remaining meaningful nodes on the paths between the edited nodes and the
      overall LCA structural tier 4, traversed bottom-up breadth-first: direct parents
      nearest any edited node first, then progressively higher ancestors toward the LCA.
@@ -218,9 +221,9 @@ OR-clause procedure, negative-corpus evaluation, and scaling strategy are specif
   subset LCA, or a path node, keep one queue entry at its highest-priority position and
   attach every generation path as provenance. A node may never be evaluated twice for
   the same semantic object.
-- Queue priority controls evaluation order, not truth. Preserve competing candidates
-  until alignment evidence clearly separates them, and leave a semantic object
-  unresolved when the evidence is insufficient.
+- Queue priority controls evaluation order, not truth. Evaluate every candidate and emit
+  every independently supporting meaning–subtree pair whose confidence reaches the
+  threshold. Leave a semantic object unresolved only when no candidate qualifies.
 
 ## Revised experiment workflow
 
@@ -246,11 +249,11 @@ flowchart TB
     P --> Q
     Q --> R[Keep each node once at its highest-priority position and merge its provenance]
     R --> S[Evaluate candidates in queue order against this semantic object]
-    S --> T[Select the supported node/subtree or leave the pair unresolved]
-    T --> U[Attach the selected AST node/subtree as this pair's code label]
+    S --> T[Score every candidate independently against this semantic object]
+    T --> U[Emit every meaning–subtree datapoint above the confidence threshold; otherwise leave the pair unresolved]
 
-    U --> UA["Repeat steps 1–2 across many records<br/>Collect a corpus of resolved code-labeled semantic objects"]
-    UA --> V["3. Semantic clustering over the collected code-labeled objects<br/>Embed each noun/object meaning while preserving its verb and code label"]
+    U --> UA["Repeat steps 1–2 across many records<br/>Collect a corpus of accepted meaning–subtree datapoints"]
+    UA --> V["3. Semantic clustering over the collected datapoints<br/>Embed each noun/object meaning while preserving its verb, subtree, and alignment confidence"]
     V --> W[Cluster semantic objects by meaning]
     W --> X["For each cluster, the LLM proposes its own noun-only term from all members<br/>No two distinct clusters share the same term"]
     X --> Y[Estimate confidence from member agreement and embedding cohesion]
