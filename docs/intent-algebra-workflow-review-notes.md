@@ -84,9 +84,12 @@
 - Give each semantic object its own priority queue. Use the following lexicographic
   ordering rather than a blended structural-similarity score:
   1. If and only if the message verb unambiguously specifies addition or removal for
-     that semantic object, place AST edits with the matching operation first. This is a
-     priority rule, not an exclusion rule. When the verb is unclear, addition and
-     removal have equal priority.
+     that semantic object, create exactly three operation buckets. For an additive verb,
+     order them `add`, `neutral`, `remove`; for a removal verb, order them `remove`,
+     `neutral`, `add`. Inserted nodes belong to `add`, deleted nodes belong to `remove`,
+     and updates, moves, LCAs, and unchanged ancestor/path nodes belong to `neutral`.
+     Do not create a mixed or fourth bucket. If the verb is neutral or unclear, skip
+     operation bucketing entirely and begin with the structural ordering below.
   2. Place the directly edited AST nodes first.
   3. Place the LCA of the retained edit nodes next.
   4. Place every distinct LCA produced by non-singleton proper subsets of the edit nodes
