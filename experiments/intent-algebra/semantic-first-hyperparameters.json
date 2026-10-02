@@ -5,7 +5,7 @@
     "verb_sign_min_confidence": 0.8,
     "semantic_object_min_confidence": 0.65,
     "on_low_object_confidence": "leave_unresolved",
-    "on_unclear_verb_sign": "neutral"
+    "on_unclear_verb_sign": "neutral_metadata"
   },
   "code_alignment": {
     "code_label_unit": "one_ast_subtree_from_one_diff_side",
@@ -13,12 +13,12 @@
     "when_claim_maps_to_multiple_subtrees_or_sides": "emit_multiple_linked_datapoints",
     "min_meaning_subtree_confidence": 0.75,
     "on_failed_alignment": "leave_unresolved",
-    "single_edit_ancestor_limit": "file_root",
-    "single_edit_order": "edited_node_then_each_ancestor_upward",
+    "single_edit_candidate_extent": "edited_node_through_file_root",
     "multi_edit_subset_lcas": "all_unique_proper_subset_lcas_capped_at_64_per_side",
     "multi_edit_subset_lca_attempt_cap": 4096,
-    "multi_edit_remaining_path_order": "bottom_up_breadth_first_from_edit_nodes_toward_lca",
-    "candidate_deduplication": "canonical_ast_node_identity"
+    "multi_edit_candidate_extent": "direct_edits_overall_lca_subset_lcas_and_intermediate_paths",
+    "candidate_deduplication": "canonical_ast_node_identity",
+    "candidate_order_semantics": "none_deterministic_enumeration_for_audit_and_batching_only"
   },
   "semantic_embedding": {
     "model": "text-embedding-3-large",

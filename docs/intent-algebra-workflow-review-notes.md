@@ -17,7 +17,7 @@
 - Semantic meaning should come from the natural-language diff message.
 - Before any AST-sign computation, split each message into independent `(verb,
   noun/object)` pairs. Preserve the verb as `add`, `remove`, or `neutral/unclear`
-  metadata for the later candidate-queue ordering. Embed and cluster the noun/object
+  metadata on each later meaning–subtree datapoint. Embed and cluster the noun/object
   meaning as the semantic object.
 - Code remains traceable evidence and is used later to verify whether the message-derived
   semantic idea corresponds to a recurring code pattern.
@@ -42,7 +42,7 @@
   contextual evidence. Competing ancestor scopes around a positive edit are alternative
   candidate boundaries, not negative examples.
 - A message may mention several semantic objects, but each receives its own alignment
-  process and its own AST-candidate queue.
+  process and its own AST candidate set.
 - Addition/removal dominance does not change this rule: even a strongly one-directional
   diff can contain several distinct objects that the message labels separately.
 
@@ -51,7 +51,7 @@
 - Extract one or more semantic objects from each diff message while retaining the
   object-to-message and message-to-diff links. Process every mentioned semantic object
   separately.
-- Run the AST candidate-queue alignment for every `(verb, noun/object)` pair before
+- Run AST candidate-set alignment for every `(verb, noun/object)` pair before
   semantic clustering. Every independently supported AST node or subtree above the
   confidence threshold becomes a separate meaning–subtree datapoint for that pair.
   Unresolved pairs must remain explicitly unresolved rather than entering the cluster as
@@ -154,7 +154,7 @@ OR-clause procedure, negative-corpus evaluation, and scaling strategy are specif
   artifact index containing byte lengths, row counts, and SHA-256 hashes. Any later file
   change becomes visible as a hash mismatch.
 - The Python notebook is a read-only audit view. It displays the calibration funnel,
-  highlighted diff, extracted verb+noun claims, the entire deduplicated candidate queue,
+  highlighted diff, extracted verb+noun claims, the entire deduplicated candidate set,
   all accepted subtrees and ASTs, abstentions, review sample, and metric slices. Rerunning it
   cannot change experiment results.
 - Human review adds append-only judgments linked to model output; it does not replace or
@@ -174,56 +174,24 @@ OR-clause procedure, negative-corpus evaluation, and scaling strategy are specif
 - For each message-derived semantic object, retain single-node or single-subtree
   candidates at every meaningful scale. Structurally separate regions are evaluated
   independently.
-- Give each semantic object its own priority queue. Use the following lexicographic
-  ordering rather than a blended structural-similarity score:
-  1. Preserve an immutable intrinsic operation on each raw edited AST node: insertion is
-     `add`, deletion is `remove`, and update or move is `neutral`. Before queue sorting,
-     derive a separate queue-only operation label for every candidate. A directly edited
-     node that contains nested edits is aggregated like an LCA or intermediate path
-     node: collect the immutable intrinsic operations of the candidate itself, when it
-     is directly edited, and of all edited descendants. Treat the candidate's own
-     operation as one item in the same multiset as its descendant operations. Label the
-     queue entry `add` when additions are at least half of all collected edit operations;
-     otherwise label it `remove` when removals are more than half; otherwise label it
-     `neutral`. Thus a removed node containing one added descendant has one add among
-     two operations and receives the queue-only label `add`. A candidate with no edits
-     is `neutral`. The derived label must never overwrite the node's intrinsic operation
-     or become input to an ancestor's calculation. Every ancestor independently
-     aggregates the original immutable operations, preventing a queue-only relabeling
-     from cascading upward.
-  2. If and only if the message verb unambiguously specifies addition or removal for
-     that semantic object, create exactly two operation buckets. The first bucket
-     contains candidates whose queue-only label matches the verb's sign. The second
-     contains every nonmatching candidate, combining the other sign and `neutral`
-     candidates without distinguishing them further. Thus an additive verb yields
-     `add` then `not-add`, while a removal verb yields `remove` then `not-remove`. If the
-     verb is neutral or unclear, skip operation bucketing entirely and begin with the
-     structural ordering.
-  3. When exactly one AST node is edited, queue that edited node first and then walk its
-     ancestor chain upward one node at a time through its parent, grandparent, and so on,
-     ending at the file root. The file root is therefore the last candidate if evaluation
-     reaches it.
-  4. When multiple AST nodes are edited, give directly edited AST nodes structural tier 1.
-  5. Give the overall LCA of the retained edit nodes structural tier 2.
-  6. Give every distinct LCA produced by non-singleton proper subsets of the edit nodes
-     structural tier 3, deduplicating subsets that resolve to the same AST node. Bound
-     this search at 64 distinct subset LCAs or 4,096 attempted subsets per side so a
-     large edit cannot create a combinatorial stall.
-  7. Give the remaining meaningful nodes on the paths between the edited nodes and the
-     overall LCA structural tier 4, traversed bottom-up breadth-first: direct parents
-     nearest any edited node first, then progressively higher ancestors toward the LCA.
-  8. When operation buckets are active, sort by operation bucket first and structural
-     tier inside each bucket. When buckets are inactive, sort directly by structural
-     tier.
-- Within equal queue positions, use stable source order as the deterministic tiebreaker.
-- Deduplicate across the entire queue by canonical AST-node identity, not only within an
-  individual priority tier. If the same node is produced as a direct edit, an LCA, a
-  subset LCA, or a path node, keep one queue entry at its highest-priority position and
-  attach every generation path as provenance. A node may never be evaluated twice for
-  the same semantic object.
-- Queue priority controls evaluation order, not truth. Evaluate every candidate and emit
-  every independently supporting meaning–subtree pair whose confidence reaches the
-  threshold. Leave a semantic object unresolved only when no candidate qualifies.
+- Give each semantic object its own AST candidate set. When one node is edited, include
+  that node and every ancestor through the file root. When several nodes are edited,
+  include the direct edits, their overall LCA, distinct LCAs of proper edit subsets, and
+  every intermediate path node. Bound subset-LCA discovery at 64 distinct results or
+  4,096 attempted subsets per side so a large edit cannot create a combinatorial stall.
+- Preserve each raw edit's immutable operation: insertion is `add`, deletion is
+  `remove`, and update or move is `neutral`. For every candidate, independently
+  aggregate the immutable operations on the candidate itself and its edited descendants:
+  additions of at least half yield `add`, removals over half yield `remove`, and all
+  other cases yield `neutral`. Store this as metadata together with whether it matches
+  the message verb; it does not determine priority or acceptance.
+- Deduplicate the complete set by canonical AST-node identity. If a direct edit, LCA,
+  subset LCA, or path traversal reaches the same node, retain it once and merge every
+  generation route as provenance.
+- There is no semantic queue order. Assign a stable enumeration only for reproducible
+  artifacts and API batching. Evaluate every candidate independently and emit every
+  meaning–subtree pair whose support confidence reaches the threshold. Leave a semantic
+  object unresolved only when no candidate qualifies.
 
 ## Revised experiment workflow
 
@@ -237,18 +205,12 @@ flowchart TB
     E --> F["2. Assign a code label before clustering<br/>Retrieve this pair's complete code diff"]
     F --> G[Parse before and after code into ASTs]
     G --> H["Locate raw edited AST nodes and store immutable intrinsic operations:<br/>insert = add, delete = remove, update or move = neutral"]
-    H --> I[Create one independent candidate queue for this verb + noun/object pair]
-    I --> J["Generate single-node or single-subtree candidates only:<br/>one edit = edited node, then each ancestor upward to the file root<br/>multiple edits = direct edits, overall LCA, subset LCAs, then remaining paths in bottom-up BFS from edits toward the LCA"]
-    J --> K["Derive each candidate's queue-only sign from immutable operations:<br/>include the candidate itself if edited plus every edited descendant<br/>add if additions are at least half; remove if removals are over half; otherwise neutral<br/>never write this derived sign back"]
-    K --> L{Does this pair's verb clearly specify add or remove?}
-    L -- Yes --> M["Create exactly two buckets:<br/>matching queue sign first<br/>every nonmatching sign second"]
-    L -- No --> N[Do not create sign buckets]
-    M --> O[Sort by structural tier inside each bucket]
-    N --> P[Sort directly by structural tier]
-    O --> Q[Deduplicate globally by canonical AST-node identity]
-    P --> Q
-    Q --> R[Keep each node once at its highest-priority position and merge its provenance]
-    R --> S[Evaluate candidates in queue order against this semantic object]
+    H --> I[Create one independent AST candidate set for this verb + noun/object pair]
+    I --> J["Generate single-node or single-subtree candidates only:<br/>one edit = edited node through file root<br/>multiple edits = direct edits, overall LCA, subset LCAs, and all intermediate paths"]
+    J --> K["Attach operation metadata derived from immutable edits:<br/>candidate operation and whether it matches the message verb<br/>metadata never establishes priority"]
+    K --> Q[Deduplicate globally by canonical AST-node identity and merge provenance]
+    Q --> R[Assign a stable enumeration for audit and batching only]
+    R --> S[Evaluate every candidate independently against this semantic object]
     S --> T[Score every candidate independently against this semantic object]
     T --> U[Emit every meaning–subtree datapoint above the confidence threshold; otherwise leave the pair unresolved]
 

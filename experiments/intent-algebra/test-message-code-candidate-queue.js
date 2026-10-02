@@ -7,7 +7,7 @@ function node(type, start, end, children = []) {
   return { type, start, end, children };
 }
 
-test("multi-edit path candidates are ordered bottom-up from edits toward the LCA", () => {
+test("multi-edit candidate sets include direct edits, the LCA, and every intermediate path", () => {
   const beforeTree = node("module", 0, 0);
   const firstEdit = node("first_edit", 30, 40);
   const secondEdit = node("second_edit", 70, 80);
@@ -39,18 +39,12 @@ test("multi-edit path candidates are ordered bottom-up from edits toward the LCA
     64,
   );
 
-  assert.deepEqual(candidates.slice(0, 3).map((candidate) => candidate.node_type), [
-    "first_edit",
-    "second_edit",
-    "shared_block",
-  ]);
-  assert.deepEqual(
-    candidates
-      .filter((candidate) => candidate.roles.includes("path")
-        && !candidate.roles.includes("overall_lca"))
-      .map((candidate) => candidate.node_type),
-    ["left_block", "right_block", "left_branch", "right_branch"],
-  );
+  assert.deepEqual(new Set(candidates.map((candidate) => candidate.node_type)), new Set([
+    "first_edit", "second_edit", "shared_block",
+    "left_block", "right_block", "left_branch", "right_branch",
+  ]));
+  assert.equal(candidates.find((candidate) => candidate.node_type === "shared_block")
+    .roles.includes("overall_lca"), true);
 });
 
 test("subset-LCA discovery remains bounded when many edits share the same LCA", () => {

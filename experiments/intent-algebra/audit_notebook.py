@@ -140,9 +140,15 @@ def group_by(rows: Iterable[dict[str, Any]], key: str) -> dict[Any, list[dict[st
     return grouped
 
 
-def queue_for_claim(run: dict[str, Any], claim_id: str) -> list[dict[str, Any]]:
+def candidates_for_claim(run: dict[str, Any], claim_id: str) -> list[dict[str, Any]]:
     rows = [row for row in run["candidates"] if row.get("claim_id") == claim_id]
-    return sorted(rows, key=lambda row: (row.get("queue_rank", 10**9), row.get("candidate_id", "")))
+    return sorted(rows, key=lambda row: (
+        row.get("enumeration_rank", row.get("queue_rank", 10**9)),
+        row.get("candidate_id", ""),
+    ))
+
+
+queue_for_claim = candidates_for_claim
 
 
 def record_bundle(run: dict[str, Any], record_id: str) -> dict[str, Any]:
