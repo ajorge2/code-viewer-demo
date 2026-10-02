@@ -35,6 +35,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", default="intent-message-code-v1")
     parser.add_argument("--model", default="gpt-6-astra")
     parser.add_argument("--claim-batch-size", type=int, default=10)
+    parser.add_argument("--claim-workers", type=int, default=6)
     parser.add_argument("--alignment-batch-size", type=int, default=8)
     parser.add_argument("--alignment-workers", type=int, default=6)
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
@@ -410,19 +411,20 @@ def main() -> None:
     claims: list[dict[str, Any]] = []
     unresolved: list[dict[str, Any]] = []
     extraction_schema = claim_schema()
-    for start in range(0, len(records), args.claim_batch_size):
-        batch = records[start:start + args.claim_batch_size]
+
+    def extract_claim_batch(batch: list[dict[str, Any]]) -> list[dict[str, Any]]:
         prompt = claim_prompt(batch)
         parsed, call = cache.request(prompt, extraction_schema, "message_semantic_claims")
         by_record = {item["record_id"]: item for item in parsed["records"]}
         expected = {row["record_id"] for row in batch}
         if set(by_record) != expected:
             raise RuntimeError(f"Claim record IDs differ: expected {expected}, got {set(by_record)}")
+        batch_claims: list[dict[str, Any]] = []
         for record in batch:
             extraction = by_record[record["record_id"]]
             if not extraction["claims"]:
                 synthetic_claim_id = stable_id("clm", record["record_id"], "message_abstention")
-                claims.append({
+                batch_claims.append({
                     "claim_id": synthetic_claim_id,
                     "record_id": record["record_id"],
                     "claim_index": -1,
@@ -448,7 +450,7 @@ def main() -> None:
                 verb_confidence = max(0.0, min(1.0, float(raw_claim["verb_sign_confidence"])))
                 object_confidence = max(0.0, min(1.0, float(raw_claim["object_confidence"])))
                 effective_sign = raw_claim["verb_sign"] if verb_confidence >= config["claim_extraction"]["verb_sign_min_confidence"] else "neutral"
-                claims.append({
+                batch_claims.append({
                     "claim_id": claim_id,
                     "record_id": record["record_id"],
                     **raw_claim,
@@ -461,6 +463,19 @@ def main() -> None:
                     "model_cache_key": call["cache_key"],
                     "prompt_version": CLAIM_PROMPT_VERSION,
                 })
+        return batch_claims
+
+    claim_batches = [
+        records[start:start + args.claim_batch_size]
+        for start in range(0, len(records), args.claim_batch_size)
+    ]
+    with ThreadPoolExecutor(max_workers=args.claim_workers) as executor:
+        for index, batch_claims in enumerate(
+            executor.map(extract_claim_batch, claim_batches), start=1
+        ):
+            claims.extend(batch_claims)
+            if index % 10 == 0 or index == len(claim_batches):
+                print(f"Extracted claims from {index}/{len(claim_batches)} batches", flush=True)
 
     records_by_id = {row["record_id"]: row for row in records}
     all_candidates: list[dict[str, Any]] = []
