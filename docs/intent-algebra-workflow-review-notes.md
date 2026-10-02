@@ -67,6 +67,28 @@
   repetition, and alternatives while retaining tree nesting. This remains an open
   design choice to compare with Semgrep templates or another tree-pattern DSL.
 
+## Edit-object candidate generation
+
+- Do not force one definitive AST partition before message-to-code alignment. Generate
+  candidates at multiple structural scales and let the evidence select among them.
+- Starting from the edited AST nodes, include every meaningful node on the ancestor
+  paths between each edited node and the relevant lowest common ancestors. For example,
+  an edited statement nested in a body can yield candidates for the statement, the body,
+  and the enclosing construct; the body must not be omitted merely because it was not
+  itself the directly edited leaf.
+- Generate relevant LCAs for subsets of edits rather than relying only on the single LCA
+  of the entire diff, which may be an uninformative function, module, or file root.
+- Retain both single-subtree candidates and composite sets of structurally separate
+  candidates. A distant composite should be represented as a relationship between
+  objects rather than as one enormous enclosing subtree.
+- Place candidates in a best-first priority queue instead of eliminating broader or
+  intermediate candidates upfront. Initial priority can combine proximity to the edited
+  nodes, subtree compactness, message/code lexical anchors, edit-operation agreement,
+  and recurrence across other records in the same semantic cluster.
+- Queue priority controls evaluation order, not truth. Preserve competing candidates
+  until alignment evidence clearly separates them, and leave a claim unresolved when
+  the evidence is insufficient.
+
 ## Revised experiment workflow
 
 ```mermaid
