@@ -96,6 +96,36 @@
   repetition, and alternatives while retaining tree nesting. This remains an open
   design choice to compare with Semgrep templates or another tree-pattern DSL.
 
+## Hyperparameter ownership and pilot defaults
+
+The executor owns ambiguous numerical choices. Defaults are pre-registered in
+`experiments/intent-algebra/semantic-first-hyperparameters.json`, tuned only on the
+repository-disjoint validation split, and frozen before the final test evaluation.
+
+| Stage | Pilot default | Purpose |
+|---|---|---|
+| Verb-sign use | confidence ≥ 0.80 | Otherwise treat the verb as neutral and skip sign buckets |
+| Semantic-object extraction | confidence ≥ 0.65 | Otherwise leave that object unresolved |
+| Message-to-code alignment | entailment ≥ 0.75 and winner margin ≥ 0.05 | Avoid attaching an ambiguous AST candidate |
+| Embeddings | `text-embedding-3-large`, 1,024 dimensions, normalized cosine | Stable common space for nouns and candidate meanings |
+| Local cluster size | `min(50, max(8, ceil(1% × view size)))` | Never create singleton or tiny semantic terms |
+| Density requirement | `max(2, ceil(min cluster size / 3))` | Keep HDBSCAN from accepting weak chains |
+| Recursion eligibility | parent size ≥ twice the local minimum; depth < 5 | Ensure room for non-trivial children and bound pathological recursion |
+| Child specificity | child ≤ 90% of parent | Prevent the parent from reappearing unchanged as its own child |
+| Split quality | cohesion gain ≥ 0.03; silhouette ≥ 0.10 | Require semantic improvement rather than arbitrary subdivision |
+| Split stability | 20 repeats on 80% subsamples; mean ARI ≥ 0.70 | Reject fragile child memberships |
+| Meaning confidence | accept medium/high; skip low/abstain | Spend structural-audit work only on identifiable meanings |
+| Structural rule | coverage ≥ 0.60; precision ≥ 0.90 | Require the code rule to explain the category without becoming generic |
+| Registry support | ≥ 100 patch-distinct commits and ≥ 50 independent repository families | Preserve the proposal's recurrence standard |
+| Structural robustness | 100% identifier-permutation retention; ≥ 95% unrelated-mutation rejection | Verify that rules encode structure rather than names |
+| Compression | MDL ratio ≥ 1.20 | Reject rules that do not justify their own complexity |
+
+Recursive clustering stops when the maximum depth is reached, the scoped view is too
+small for two non-trivial children, every child is below the minimum size, no candidate
+split passes cohesion/silhouette/stability, every produced child is later skipped by the
+confidence or structural gates, or a membership set repeats and would create a cycle.
+“No child candidates” is therefore only one of several stopping conditions.
+
 ## Edit-object candidate generation
 
 - Do not force one definitive AST partition before message-to-code alignment. Generate
@@ -203,9 +233,9 @@ flowchart TB
 
     AH --> AJ[Link this valid term to the current parent scope]
     AJ --> Z["Make this validated cluster's member embeddings the new embedding view"]
-    Z --> AA[Cluster the new embedding view to generate narrower candidate clusters]
-    AA -- Each child candidate --> X
-    AA -- No child candidates --> AK[This recursive branch is complete]
+    Z --> AA["Cluster the new embedding view with recursion gates:<br/>non-trivial child size, depth, proper-subset, cohesion, silhouette, stability, and cycle checks"]
+    AA -- Each eligible child candidate --> X
+    AA -- No candidate passes the recursion gates --> AK[This recursive branch is complete]
     AK --> AM[After all branches finish, connect overlaps and set differences and evaluate held-out coverage]
 
     AL["Key constraints:<br/>mixed add/remove diffs remain eligible<br/>one queue per semantic object"] -.-> I

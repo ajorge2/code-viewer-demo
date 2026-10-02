@@ -1,12 +1,16 @@
 # CodeArchitect Intent Algebra: Bottom-Up Primitive Discovery for Human-Readable Code Explanations
 **September 30, 2026 – In progress**
-**Status**: In progress — the structure-influenced run is frozen as an ablation, and a clean 160-function semantic-first restart pilot has completed through code-grounded description, semantic-only density clustering, coherence review, and cumulative meaning confidence; recursive scale-up, downstream structural verification, human calibration, and product benchmarks remain open
+**Status**: In progress — the structure-influenced run and the 160-function code-description run are frozen as ablations; the current diff-message-derived, code-labeled semantic workflow and its pilot hyperparameters are specified, while implementation, corpus-scale execution, calibration, and product benchmarks remain open
 
-> **Methodological update — October 1, 2026:** The structure-influenced discovery run
-> documented below is retained as an exploratory ablation. The next pilot restarts
-> semantic discovery from code examples: semantic meaning alone determines cluster
-> membership, while AST/GumTree/Semgrep evidence is used only afterward to verify or
-> falsify candidate terms. See `docs/intent-algebra-semantic-first-restart.md`.
+> **Current methodological update — October 1, 2026:** Both earlier discovery paths
+> documented below are retained as exploratory ablations. The current experiment derives
+> independent `(verb, noun/object)` claims from each natural-language diff message, aligns
+> every claim to an AST node or subtree, and collects many such code-labeled objects before
+> semantic clustering. A cluster is named, confidence-gated, and structurally validated
+> before it can be registered or recursively clustered. Recursion scopes the embedding
+> view to the validated cluster's members and sends each eligible child through the same
+> loop. Source code is structural evidence, not the source of semantic meaning. The
+> authoritative design notes are in `docs/intent-algebra-workflow-review-notes.md`.
 
 ## 1. Business / Decision Context (The “Why”)
 
@@ -162,6 +166,42 @@ Two actions belong to the same change component when their affected nodes share 
 - **H4 — Deterministic resolution**: a specialization lattice can suppress broader matched meanings and return one concise, maximally specific intent for most overlaps.
 - **H5 — Structural grounding**: accepted patterns remain invariant under valid identifier renaming but reject structural counterexamples.
 - **H6 — Product value**: supplying matched primitives to CodeArchitect's explanation layer improves consistency and factual grounding relative to the current direct-LLM path.
+
+### Current pre-registered workflow and hyperparameters
+
+The current experiment supersedes the older structure-first and code-description-first
+workflows retained later in this report as ablations:
+
+1. Split every diff message into independent `(verb, noun/object)` semantic claims.
+2. Build and evaluate an AST-candidate queue for each claim, leaving ambiguous claims
+   unresolved rather than assigning the entire diff.
+3. Repeat across the corpus, then embed only the noun/object meanings while retaining
+   each point's verb, code label, message, diff, and provenance.
+4. Cluster the collected semantic objects, give every distinct cluster a unique noun,
+   and skip low-confidence or abstained meanings.
+5. Structurally validate every surviving cluster before registration or recursion.
+6. For a valid cluster, scope the embedding view to its members and cluster that view;
+   send every eligible child candidate through the same naming, confidence, and
+   structural-validation loop.
+
+Pilot defaults are versioned in
+`experiments/intent-algebra/semantic-first-hyperparameters.json`. Important recursion
+guards include a dynamic minimum cluster size of
+`min(50, max(8, ceil(0.01 × view size)))`, a parent-size floor of twice that minimum,
+maximum depth 5, child support no larger than 90% of the parent, cohesion gain at least
+0.03, cosine silhouette at least 0.10, and mean adjusted Rand stability at least 0.70
+across twenty 80% subsamples. Recursion also stops when all produced children fail later
+semantic-confidence or structural-validity gates, or when a repeated membership set
+would create a cycle. Thus the absence of child candidates is not the only stopping
+condition, and singleton terms are never generated.
+
+Semantic confidence accepts medium or high winners and skips low-confidence or abstained
+clusters. Structural registration retains the proposal's strict support and compression
+requirements: at least 100 patch-distinct commits, 50 independent repository families,
+0.60 member coverage, 0.90 rule precision, 1.20× MDL compression, complete identifier-
+permutation retention, and at least 0.95 unrelated-mutation rejection. All numerical
+choices may be tuned on repository-disjoint validation data only and are frozen before
+the final test evaluation.
 
 ### End-to-end approach
 
