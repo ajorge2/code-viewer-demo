@@ -117,14 +117,18 @@
      `add` then `not-add`, while a removal verb yields `remove` then `not-remove`. If the
      verb is neutral or unclear, skip operation bucketing entirely and begin with the
      structural ordering.
-  3. Give directly edited AST nodes structural tier 1.
-  4. Give the overall LCA of the retained edit nodes structural tier 2.
-  5. Give every distinct LCA produced by non-singleton proper subsets of the edit nodes
+  3. When exactly one AST node is edited, queue that edited node first and then walk its
+     ancestor chain upward one node at a time through its parent, grandparent, and so on,
+     ending at the file root. The file root is therefore the last candidate if evaluation
+     reaches it.
+  4. When multiple AST nodes are edited, give directly edited AST nodes structural tier 1.
+  5. Give the overall LCA of the retained edit nodes structural tier 2.
+  6. Give every distinct LCA produced by non-singleton proper subsets of the edit nodes
      structural tier 3, deduplicating subsets that resolve to the same AST node.
-  6. Give the remaining meaningful nodes on the paths from the overall LCA down toward
+  7. Give the remaining meaningful nodes on the paths from the overall LCA down toward
      the edited nodes structural tier 4, traversed breadth-first in the downward
      direction.
-  7. When operation buckets are active, sort by operation bucket first and structural
+  8. When operation buckets are active, sort by operation bucket first and structural
      tier inside each bucket. When buckets are inactive, sort directly by structural
      tier.
 - Within equal queue positions, use stable source order as the deterministic tiebreaker.
@@ -133,9 +137,6 @@
   subset LCA, or a path node, keep one queue entry at its highest-priority position and
   attach every generation path as provenance. A node may never be evaluated twice for
   the same semantic object.
-- When only one AST node is edited, the LCA is that same node, so the current queue logic
-  has no reason to try an enclosing body, function, class, or module. We still need to
-  decide which of those enclosing scopes should be tried and in what order.
 - Queue priority controls evaluation order, not truth. Preserve competing candidates
   until alignment evidence clearly separates them, and leave a semantic object
   unresolved when the evidence is insufficient.
@@ -153,7 +154,7 @@ flowchart TB
     F --> G[Parse before and after code into ASTs]
     G --> H["Locate raw edited AST nodes and store immutable intrinsic operations:<br/>insert = add, delete = remove, update or move = neutral"]
     H --> I[Create one independent candidate queue for this verb + noun/object pair]
-    I --> J["Generate single-node or single-subtree candidates only:<br/>tier 1 = direct edit nodes<br/>tier 2 = overall LCA<br/>tier 3 = unique subset LCAs<br/>tier 4 = remaining LCA-to-edit path nodes in downward BFS"]
+    I --> J["Generate single-node or single-subtree candidates only:<br/>one edit = edited node, then each ancestor upward to the file root<br/>multiple edits = direct edits, overall LCA, subset LCAs, then remaining paths in downward BFS"]
     J --> K["Derive each candidate's queue-only sign from immutable operations:<br/>include the candidate itself if edited plus every edited descendant<br/>add if additions are at least half; remove if removals are over half; otherwise neutral<br/>never write this derived sign back"]
     K --> L{Does this pair's verb clearly specify add or remove?}
     L -- Yes --> M["Create exactly two buckets:<br/>matching queue sign first<br/>every nonmatching sign second"]
