@@ -133,9 +133,9 @@
   subset LCA, or a path node, keep one queue entry at its highest-priority position and
   attach every generation path as provenance. A node may never be evaluated twice for
   the same semantic object.
-- The single-edit case needs an explicit upper boundary because its LCA is the edit node
-  itself and therefore produces no ancestor path. Preserve this as an open design edge
-  case so meaningful enclosing candidates such as a body are not accidentally omitted.
+- When only one AST node is edited, the LCA is that same node, so the current queue logic
+  has no reason to try an enclosing body, function, class, or module. We still need to
+  decide which of those enclosing scopes should be tried and in what order.
 - Queue priority controls evaluation order, not truth. Preserve competing candidates
   until alignment evidence clearly separates them, and leave a semantic object
   unresolved when the evidence is insufficient.
@@ -188,5 +188,5 @@ flowchart TB
     AH --> AJ[Connect broader, narrower, overlapping, and set-difference terms]
     AJ --> AK[Evaluate taxonomy coverage on held-out repositories]
 
-    AL["Rules carried throughout:<br/>mixed add/remove diffs remain eligible<br/>one queue per semantic object<br/>no semantic clustering before code labels exist<br/>single-edit upper boundary remains open"] -.-> I
+    AL["Key constraints:<br/>mixed add/remove diffs remain eligible<br/>one queue per semantic object"] -.-> I
 ```
