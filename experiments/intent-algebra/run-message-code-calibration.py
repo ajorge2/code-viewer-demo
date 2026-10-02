@@ -40,6 +40,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--alignment-workers", type=int, default=6)
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--prepared-input", type=Path)
+    parser.add_argument("--stop-after-claims", action="store_true")
     parser.add_argument("--offline", action="store_true")
     return parser.parse_args()
 
@@ -476,6 +477,32 @@ def main() -> None:
             claims.extend(batch_claims)
             if index % 10 == 0 or index == len(claim_batches):
                 print(f"Extracted claims from {index}/{len(claim_batches)} batches", flush=True)
+
+    claims_checkpoint = args.work_root / "extracted-claims.jsonl"
+    claims_checkpoint.write_text(
+        "".join(f"{json.dumps(row, ensure_ascii=False, sort_keys=True)}\n" for row in claims),
+        encoding="utf-8",
+    )
+    cached_responses = list(cache.cache["responses"].values())
+    claim_summary = {
+        "schema_version": "claim-extraction-checkpoint/v1",
+        "records": len(records),
+        "claim_batches": len(claim_batches),
+        "covered_records": len({row["record_id"] for row in claims}),
+        "claims": len(claims),
+        "semantic_claims": sum(row["claim_kind"] == "semantic_claim" for row in claims),
+        "message_abstentions": sum(row["claim_kind"] == "abstention" for row in claims),
+        "cached_api_responses": len(cached_responses),
+        "cached_input_tokens": sum(int(row.get("input_tokens", 0)) for row in cached_responses),
+        "cached_output_tokens": sum(int(row.get("output_tokens", 0)) for row in cached_responses),
+        "alignment_started": False,
+    }
+    (args.work_root / "claim-extraction-summary.json").write_text(
+        json.dumps(claim_summary, indent=2) + "\n", encoding="utf-8"
+    )
+    if args.stop_after_claims:
+        print(json.dumps(claim_summary, indent=2))
+        return
 
     records_by_id = {row["record_id"]: row for row in records}
     all_candidates: list[dict[str, Any]] = []
