@@ -1,8 +1,8 @@
 # CodeArchitect — Engineering Reference
 
-**[Live product](https://site--codearchitect--74wvcb9qzxr6.code.run/)** · **[Analysis & evidence](https://ajorge2.github.io/code-viewer-demo/)** · **[Context benchmark](docs/evidence/context-benchmark.html)**
+**[Live product](https://site--codearchitect--74wvcb9qzxr6.code.run/)** · **[Analysis](https://ajorge2.github.io/code-viewer-demo/)** · **[Evidence notebook](https://colab.research.google.com/drive/1fZfmiOZ7l35AeVMJTw1TlXOyQFkWI0gQ?usp=sharing)** · **[Context benchmark](docs/evidence/context-benchmark.html)**
 
-The combined analysis-and-evidence page connects concept discovery, recursive clustering, structural grounding, repository-disjoint evaluation, blinded human review, the threshold decision, and the context-latency benchmark. The product demo and evaluation remain separate: one shows the interaction model; the other shows how the underlying claims were derived and checked.
+The analysis page connects concept discovery, recursive clustering, structural grounding, repository-disjoint evaluation, blinded human review, the threshold decision, and the context-latency benchmark. The evidence notebook retains the full experimental workflow, plots, prediction-level audit, and reproducibility checks.
 
 > Point it at a codebase; it parses every file into a structural box tree, lets you
 > "zoom" that tree with a slider or a highlight, and answers questions about any
