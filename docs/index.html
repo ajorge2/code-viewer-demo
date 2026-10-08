@@ -30,12 +30,15 @@
     <a class="artifact" href="evidence/human-review.csv">Human labels <span>The completed blinded adjudication rows used by the analyzer.</span></a>
     <a class="artifact" href="evidence/manifest.json">Evidence manifest <span>Source digest and construction metadata for the review packet.</span></a>
     <a class="artifact" href="https://colab.research.google.com/drive/1fZfmiOZ7l35AeVMJTw1TlXOyQFkWI0gQ?usp=sharing">Research notebook <span>The broader taxonomy and repository-disjoint evaluation analysis.</span></a>
+    <a class="artifact" href="evidence/context-benchmark.html">Context benchmark reconstruction <span>The recovered raw result, exact calculation, corrected claim, and limitations.</span></a>
+    <a class="artifact" href="https://github.com/ajorge2/code-viewer-demo/tree/main/benchmark-results">Raw latency artifacts <span>The original JSON and Markdown output plus a plain-language interpretation.</span></a>
   </div></section>
   <section><h2>Claim ledger</h2><table><thead><tr><th>Claim</th><th>Public evidence</th><th>Status</th></tr></thead><tbody>
     <tr><td>Threshold no-ship decision</td><td>Pre-registration + blinded labels + machine result</td><td class="pass">Verified</td></tr>
     <tr><td>151 held-out components / 132 unseen repository families</td><td>Frozen population and decision report</td><td class="pass">Verified</td></tr>
-    <tr><td>61% context-preparation latency reduction</td><td>No raw benchmark artifact published here</td><td style="color:var(--amber);font-weight:800">Historical; not evidenced here</td></tr>
-    <tr><td>80% summarization-cost reduction</td><td>No raw benchmark artifact published here</td><td style="color:var(--amber);font-weight:800">Historical; not evidenced here</td></tr>
+    <tr><td>61% context-preparation latency reduction</td><td>Dated raw JSON + runner + three fixed questions</td><td style="color:var(--amber);font-weight:800">Reconstructed; limited self-benchmark</td></tr>
+    <tr><td>80% summarization-cost reduction</td><td>Not supported: v1 recorded calls, not tokens or dollars</td><td class="fail">Withdrawn</td></tr>
+    <tr><td>81.9% fewer request-path model calls</td><td>72 → 13 p50, with a separate 59-call background prewarm</td><td style="color:var(--amber);font-weight:800">Verified mechanism; not total cost</td></tr>
   </tbody></table></section>
   <p class="note"><strong>Limitations.</strong> The human adjudication is new, but the holdout and earlier model judgments had already informed development. The evaluation measures precision among accepted predictions on repository-disjoint components—not recall across every software concept, end-user comprehension, or downstream product outcomes.</p>
 </main></body></html>

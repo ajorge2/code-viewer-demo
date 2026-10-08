@@ -1,0 +1,29 @@
+{
+  "trials": 1,
+  "repositories": [
+    {
+      "name": "CodeArchitect",
+      "path": "..",
+      "questions": [
+        {
+          "id": "meaning-cache",
+          "file": "server/llm/cache.js",
+          "find": "export function cacheGet",
+          "question": "How does this cache avoid recomputing unchanged code summaries?"
+        },
+        {
+          "id": "warm-pass",
+          "file": "server/llm/meaning.js",
+          "find": "export async function warmProjectBares",
+          "question": "What work does the background warm pass complete before a user asks a question?"
+        },
+        {
+          "id": "context-selection",
+          "file": "server/llm/meaning.js",
+          "find": "async function frontierPeersMeaning",
+          "question": "How does this function choose and reuse the surrounding context for a selected code unit?"
+        }
+      ]
+    }
+  ]
+}

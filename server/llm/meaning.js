@@ -23,6 +23,7 @@ import {
 import { getProjectTree, folderChainTo, folderChainToDir } from '../ingest/projectTree.js';
 import { assignCoverage } from '../ingest/frontier.js';
 import { cacheGet, cacheSet } from './cache.js';
+import { measureTelemetry, recordModelCall, recordModelUsage } from '../benchmark/telemetry.js';
 
 // bare → Haiku (many cheap summaries, incl. the whole-project eager pass).
 // folds / classify / answer keep the smarter default. All env-overridable.
@@ -62,10 +63,20 @@ function clip(s) {
 const CONCURRENCY = 8;
 let activeSlots = 0;
 const slotQueue = [];
-async function withSlot(fn) {
-  if (activeSlots >= CONCURRENCY) await new Promise((r) => slotQueue.push(r));
+async function withSlot(fn, { phase = 'unknown', model = 'unknown' } = {}) {
+  if (activeSlots >= CONCURRENCY) {
+    await measureTelemetry('model_slot_wait', () => new Promise((r) => slotQueue.push(r)));
+  }
   activeSlots += 1;
-  try { return await fn(); } finally { activeSlots -= 1; slotQueue.shift()?.(); }
+  recordModelCall(phase, model);
+  try {
+    const result = await measureTelemetry(`model.${phase}`, fn);
+    recordModelUsage(phase, model, result?.usage);
+    return result;
+  } finally {
+    activeSlots -= 1;
+    slotQueue.shift()?.();
+  }
 }
 
 // Persistent memo (see cache.js). Key namespaces:
@@ -176,7 +187,7 @@ async function classifyIntent(transcript, message) {
     ...effortCfg(MEANING_MODEL, 'low'),
     system: [{ type: 'text', text: CLASSIFY_SYSTEM, cache_control: { type: 'ephemeral' } }],
     messages: [{ role: 'user', content: `Conversation:\n${convo}\n\nNewest message: "${message}"\n\nOne word: deepen or new.` }],
-  }));
+  }), { phase: 'classify', model: MEANING_MODEL });
   return textOf(msg).toLowerCase().includes('deepen') ? 'deepen' : 'new';
 }
 
@@ -209,7 +220,7 @@ async function computeBare(key, label, body, meta) {
       ...effortCfg(BARE_MODEL, 'low'),
       system: [{ type: 'text', text: meta.system, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: body }],
-    })));
+    }), { phase: 'bare_summary', model: BARE_MODEL }));
     cacheSet(key, out, { fileHash: meta.fileHash, kind: meta.kind });
     return out;
   })();
@@ -259,7 +270,7 @@ async function foldWindows(headline, parts) {
     ...effortCfg(BARE_MODEL, 'low'),
     system: [{ type: 'text', text: BARE_COMBINE_SYSTEM, cache_control: { type: 'ephemeral' } }],
     messages: [{ role: 'user', content: `Summaries of consecutive parts of ${headline}, in order:\n${listing}\n\nGive one unified 1-3 sentence summary of the whole.` }],
-  }));
+  }), { phase: 'bare_combine', model: BARE_MODEL });
   return textOf(msg);
 }
 
@@ -307,7 +318,7 @@ async function foldMeaning(node, bare, outer) {
         + 'Explain what this unit is, keeping its own isolated meaning as the core and '
         + 'using the surrounding scope only to lightly situate it.',
     }],
-  }));
+  }), { phase: 'context_fold', model: MEANING_MODEL });
   return textOf(msg);
 }
 
@@ -377,7 +388,7 @@ export async function warmProjectBares(files, windowChars = DEFAULT_BARE_WINDOW)
     const childBares = await Promise.all(node.children.map(warm));
     return bareFolder(node, childBares);
   };
-  await warm(tree.root);
+  await measureTelemetry('warm_project_bares', () => warm(tree.root));
 }
 
 // The cache-invalidation set for a project: every fileHash (`f`) under which any of
@@ -449,6 +460,17 @@ async function contextualizedMeaning(nodes, id, text, ctxNS, rootContext, window
 // session, keyed by ctxNS so a file edit (new ctxNS) self-invalidates them.
 const fileMarks = new Map(); // ctxNS -> Set<nodeId>
 
+// Keep benchmark observations independent: previous questions must not refine a
+// later observation's frontier. Guarded so product code cannot clear sessions.
+export function resetMeaningSessionForBenchmark() {
+  if (process.env.CODEARCHITECT_BENCHMARK !== '1') {
+    throw new Error('Benchmark session reset requires CODEARCHITECT_BENCHMARK=1.');
+  }
+  fileMarks.clear();
+  barePending.clear();
+  ctxPending.clear();
+}
+
 // ctxNS = hash(folderChain · fileContent): a file's FULL upward context. Factored
 // out so the marks store, ask(), suggestEdits() and the /frontier endpoint agree.
 export function ctxNSForFile(file, tree) {
@@ -497,7 +519,7 @@ async function foldPeers(node, selfBare, peerBares, rootContext) {
         + 'Explain what this unit is, keeping its own isolated meaning as the core and '
         + 'using the other regions only to place it within the file.',
     }],
-  }));
+  }), { phase: 'frontier_fold', model: MEANING_MODEL });
   return textOf(msg);
 }
 
@@ -638,7 +660,10 @@ export async function ask({ file, nodeId, question, depth = 0, intent = 'infer',
   // eager folder bares, passed as low-weight background. ctxNS keys this file's
   // marks + peer-ctx by its FULL upward context (folders + file content).
   const ctxNS = ctxNSForFile(file);
-  const rootContext = await folderContext(file.relPath); // null if no tree / not warm
+  const rootContext = await measureTelemetry(
+    'folder_context',
+    () => folderContext(file.relPath),
+  ); // null if no tree / not warm
 
   // Effective depth: explicit button ratchets down; a typed message deepens only
   // if it reads as dissatisfaction, else snaps back to true (0).
@@ -650,7 +675,10 @@ export async function ask({ file, nodeId, question, depth = 0, intent = 'infer',
     effDepth = cls === 'deepen' ? Math.min(depth + 1, maxDepth) : 0;
   }
 
-  const meaning = await frontierPeersMeaning(nodes, idx, nodeId, ctxNS, text, rootContext, { record: true }, bareWindow);
+  const meaning = await measureTelemetry(
+    'context_preparation',
+    () => frontierPeersMeaning(nodes, idx, nodeId, ctxNS, text, rootContext, { record: true }, bareWindow),
+  );
   const path = semanticPath(nodes, nodeId);
   const snippet = clip(text.slice(node.start, node.end));
   const drill = effDepth >= 1
@@ -690,7 +718,7 @@ export async function ask({ file, nodeId, question, depth = 0, intent = 'infer',
           : '')
         + `Question: ${question}`,
     }],
-  }));
+  }), { phase: 'answer', model: ANSWER_MODEL });
 
   return { answer: textOf(msg), meaning, path, depth: effDepth, atBottom: effDepth >= maxDepth, maxDepth };
 }
@@ -758,7 +786,7 @@ export async function suggestEdits({ file, nodeId, instruction = '', transcript 
           : '')
         + 'Return the full revised code for this unit, and nothing else.',
     }],
-  }));
+  }), { phase: 'edit', model: ANSWER_MODEL });
 
   return { code: stripFences(textOf(msg)), original: code, path };
 }
@@ -805,7 +833,7 @@ export async function askFolder({ dirPath = '', question, transcript = [], conte
           : '')
         + `Question: ${question}`,
     }],
-  }));
+  }), { phase: 'folder_answer', model: ANSWER_MODEL });
 
   return { answer: textOf(msg), summary, path };
 }

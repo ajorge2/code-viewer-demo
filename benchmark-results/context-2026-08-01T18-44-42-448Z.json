@@ -1,0 +1,1364 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-01T18:44:42.448Z",
+  "config": "benchmarks/context.example.json",
+  "trials": 1,
+  "environment": {
+    "node": "v23.7.0",
+    "platform": "darwin 25.5.0 arm64",
+    "cpu": "Apple M2",
+    "logicalCpus": 8,
+    "totalMemoryBytes": 17179869184,
+    "code": {
+      "commit": "afc99fe19d1fa9a83d3ac8e4e468979bc3cec6b1",
+      "dirty": true
+    },
+    "modelCallConcurrency": 8,
+    "bareWindowChars": 48000,
+    "models": {
+      "bare": "claude-haiku-4-5",
+      "meaning": "claude-opus-4-8",
+      "answer": "claude-opus-4-8"
+    },
+    "cacheStateDefinitions": {
+      "cold": "Empty isolated meaning cache; the full warm pass is paid synchronously inside the measured operation so answer context matches the prewarmed state.",
+      "prewarmed": "Empty isolated meaning cache followed by completed warmProjectBares.",
+      "repeat": "Same selection and question immediately repeated after the prewarmed ask."
+    }
+  },
+  "repositories": [
+    {
+      "name": "CodeArchitect",
+      "path": ".",
+      "files": 36,
+      "lines": 9726,
+      "bytes": 455955,
+      "questions": 3,
+      "scan": {
+        "count": 36,
+        "skipped": 0,
+        "totalBytes": 455955,
+        "truncatedByCount": false,
+        "truncatedByBytes": false
+      }
+    }
+  ],
+  "summary": {
+    "states": {
+      "cold": {
+        "observations": 3,
+        "totalMs": {
+          "p50": 39083.333,
+          "p95": 41223.652
+        },
+        "contextPreparationMs": {
+          "p50": 33223.19,
+          "p95": 35505.235
+        },
+        "cacheHits": {
+          "p50": 3
+        },
+        "cacheMisses": {
+          "p50": 72
+        },
+        "modelCalls": {
+          "p50": 72
+        }
+      },
+      "prewarmed": {
+        "observations": 3,
+        "totalMs": {
+          "p50": 18802.391,
+          "p95": 20182.162
+        },
+        "contextPreparationMs": {
+          "p50": 12865.299,
+          "p95": 13417.265
+        },
+        "cacheHits": {
+          "p50": 3
+        },
+        "cacheMisses": {
+          "p50": 13
+        },
+        "modelCalls": {
+          "p50": 13
+        }
+      },
+      "repeat": {
+        "observations": 3,
+        "totalMs": {
+          "p50": 6280.933,
+          "p95": 7228.482
+        },
+        "contextPreparationMs": {
+          "p50": 0.81,
+          "p95": 0.834
+        },
+        "cacheHits": {
+          "p50": 4
+        },
+        "cacheMisses": {
+          "p50": 0
+        },
+        "modelCalls": {
+          "p50": 1
+        }
+      }
+    },
+    "contextPreparationReductionPct": {
+      "coldToPrewarmed": 61.276,
+      "prewarmedToRepeat": 99.994
+    }
+  },
+  "records": [
+    {
+      "repository": "CodeArchitect",
+      "question": "meaning-cache",
+      "state": "cold",
+      "trial": 1,
+      "metrics": {
+        "totalMs": 41461.465,
+        "warmProjectMs": 21233.168,
+        "folderContextMs": 9606.208,
+        "frontierContextMs": 4919.42,
+        "contextPreparationMs": 35758.796,
+        "answerModelMs": 5690.095,
+        "cacheHits": 3,
+        "cacheMisses": 70,
+        "cacheSets": 70,
+        "modelCalls": 70,
+        "modelCallsByPhase": {
+          "bare_summary": 63,
+          "bare_combine": 3,
+          "context_fold": 2,
+          "frontier_fold": 1,
+          "answer": 1
+        }
+      },
+      "telemetry": {
+        "label": "cold_full_context_ask",
+        "metadata": {
+          "repository": "CodeArchitect",
+          "question": "meaning-cache",
+          "state": "cold",
+          "trial": 1
+        },
+        "durationMs": 41461.465,
+        "timings": {
+          "model.bare_summary": {
+            "count": 63,
+            "totalMs": 124387.606,
+            "minMs": 803.563,
+            "maxMs": 7905.527
+          },
+          "model_slot_wait": {
+            "count": 46,
+            "totalMs": 242744.433,
+            "minMs": 1106.732,
+            "maxMs": 10010.939
+          },
+          "model.bare_combine": {
+            "count": 3,
+            "totalMs": 5315.697,
+            "minMs": 1290.646,
+            "maxMs": 2098.752
+          },
+          "warm_project_bares": {
+            "count": 1,
+            "totalMs": 21233.168,
+            "minMs": 21233.168,
+            "maxMs": 21233.168
+          },
+          "model.context_fold": {
+            "count": 2,
+            "totalMs": 9604.484,
+            "minMs": 3145.811,
+            "maxMs": 6458.673
+          },
+          "folder_context": {
+            "count": 1,
+            "totalMs": 9606.208,
+            "minMs": 9606.208,
+            "maxMs": 9606.208
+          },
+          "model.frontier_fold": {
+            "count": 1,
+            "totalMs": 2560.362,
+            "minMs": 2560.362,
+            "maxMs": 2560.362
+          },
+          "context_preparation": {
+            "count": 1,
+            "totalMs": 4919.42,
+            "minMs": 4919.42,
+            "maxMs": 4919.42
+          },
+          "model.answer": {
+            "count": 1,
+            "totalMs": 5690.095,
+            "minMs": 5690.095,
+            "maxMs": 5690.095
+          }
+        },
+        "cache": {
+          "hits": 3,
+          "misses": 70,
+          "sets": 70,
+          "byKind": {
+            "bare": {
+              "hits": 0,
+              "misses": 66,
+              "sets": 43
+            },
+            "barewindow": {
+              "hits": 0,
+              "misses": 0,
+              "sets": 9
+            },
+            "folderbare": {
+              "hits": 3,
+              "misses": 0,
+              "sets": 14
+            },
+            "dirctx": {
+              "hits": 0,
+              "misses": 3,
+              "sets": 3
+            },
+            "ctxpeers": {
+              "hits": 0,
+              "misses": 1,
+              "sets": 1
+            }
+          }
+        },
+        "models": {
+          "calls": 70,
+          "byPhase": {
+            "bare_summary": 63,
+            "bare_combine": 3,
+            "context_fold": 2,
+            "frontier_fold": 1,
+            "answer": 1
+          },
+          "byModel": {
+            "claude-haiku-4-5": 66,
+            "claude-opus-4-8": 4
+          }
+        }
+      }
+    },
+    {
+      "repository": "CodeArchitect",
+      "question": "meaning-cache",
+      "state": "prewarmed",
+      "trial": 1,
+      "metrics": {
+        "totalMs": 18802.391,
+        "warmProjectMs": 0,
+        "folderContextMs": 7233.93,
+        "frontierContextMs": 5631.369,
+        "contextPreparationMs": 12865.298999999999,
+        "answerModelMs": 5924.757,
+        "cacheHits": 3,
+        "cacheMisses": 11,
+        "cacheSets": 11,
+        "modelCalls": 11,
+        "modelCallsByPhase": {
+          "context_fold": 2,
+          "bare_summary": 7,
+          "frontier_fold": 1,
+          "answer": 1
+        }
+      },
+      "telemetry": {
+        "label": "ask",
+        "metadata": {
+          "repository": "CodeArchitect",
+          "question": "meaning-cache",
+          "state": "prewarmed",
+          "trial": 1
+        },
+        "durationMs": 18802.391,
+        "timings": {
+          "model.context_fold": {
+            "count": 2,
+            "totalMs": 7231.939,
+            "minMs": 2731.535,
+            "maxMs": 4500.404
+          },
+          "folder_context": {
+            "count": 1,
+            "totalMs": 7233.93,
+            "minMs": 7233.93,
+            "maxMs": 7233.93
+          },
+          "model.bare_summary": {
+            "count": 7,
+            "totalMs": 10050.207,
+            "minMs": 1130.587,
+            "maxMs": 1955.595
+          },
+          "model.frontier_fold": {
+            "count": 1,
+            "totalMs": 3674.005,
+            "minMs": 3674.005,
+            "maxMs": 3674.005
+          },
+          "context_preparation": {
+            "count": 1,
+            "totalMs": 5631.369,
+            "minMs": 5631.369,
+            "maxMs": 5631.369
+          },
+          "model.answer": {
+            "count": 1,
+            "totalMs": 5924.757,
+            "minMs": 5924.757,
+            "maxMs": 5924.757
+          }
+        },
+        "cache": {
+          "hits": 3,
+          "misses": 11,
+          "sets": 11,
+          "byKind": {
+            "dirctx": {
+              "hits": 0,
+              "misses": 3,
+              "sets": 3
+            },
+            "folderbare": {
+              "hits": 3,
+              "misses": 0,
+              "sets": 0
+            },
+            "ctxpeers": {
+              "hits": 0,
+              "misses": 1,
+              "sets": 1
+            },
+            "bare": {
+              "hits": 0,
+              "misses": 7,
+              "sets": 7
+            }
+          }
+        },
+        "models": {
+          "calls": 11,
+          "byPhase": {
+            "context_fold": 2,
+            "bare_summary": 7,
+            "frontier_fold": 1,
+            "answer": 1
+          },
+          "byModel": {
+            "claude-opus-4-8": 4,
+            "claude-haiku-4-5": 7
+          }
+        }
+      },
+      "warm": {
+        "metrics": {
+          "totalMs": 18391.501,
+          "warmProjectMs": 18390.904,
+          "folderContextMs": 0,
+          "frontierContextMs": 0,
+          "contextPreparationMs": 18390.904,
+          "answerModelMs": 0,
+          "cacheHits": 0,
+          "cacheMisses": 59,
+          "cacheSets": 59,
+          "modelCalls": 59,
+          "modelCallsByPhase": {
+            "bare_summary": 56,
+            "bare_combine": 3
+          }
+        },
+        "telemetry": {
+          "label": "warm",
+          "metadata": {
+            "repository": "CodeArchitect",
+            "question": "meaning-cache",
+            "state": "prewarmed",
+            "trial": 1
+          },
+          "durationMs": 18391.501,
+          "timings": {
+            "model.bare_summary": {
+              "count": 56,
+              "totalMs": 98922.851,
+              "minMs": 877.516,
+              "maxMs": 4280.558
+            },
+            "model_slot_wait": {
+              "count": 47,
+              "totalMs": 210790.15,
+              "minMs": 1.541,
+              "maxMs": 8913.444
+            },
+            "model.bare_combine": {
+              "count": 3,
+              "totalMs": 5538.057,
+              "minMs": 1542.912,
+              "maxMs": 2061.481
+            },
+            "warm_project_bares": {
+              "count": 1,
+              "totalMs": 18390.904,
+              "minMs": 18390.904,
+              "maxMs": 18390.904
+            }
+          },
+          "cache": {
+            "hits": 0,
+            "misses": 59,
+            "sets": 59,
+            "byKind": {
+              "bare": {
+                "hits": 0,
+                "misses": 59,
+                "sets": 36
+              },
+              "barewindow": {
+                "hits": 0,
+                "misses": 0,
+                "sets": 9
+              },
+              "folderbare": {
+                "hits": 0,
+                "misses": 0,
+                "sets": 14
+              }
+            }
+          },
+          "models": {
+            "calls": 59,
+            "byPhase": {
+              "bare_summary": 56,
+              "bare_combine": 3
+            },
+            "byModel": {
+              "claude-haiku-4-5": 59
+            }
+          }
+        }
+      }
+    },
+    {
+      "repository": "CodeArchitect",
+      "question": "meaning-cache",
+      "state": "repeat",
+      "trial": 1,
+      "metrics": {
+        "totalMs": 6280.933,
+        "warmProjectMs": 0,
+        "folderContextMs": 0.154,
+        "frontierContextMs": 0.13,
+        "contextPreparationMs": 0.28400000000000003,
+        "answerModelMs": 6272.417,
+        "cacheHits": 4,
+        "cacheMisses": 0,
+        "cacheSets": 0,
+        "modelCalls": 1,
+        "modelCallsByPhase": {
+          "answer": 1
+        }
+      },
+      "telemetry": {
+        "label": "ask",
+        "metadata": {
+          "repository": "CodeArchitect",
+          "question": "meaning-cache",
+          "state": "repeat",
+          "trial": 1
+        },
+        "durationMs": 6280.933,
+        "timings": {
+          "folder_context": {
+            "count": 1,
+            "totalMs": 0.154,
+            "minMs": 0.154,
+            "maxMs": 0.154
+          },
+          "context_preparation": {
+            "count": 1,
+            "totalMs": 0.13,
+            "minMs": 0.13,
+            "maxMs": 0.13
+          },
+          "model.answer": {
+            "count": 1,
+            "totalMs": 6272.417,
+            "minMs": 6272.417,
+            "maxMs": 6272.417
+          }
+        },
+        "cache": {
+          "hits": 4,
+          "misses": 0,
+          "sets": 0,
+          "byKind": {
+            "dirctx": {
+              "hits": 3,
+              "misses": 0,
+              "sets": 0
+            },
+            "ctxpeers": {
+              "hits": 1,
+              "misses": 0,
+              "sets": 0
+            }
+          }
+        },
+        "models": {
+          "calls": 1,
+          "byPhase": {
+            "answer": 1
+          },
+          "byModel": {
+            "claude-opus-4-8": 1
+          }
+        }
+      }
+    },
+    {
+      "repository": "CodeArchitect",
+      "question": "warm-pass",
+      "state": "cold",
+      "trial": 1,
+      "metrics": {
+        "totalMs": 37752.588,
+        "warmProjectMs": 19027.627,
+        "folderContextMs": 7128.836,
+        "frontierContextMs": 7066.727,
+        "contextPreparationMs": 33223.19,
+        "answerModelMs": 4283.208,
+        "cacheHits": 3,
+        "cacheMisses": 72,
+        "cacheSets": 72,
+        "modelCalls": 72,
+        "modelCallsByPhase": {
+          "bare_summary": 65,
+          "bare_combine": 3,
+          "context_fold": 2,
+          "frontier_fold": 1,
+          "answer": 1
+        }
+      },
+      "telemetry": {
+        "label": "cold_full_context_ask",
+        "metadata": {
+          "repository": "CodeArchitect",
+          "question": "warm-pass",
+          "state": "cold",
+          "trial": 1
+        },
+        "durationMs": 37752.588,
+        "timings": {
+          "model.bare_summary": {
+            "count": 65,
+            "totalMs": 118991.461,
+            "minMs": 791.285,
+            "maxMs": 3487.088
+          },
+          "model_slot_wait": {
+            "count": 48,
+            "totalMs": 213862.305,
+            "minMs": 76.033,
+            "maxMs": 9091.889
+          },
+          "model.bare_combine": {
+            "count": 3,
+            "totalMs": 4189.202,
+            "minMs": 1261.689,
+            "maxMs": 1574.17
+          },
+          "warm_project_bares": {
+            "count": 1,
+            "totalMs": 19027.627,
+            "minMs": 19027.627,
+            "maxMs": 19027.627
+          },
+          "model.context_fold": {
+            "count": 2,
+            "totalMs": 7127.152,
+            "minMs": 3133.445,
+            "maxMs": 3993.707
+          },
+          "folder_context": {
+            "count": 1,
+            "totalMs": 7128.836,
+            "minMs": 7128.836,
+            "maxMs": 7128.836
+          },
+          "model.frontier_fold": {
+            "count": 1,
+            "totalMs": 3172.277,
+            "minMs": 3172.277,
+            "maxMs": 3172.277
+          },
+          "context_preparation": {
+            "count": 1,
+            "totalMs": 7066.727,
+            "minMs": 7066.727,
+            "maxMs": 7066.727
+          },
+          "model.answer": {
+            "count": 1,
+            "totalMs": 4283.208,
+            "minMs": 4283.208,
+            "maxMs": 4283.208
+          }
+        },
+        "cache": {
+          "hits": 3,
+          "misses": 72,
+          "sets": 72,
+          "byKind": {
+            "bare": {
+              "hits": 0,
+              "misses": 68,
+              "sets": 45
+            },
+            "barewindow": {
+              "hits": 0,
+              "misses": 0,
+              "sets": 9
+            },
+            "folderbare": {
+              "hits": 3,
+              "misses": 0,
+              "sets": 14
+            },
+            "dirctx": {
+              "hits": 0,
+              "misses": 3,
+              "sets": 3
+            },
+            "ctxpeers": {
+              "hits": 0,
+              "misses": 1,
+              "sets": 1
+            }
+          }
+        },
+        "models": {
+          "calls": 72,
+          "byPhase": {
+            "bare_summary": 65,
+            "bare_combine": 3,
+            "context_fold": 2,
+            "frontier_fold": 1,
+            "answer": 1
+          },
+          "byModel": {
+            "claude-haiku-4-5": 68,
+            "claude-opus-4-8": 4
+          }
+        }
+      }
+    },
+    {
+      "repository": "CodeArchitect",
+      "question": "warm-pass",
+      "state": "prewarmed",
+      "trial": 1,
+      "metrics": {
+        "totalMs": 17720.546,
+        "warmProjectMs": 0,
+        "folderContextMs": 6634.9,
+        "frontierContextMs": 6182.332,
+        "contextPreparationMs": 12817.232,
+        "answerModelMs": 4799.381,
+        "cacheHits": 3,
+        "cacheMisses": 13,
+        "cacheSets": 13,
+        "modelCalls": 13,
+        "modelCallsByPhase": {
+          "context_fold": 2,
+          "bare_summary": 9,
+          "frontier_fold": 1,
+          "answer": 1
+        }
+      },
+      "telemetry": {
+        "label": "ask",
+        "metadata": {
+          "repository": "CodeArchitect",
+          "question": "warm-pass",
+          "state": "prewarmed",
+          "trial": 1
+        },
+        "durationMs": 17720.546,
+        "timings": {
+          "model.context_fold": {
+            "count": 2,
+            "totalMs": 6632.013,
+            "minMs": 3203.073,
+            "maxMs": 3428.94
+          },
+          "folder_context": {
+            "count": 1,
+            "totalMs": 6634.9,
+            "minMs": 6634.9,
+            "maxMs": 6634.9
+          },
+          "model.bare_summary": {
+            "count": 9,
+            "totalMs": 16577.704,
+            "minMs": 1080.252,
+            "maxMs": 2931.594
+          },
+          "model_slot_wait": {
+            "count": 1,
+            "totalMs": 1080.237,
+            "minMs": 1080.237,
+            "maxMs": 1080.237
+          },
+          "model.frontier_fold": {
+            "count": 1,
+            "totalMs": 3247.781,
+            "minMs": 3247.781,
+            "maxMs": 3247.781
+          },
+          "context_preparation": {
+            "count": 1,
+            "totalMs": 6182.332,
+            "minMs": 6182.332,
+            "maxMs": 6182.332
+          },
+          "model.answer": {
+            "count": 1,
+            "totalMs": 4799.381,
+            "minMs": 4799.381,
+            "maxMs": 4799.381
+          }
+        },
+        "cache": {
+          "hits": 3,
+          "misses": 13,
+          "sets": 13,
+          "byKind": {
+            "dirctx": {
+              "hits": 0,
+              "misses": 3,
+              "sets": 3
+            },
+            "folderbare": {
+              "hits": 3,
+              "misses": 0,
+              "sets": 0
+            },
+            "ctxpeers": {
+              "hits": 0,
+              "misses": 1,
+              "sets": 1
+            },
+            "bare": {
+              "hits": 0,
+              "misses": 9,
+              "sets": 9
+            }
+          }
+        },
+        "models": {
+          "calls": 13,
+          "byPhase": {
+            "context_fold": 2,
+            "bare_summary": 9,
+            "frontier_fold": 1,
+            "answer": 1
+          },
+          "byModel": {
+            "claude-opus-4-8": 4,
+            "claude-haiku-4-5": 9
+          }
+        }
+      },
+      "warm": {
+        "metrics": {
+          "totalMs": 19114.225,
+          "warmProjectMs": 19114.112,
+          "folderContextMs": 0,
+          "frontierContextMs": 0,
+          "contextPreparationMs": 19114.112,
+          "answerModelMs": 0,
+          "cacheHits": 0,
+          "cacheMisses": 59,
+          "cacheSets": 59,
+          "modelCalls": 59,
+          "modelCallsByPhase": {
+            "bare_summary": 56,
+            "bare_combine": 3
+          }
+        },
+        "telemetry": {
+          "label": "warm",
+          "metadata": {
+            "repository": "CodeArchitect",
+            "question": "warm-pass",
+            "state": "prewarmed",
+            "trial": 1
+          },
+          "durationMs": 19114.225,
+          "timings": {
+            "model.bare_summary": {
+              "count": 56,
+              "totalMs": 110893.785,
+              "minMs": 801.885,
+              "maxMs": 6174.217
+            },
+            "model_slot_wait": {
+              "count": 47,
+              "totalMs": 242892.966,
+              "minMs": 723.318,
+              "maxMs": 9386.745
+            },
+            "model.bare_combine": {
+              "count": 3,
+              "totalMs": 5702.539,
+              "minMs": 1524.847,
+              "maxMs": 2548.989
+            },
+            "warm_project_bares": {
+              "count": 1,
+              "totalMs": 19114.112,
+              "minMs": 19114.112,
+              "maxMs": 19114.112
+            }
+          },
+          "cache": {
+            "hits": 0,
+            "misses": 59,
+            "sets": 59,
+            "byKind": {
+              "bare": {
+                "hits": 0,
+                "misses": 59,
+                "sets": 36
+              },
+              "barewindow": {
+                "hits": 0,
+                "misses": 0,
+                "sets": 9
+              },
+              "folderbare": {
+                "hits": 0,
+                "misses": 0,
+                "sets": 14
+              }
+            }
+          },
+          "models": {
+            "calls": 59,
+            "byPhase": {
+              "bare_summary": 56,
+              "bare_combine": 3
+            },
+            "byModel": {
+              "claude-haiku-4-5": 59
+            }
+          }
+        }
+      }
+    },
+    {
+      "repository": "CodeArchitect",
+      "question": "warm-pass",
+      "state": "repeat",
+      "trial": 1,
+      "metrics": {
+        "totalMs": 5323.06,
+        "warmProjectMs": 0,
+        "folderContextMs": 0.016,
+        "frontierContextMs": 0.794,
+        "contextPreparationMs": 0.81,
+        "answerModelMs": 5217.186,
+        "cacheHits": 4,
+        "cacheMisses": 0,
+        "cacheSets": 0,
+        "modelCalls": 1,
+        "modelCallsByPhase": {
+          "answer": 1
+        }
+      },
+      "telemetry": {
+        "label": "ask",
+        "metadata": {
+          "repository": "CodeArchitect",
+          "question": "warm-pass",
+          "state": "repeat",
+          "trial": 1
+        },
+        "durationMs": 5323.06,
+        "timings": {
+          "folder_context": {
+            "count": 1,
+            "totalMs": 0.016,
+            "minMs": 0.016,
+            "maxMs": 0.016
+          },
+          "context_preparation": {
+            "count": 1,
+            "totalMs": 0.794,
+            "minMs": 0.794,
+            "maxMs": 0.794
+          },
+          "model.answer": {
+            "count": 1,
+            "totalMs": 5217.186,
+            "minMs": 5217.186,
+            "maxMs": 5217.186
+          }
+        },
+        "cache": {
+          "hits": 4,
+          "misses": 0,
+          "sets": 0,
+          "byKind": {
+            "dirctx": {
+              "hits": 3,
+              "misses": 0,
+              "sets": 0
+            },
+            "ctxpeers": {
+              "hits": 1,
+              "misses": 0,
+              "sets": 0
+            }
+          }
+        },
+        "models": {
+          "calls": 1,
+          "byPhase": {
+            "answer": 1
+          },
+          "byModel": {
+            "claude-opus-4-8": 1
+          }
+        }
+      }
+    },
+    {
+      "repository": "CodeArchitect",
+      "question": "context-selection",
+      "state": "cold",
+      "trial": 1,
+      "metrics": {
+        "totalMs": 39083.333,
+        "warmProjectMs": 18597.131,
+        "folderContextMs": 6430.292,
+        "frontierContextMs": 7368.505,
+        "contextPreparationMs": 32395.928000000004,
+        "answerModelMs": 6582.745,
+        "cacheHits": 3,
+        "cacheMisses": 72,
+        "cacheSets": 72,
+        "modelCalls": 72,
+        "modelCallsByPhase": {
+          "bare_summary": 65,
+          "bare_combine": 3,
+          "context_fold": 2,
+          "frontier_fold": 1,
+          "answer": 1
+        }
+      },
+      "telemetry": {
+        "label": "cold_full_context_ask",
+        "metadata": {
+          "repository": "CodeArchitect",
+          "question": "context-selection",
+          "state": "cold",
+          "trial": 1
+        },
+        "durationMs": 39083.333,
+        "timings": {
+          "model.bare_summary": {
+            "count": 65,
+            "totalMs": 120919.946,
+            "minMs": 862.608,
+            "maxMs": 6384.016
+          },
+          "model_slot_wait": {
+            "count": 47,
+            "totalMs": 223127.365,
+            "minMs": 3.475,
+            "maxMs": 9337.48
+          },
+          "model.bare_combine": {
+            "count": 3,
+            "totalMs": 4672.198,
+            "minMs": 1320.417,
+            "maxMs": 1739.342
+          },
+          "warm_project_bares": {
+            "count": 1,
+            "totalMs": 18597.131,
+            "minMs": 18597.131,
+            "maxMs": 18597.131
+          },
+          "model.context_fold": {
+            "count": 2,
+            "totalMs": 6428.448,
+            "minMs": 3173.203,
+            "maxMs": 3255.245
+          },
+          "folder_context": {
+            "count": 1,
+            "totalMs": 6430.292,
+            "minMs": 6430.292,
+            "maxMs": 6430.292
+          },
+          "model.frontier_fold": {
+            "count": 1,
+            "totalMs": 3132.801,
+            "minMs": 3132.801,
+            "maxMs": 3132.801
+          },
+          "context_preparation": {
+            "count": 1,
+            "totalMs": 7368.505,
+            "minMs": 7368.505,
+            "maxMs": 7368.505
+          },
+          "model.answer": {
+            "count": 1,
+            "totalMs": 6582.745,
+            "minMs": 6582.745,
+            "maxMs": 6582.745
+          }
+        },
+        "cache": {
+          "hits": 3,
+          "misses": 72,
+          "sets": 72,
+          "byKind": {
+            "bare": {
+              "hits": 0,
+              "misses": 68,
+              "sets": 45
+            },
+            "barewindow": {
+              "hits": 0,
+              "misses": 0,
+              "sets": 9
+            },
+            "folderbare": {
+              "hits": 3,
+              "misses": 0,
+              "sets": 14
+            },
+            "dirctx": {
+              "hits": 0,
+              "misses": 3,
+              "sets": 3
+            },
+            "ctxpeers": {
+              "hits": 0,
+              "misses": 1,
+              "sets": 1
+            }
+          }
+        },
+        "models": {
+          "calls": 72,
+          "byPhase": {
+            "bare_summary": 65,
+            "bare_combine": 3,
+            "context_fold": 2,
+            "frontier_fold": 1,
+            "answer": 1
+          },
+          "byModel": {
+            "claude-haiku-4-5": 68,
+            "claude-opus-4-8": 4
+          }
+        }
+      }
+    },
+    {
+      "repository": "CodeArchitect",
+      "question": "context-selection",
+      "state": "prewarmed",
+      "trial": 1,
+      "metrics": {
+        "totalMs": 20335.47,
+        "warmProjectMs": 0,
+        "folderContextMs": 6616.452,
+        "frontierContextMs": 6862.143,
+        "contextPreparationMs": 13478.595000000001,
+        "answerModelMs": 6754.393,
+        "cacheHits": 3,
+        "cacheMisses": 13,
+        "cacheSets": 13,
+        "modelCalls": 13,
+        "modelCallsByPhase": {
+          "context_fold": 2,
+          "bare_summary": 9,
+          "frontier_fold": 1,
+          "answer": 1
+        }
+      },
+      "telemetry": {
+        "label": "ask",
+        "metadata": {
+          "repository": "CodeArchitect",
+          "question": "context-selection",
+          "state": "prewarmed",
+          "trial": 1
+        },
+        "durationMs": 20335.47,
+        "timings": {
+          "model.context_fold": {
+            "count": 2,
+            "totalMs": 6614.894,
+            "minMs": 2826.573,
+            "maxMs": 3788.321
+          },
+          "folder_context": {
+            "count": 1,
+            "totalMs": 6616.452,
+            "minMs": 6616.452,
+            "maxMs": 6616.452
+          },
+          "model.bare_summary": {
+            "count": 9,
+            "totalMs": 15137.734,
+            "minMs": 1259.526,
+            "maxMs": 2362.412
+          },
+          "model_slot_wait": {
+            "count": 1,
+            "totalMs": 1259.469,
+            "minMs": 1259.469,
+            "maxMs": 1259.469
+          },
+          "model.frontier_fold": {
+            "count": 1,
+            "totalMs": 3639.219,
+            "minMs": 3639.219,
+            "maxMs": 3639.219
+          },
+          "context_preparation": {
+            "count": 1,
+            "totalMs": 6862.143,
+            "minMs": 6862.143,
+            "maxMs": 6862.143
+          },
+          "model.answer": {
+            "count": 1,
+            "totalMs": 6754.393,
+            "minMs": 6754.393,
+            "maxMs": 6754.393
+          }
+        },
+        "cache": {
+          "hits": 3,
+          "misses": 13,
+          "sets": 13,
+          "byKind": {
+            "dirctx": {
+              "hits": 0,
+              "misses": 3,
+              "sets": 3
+            },
+            "folderbare": {
+              "hits": 3,
+              "misses": 0,
+              "sets": 0
+            },
+            "ctxpeers": {
+              "hits": 0,
+              "misses": 1,
+              "sets": 1
+            },
+            "bare": {
+              "hits": 0,
+              "misses": 9,
+              "sets": 9
+            }
+          }
+        },
+        "models": {
+          "calls": 13,
+          "byPhase": {
+            "context_fold": 2,
+            "bare_summary": 9,
+            "frontier_fold": 1,
+            "answer": 1
+          },
+          "byModel": {
+            "claude-opus-4-8": 4,
+            "claude-haiku-4-5": 9
+          }
+        }
+      },
+      "warm": {
+        "metrics": {
+          "totalMs": 18857.981,
+          "warmProjectMs": 18857.843,
+          "folderContextMs": 0,
+          "frontierContextMs": 0,
+          "contextPreparationMs": 18857.843,
+          "answerModelMs": 0,
+          "cacheHits": 0,
+          "cacheMisses": 59,
+          "cacheSets": 59,
+          "modelCalls": 59,
+          "modelCallsByPhase": {
+            "bare_summary": 56,
+            "bare_combine": 3
+          }
+        },
+        "telemetry": {
+          "label": "warm",
+          "metadata": {
+            "repository": "CodeArchitect",
+            "question": "context-selection",
+            "state": "prewarmed",
+            "trial": 1
+          },
+          "durationMs": 18857.981,
+          "timings": {
+            "model.bare_summary": {
+              "count": 56,
+              "totalMs": 105421.811,
+              "minMs": 796.255,
+              "maxMs": 5338.067
+            },
+            "model_slot_wait": {
+              "count": 47,
+              "totalMs": 231779.048,
+              "minMs": 614.287,
+              "maxMs": 9617.673
+            },
+            "model.bare_combine": {
+              "count": 3,
+              "totalMs": 5487.387,
+              "minMs": 1294.063,
+              "maxMs": 2534.312
+            },
+            "warm_project_bares": {
+              "count": 1,
+              "totalMs": 18857.843,
+              "minMs": 18857.843,
+              "maxMs": 18857.843
+            }
+          },
+          "cache": {
+            "hits": 0,
+            "misses": 59,
+            "sets": 59,
+            "byKind": {
+              "bare": {
+                "hits": 0,
+                "misses": 59,
+                "sets": 36
+              },
+              "barewindow": {
+                "hits": 0,
+                "misses": 0,
+                "sets": 9
+              },
+              "folderbare": {
+                "hits": 0,
+                "misses": 0,
+                "sets": 14
+              }
+            }
+          },
+          "models": {
+            "calls": 59,
+            "byPhase": {
+              "bare_summary": 56,
+              "bare_combine": 3
+            },
+            "byModel": {
+              "claude-haiku-4-5": 59
+            }
+          }
+        }
+      }
+    },
+    {
+      "repository": "CodeArchitect",
+      "question": "context-selection",
+      "state": "repeat",
+      "trial": 1,
+      "metrics": {
+        "totalMs": 7333.765,
+        "warmProjectMs": 0,
+        "folderContextMs": 0.019,
+        "frontierContextMs": 0.818,
+        "contextPreparationMs": 0.837,
+        "answerModelMs": 7227.46,
+        "cacheHits": 4,
+        "cacheMisses": 0,
+        "cacheSets": 0,
+        "modelCalls": 1,
+        "modelCallsByPhase": {
+          "answer": 1
+        }
+      },
+      "telemetry": {
+        "label": "ask",
+        "metadata": {
+          "repository": "CodeArchitect",
+          "question": "context-selection",
+          "state": "repeat",
+          "trial": 1
+        },
+        "durationMs": 7333.765,
+        "timings": {
+          "folder_context": {
+            "count": 1,
+            "totalMs": 0.019,
+            "minMs": 0.019,
+            "maxMs": 0.019
+          },
+          "context_preparation": {
+            "count": 1,
+            "totalMs": 0.818,
+            "minMs": 0.818,
+            "maxMs": 0.818
+          },
+          "model.answer": {
+            "count": 1,
+            "totalMs": 7227.46,
+            "minMs": 7227.46,
+            "maxMs": 7227.46
+          }
+        },
+        "cache": {
+          "hits": 4,
+          "misses": 0,
+          "sets": 0,
+          "byKind": {
+            "dirctx": {
+              "hits": 3,
+              "misses": 0,
+              "sets": 0
+            },
+            "ctxpeers": {
+              "hits": 1,
+              "misses": 0,
+              "sets": 0
+            }
+          }
+        },
+        "models": {
+          "calls": 1,
+          "byPhase": {
+            "answer": 1
+          },
+          "byModel": {
+            "claude-opus-4-8": 1
+          }
+        }
+      }
+    }
+  ]
+}

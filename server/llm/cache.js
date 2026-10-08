@@ -11,13 +11,25 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { recordCacheAccess, recordCacheSet } from '../benchmark/telemetry.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url)); // server/llm
-const DIR = path.join(HERE, '..', '..', '.meaning-cache');
+const DIR = process.env.MEANING_CACHE_DIR
+  ? path.resolve(process.env.MEANING_CACHE_DIR)
+  : path.join(HERE, '..', '..', '.meaning-cache');
 const FILE = path.join(DIR, 'meanings.jsonl');
 
 const mem = new Map();
+const kinds = new Map();
 let loaded = false;
+
+function inferredKind(key) {
+  if (key.startsWith('cp:')) return 'ctxpeers';
+  if (key.startsWith('c:dir:')) return 'dirctx';
+  if (key.startsWith('c:')) return 'ctx';
+  if (key.startsWith('b:')) return 'bare';
+  return 'unknown';
+}
 
 // Lazy: read the whole log into the Map on first access (last write wins).
 function load() {
@@ -27,13 +39,21 @@ function load() {
   try { raw = fs.readFileSync(FILE, 'utf8'); } catch { return; /* no cache yet */ }
   for (const line of raw.split('\n')) {
     if (!line) continue;
-    try { const e = JSON.parse(line); if (e && e.k) mem.set(e.k, e.v); } catch { /* skip torn line */ }
+    try {
+      const e = JSON.parse(line);
+      if (e && e.k) {
+        mem.set(e.k, e.v);
+        kinds.set(e.k, e.t || inferredKind(e.k));
+      }
+    } catch { /* skip torn line */ }
   }
 }
 
 export function cacheGet(key) {
   load();
-  return mem.get(key);
+  const value = mem.get(key);
+  recordCacheAccess(kinds.get(key) || inferredKind(key), value !== undefined);
+  return value;
 }
 
 // Best-effort persistence: the Map is authoritative for this process, so a disk
@@ -43,6 +63,8 @@ export function cacheSet(key, value, meta = {}) {
   load();
   if (mem.get(key) === value) return;
   mem.set(key, value);
+  kinds.set(key, meta.kind || inferredKind(key));
+  recordCacheSet(meta.kind || inferredKind(key));
   try {
     fs.mkdirSync(DIR, { recursive: true });
     fs.appendFileSync(FILE, `${JSON.stringify({ k: key, v: value, f: meta.fileHash, t: meta.kind })}\n`);
@@ -68,10 +90,25 @@ export function cacheDropByFileHash(hashSet, dropKinds = null) {
       if (e && e.k && hashSet.has(e.f) && (!dropKinds || dropKinds.has(e.t))) { droppedKeys.add(e.k); continue; }
       kept.push(line);
     }
-    for (const k of droppedKeys) mem.delete(k);
+    for (const k of droppedKeys) {
+      mem.delete(k);
+      kinds.delete(k);
+    }
     const tmp = `${FILE}.tmp`;
     fs.writeFileSync(tmp, kept.length ? `${kept.join('\n')}\n` : '');
     fs.renameSync(tmp, FILE);
   } catch { /* no file yet / IO error: nothing persisted to drop */ }
   return droppedKeys.size;
+}
+
+// Benchmark-only full reset. The runner always points MEANING_CACHE_DIR at a
+// temporary directory, so this cannot erase the application's normal cache.
+export function resetMeaningCacheForBenchmark() {
+  if (process.env.CODEARCHITECT_BENCHMARK !== '1' || !process.env.MEANING_CACHE_DIR) {
+    throw new Error('Benchmark cache reset requires CODEARCHITECT_BENCHMARK=1 and MEANING_CACHE_DIR.');
+  }
+  mem.clear();
+  kinds.clear();
+  loaded = true;
+  try { fs.rmSync(FILE, { force: true }); } catch { /* no cache yet */ }
 }

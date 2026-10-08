@@ -10,7 +10,10 @@
     "dev:server": "node --import braintrust/hook.mjs --watch server/index.js",
     "dev:client": "npm --prefix client run dev",
     "build": "npm install --prefix client --include=dev && npm --prefix client run build",
-    "start": "node --import braintrust/hook.mjs server/index.js"
+    "start": "node --import braintrust/hook.mjs server/index.js",
+    "test": "node --test",
+    "benchmark:context": "node scripts/benchmark-context.js",
+    "benchmark:context:dry": "node scripts/benchmark-context.js --dry-run"
   },
   "engines": {
     "node": ">=20"

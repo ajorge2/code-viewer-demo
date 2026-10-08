@@ -1,6 +1,6 @@
 # CodeArchitect — Engineering Reference
 
-**[Live product](https://site--codearchitect--74wvcb9qzxr6.code.run/)** · **[Evaluation evidence](https://ajorge2.github.io/code-viewer-demo/)**
+**[Live product](https://site--codearchitect--74wvcb9qzxr6.code.run/)** · **[Evaluation evidence](https://ajorge2.github.io/code-viewer-demo/)** · **[Context benchmark reconstruction](docs/evidence/context-benchmark.md)**
 
 The evidence page exposes the pre-registered threshold decision, blinded human-review results, raw artifacts, and limitations behind the resume claims. The product demo and the evaluation are deliberately separate: one shows the interaction model; the other shows what was actually measured.
 
