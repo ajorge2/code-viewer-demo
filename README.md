@@ -1,5 +1,9 @@
 # CodeArchitect — Engineering Reference
 
+**[Live product](https://site--codearchitect--74wvcb9qzxr6.code.run/)** · **[Evaluation evidence](https://ajorge2.github.io/code-viewer-demo/)**
+
+The evidence page exposes the pre-registered threshold decision, blinded human-review results, raw artifacts, and limitations behind the resume claims. The product demo and the evaluation are deliberately separate: one shows the interaction model; the other shows what was actually measured.
+
 > Point it at a codebase; it parses every file into a structural box tree, lets you
 > "zoom" that tree with a slider or a highlight, and answers questions about any
 > piece by folding a recursively-cached, content-addressed "meaning" out of the

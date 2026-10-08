@@ -1,0 +1,141 @@
+review_id,language,developer_intent,predicted_concept,concept_definition,matched_code,review_label,reviewer_notes,reviewer_confidence
+1386daed9c2d2d1f,python,nbgrader feedback tests,Test-case artifacts,"Individual test cases and their associated inputs, variables, fixtures, metadata, and expected execution conditions.","self._run_command('nbgrader feedback ps1 --db=""{}"" '.format(dbpath))",correct,,
+4ca17d7aacf222eb,python,temporary output.txt file,Automated software testing,"Executable tests and their supporting suites, fixtures, settings, environments, and test-runner integrations.","os.remove(""output.txt"")",incorrect,,
+12548126e0fc0b17,javascript,module setup promises,Test-suite infrastructure,"Test modules, suites, fixtures, mocks, settings, runners, and environments supporting automated verification.","module.setup().then(function() {
+        if (beforeEach) {
+          beforeEach.call(module.context, assert);
+        }
+      })['finally'](done);",correct,,
+59be75d0806683f3,python,python runner action wrapper process script performance test,Test scripts and modules,"Source files, modules, suites, and executable scripts that define or invoke automated tests.","WRAPPER_SCRIPT_PATH = os.path.join(BASE_DIR, '../../st2common/runners/python_action_wrapper.py')",incorrect,,
+6f8699e9ee9cc368,python,external tools path,Application configuration,"Settings, defaults, paths, options, and policy values that control application installation and runtime behavior.","EXTERNAL_PATH = os.path.join(PROJECT_DIR, '..', '..', '..', 'tmp')",correct,,
+8e03a8682e987c8d,javascript,background image,State flags and metadata properties,"Boolean flags, options, identifiers, and object properties that record state or control visibility and behavior.","backgroundImage
+
+--- excerpt ---
+
+backgroundColor",correct,,
+7c74a1455a465a03,python,base64 text/html response,Test-suite infrastructure,"Test modules, suites, fixtures, mocks, settings, runners, and environments supporting automated verification.","'text/html'
+
+--- excerpt ---
+
+response.app_iter = base64_encode_chunks(file.file)
+
+--- excerpt ---
+
+response.content_type = 'text/html'",incorrect,,
+342426224db706cd,javascript,menu-closing taps,State flags and metadata properties,"Boolean flags, options, identifiers, and object properties that record state or control visibility and behavior.",this.props.dispatch(closeMenu());,partial,,
+dca185078ae51940,javascript,y key definition,State flags and metadata properties,"Boolean flags, options, identifiers, and object properties that record state or control visibility and behavior.",this.xKey = Object.keys(bounds[0][0])[0];,partial,,
+98ffbee8b5072ba9,python,send_to configuration in tests,Application configuration,"Settings, defaults, paths, options, and policy values that control application installation and runtime behavior.","config = {
+            'send_to': {
+                'default': {
+                    'transport_name': 'test_transport',
+                    },
+                },
+            }",correct,,
+e11789ab8f4eb282,python,unit test for a newly initialized database,Test-suite infrastructure,"Test modules, suites, fixtures, mocks, settings, runners, and environments supporting automated verification.","self.sql_db = Database(TEST_DB_PATH)
+
+--- excerpt ---
+
+from sqlite_driver import Database",partial,,
+798fbfcd1eb2639a,python,unit test for heap sort implementation,Test-case definitions,"Definitions and metadata for individual automated tests, including inputs, variables, fixtures, functions, and documentation.",from sorting.heap_sort import sort,incorrect,,
+5f253f8bc01ff670,javascript,prop-based popover width override,State flags and metadata properties,"Boolean flags, options, identifiers, and object properties that record state or control visibility and behavior.",Popover.propTypes = PopoverProps;,correct,,
+db8259c571d59c81,python,version number,Software version identification,"Determination, comparison, storage, and display of software, firmware, operating-system, or image versions.","__version__ = '0.17.0'
+
+--- excerpt ---
+
+__version__ = '0.17.0'",correct,,
+11de3a0b0bfc37fd,javascript,Sass package choice for installation,Application configuration,"Settings, defaults, paths, options, and policy values that control application installation and runtime behavior.",dependencies.push('sass');,correct,,
+aa6c3290f86d42c9,python,fortune display job,Test-case artifacts,"Individual test cases and their associated inputs, variables, fixtures, metadata, and expected execution conditions.",from pijobs.scrolljob import SrollJob,incorrect,,
+ba455f6d3cae797d,python,class name in template loader check,Automated software testing,"Executable tests and their supporting suites, fixtures, settings, environments, and test-runner integrations.","'You must add ""admin_tools.template_loaders.TemplateLoader"" in your '
+
+--- excerpt ---
+
+'You must add ""admin_tools.template_loaders.Loader"" in your '",correct,,
+8e596a94ecc2f8d5,javascript,path external dependency,Application configuration,"Settings, defaults, paths, options, and policy values that control application installation and runtime behavior.","external: ['purgecss', 'webpack-sources', 'fs', 'path']",correct,,
+6fed617a654d5f0d,python,not-implemented error message,Version compatibility and metadata,"Software and platform version requirements, discovery, comparison, reporting, and compatibility constraints.","'##### Implement this part of the code #####\nraise NotImplementedError()'
+
+--- excerpt ---
+
+'''##### Implement this part of the code #####
+raise NotImplementedError(""Code not implemented, follow the instructions."")'''",correct,,
+4d00db49d18492e1,python,six dependency,Version compatibility and metadata,"Software and platform version requirements, discovery, comparison, reporting, and compatibility constraints.",'six >= 1.9.0',correct,,
+63c817252bdb3a03,javascript,custom AJAX request header,State flags and metadata properties,"Boolean flags, options, identifiers, and object properties that record state or control visibility and behavior.","if (Object.keys(header || {}).length) {
+          req.setRequestHeader(header.key, header.value);
+        }",correct,,
+3df8b08728b69882,python,test for the CuPy core module,Test-module maintenance,"Organization and maintenance of automated test modules, suites, fixtures, mocks, settings, and compatibility cases.",from cupy.core import core,partial,,
+05f05f42247244ac,javascript,fs external dependency,Application configuration,"Settings, defaults, paths, options, and policy values that control application installation and runtime behavior.","external: ['purgecss', 'webpack-sources', 'fs', 'path']",correct,,
+c4851c95fe454d18,javascript,client-side bloggify alias,Application configuration,"Settings, defaults, paths, options, and policy values that control application installation and runtime behavior.","bundler: {
+        aliases: {
+            ""bloggify"": `${__dirname}/client/index.js`
+        }
+    }",correct,,
+95758e52aba672cb,python,execution method (.start to .run),Test-suite infrastructure,"Test modules, suites, fixtures, mocks, settings, runners, and environments supporting automated verification.","controller.start()
+
+--- excerpt ---
+
+controller.run()",correct,,
+264c2cfd7ad7797c,python,send_to configuration in tests,Test-suite infrastructure,"Test modules, suites, fixtures, mocks, settings, runners, and environments supporting automated verification.","config = {
+            'send_to': {
+                'default': {
+                    'transport_name': 'test_transport',
+                    },
+                },
+            }",correct,,
+2bb5afb27efe0845,python,unit test for a newly initialized database,Automated software testing,"Executable tests and their supporting suites, fixtures, settings, environments, and test-runner integrations.","self.sql_db = Database(TEST_DB_PATH)
+
+--- excerpt ---
+
+from sqlite_driver import Database",partial,,
+0520b16b68a451b7,python,send_to configuration,Application configuration,"Settings, defaults, paths, options, and policy values that control application installation and runtime behavior.","config = {
+            'send_to': {
+                'default': {
+                    'transport_name': 'test_transport',
+                    },
+                },
+            }",correct,,
+cf88c7f9a5e29ece,python,version number,Version metadata lookup,"Retrieval, comparison, parsing, creation, and display of version metadata for software and system components.","__version__ = '0.17.0'
+
+--- excerpt ---
+
+__version__ = '0.17.0'",correct,,
+47f873a86d74405a,javascript,server response type,State flags and metadata properties,"Boolean flags, options, identifiers, and object properties that record state or control visibility and behavior.","response.writeHead(200, {
+        'Content-type': 'application/json'
+    });
+
+--- excerpt ---
+
+response.writeHead(200, {
+        'Content-type': 'text/plain'
+    });",correct,,
+bfa03b9ccf155093,javascript,default legacyNamespace: false option,Application configuration,"Settings, defaults, paths, options, and policy values that control application installation and runtime behavior.",legacyNamespace: false,correct,,
+5d7391135b1a481c,javascript,DELETE /api/roadmaps/:roadmapID route handler,State flags and metadata properties,"Boolean flags, options, identifiers, and object properties that record state or control visibility and behavior.","Roadmap.findByIdAndRemove(_id)
+      .then(function(dbResults){
+        res.json(dbResults);
+      })
+      .catch(handleError(next));",partial,,
+d216e5a9284773c9,javascript,module teardown promises,Test-suite infrastructure,"Test modules, suites, fixtures, mocks, settings, runners, and environments supporting automated verification.",module.teardown()['finally'](done);,partial,,
+628808da7a9f2d85,javascript,x key definition,State flags and metadata properties,"Boolean flags, options, identifiers, and object properties that record state or control visibility and behavior.","this.xKey = Object.keys(bounds[0][0])[0];
+
+--- excerpt ---
+
+this.yKey = Object.keys(bounds[0][0])[1];
+
+--- excerpt ---
+
+this.xKey = Object.keys(bounds[0])[0];",correct,,
+49132170eaf9340e,python,verbose name of Layout Page,Application configuration,"Settings, defaults, paths, options, and policy values that control application installation and runtime behavior.","verbose_name = ""Layout page""
+
+--- excerpt ---
+
+verbose_name = ""Page""",correct,,
+55f22d4004cfaa3c,javascript,module setup promises,Configuration setup and paths,"Initialization of settings and resolution of installation, build, application, and configuration paths.","module.setup().then(function() {
+        if (beforeEach) {
+          beforeEach.call(module.context, assert);
+        }
+      })['finally'](done);",correct,,
+119bc31a699d4e24,python,send method result,Automated software testing,"Executable tests and their supporting suites, fixtures, settings, environments, and test-runner integrations.","self.send(frame, ""escapedBlock:"", arguments, universe)",correct,,
+1714edbe7063e5c7,python,Python version of the post-receive hook,Test-suite infrastructure,"Test modules, suites, fixtures, mocks, settings, runners, and environments supporting automated verification.","postURL = ""http://localhost:2069/json""
+
+--- excerpt ---
+
+Http().request(postURL, ""PUT"", data)",correct,,
+f69383b407e1778a,python,import name in deps test,Test-module maintenance,"Organization and maintenance of automated test modules, suites, fixtures, mocks, settings, and compatibility cases.",'import pact',correct,,

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CodeArchitect evaluation evidence: a pre-registered, method-blinded threshold decision on repository-disjoint components.">
+  <title>CodeArchitect — Evaluation Evidence</title>
+  <style>
+    :root{--ink:#17211b;--muted:#5f6b63;--paper:#f6f4ed;--card:#fffdf8;--line:#d9d7cc;--green:#155f49;--red:#9a3e32;--amber:#94621c}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 Inter,ui-sans-serif,system-ui,sans-serif}main{width:min(1080px,calc(100% - 32px));margin:auto;padding:54px 0 80px}nav{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:68px}nav strong{letter-spacing:-.02em}nav div{display:flex;gap:10px;flex-wrap:wrap}a{color:var(--green);text-underline-offset:3px}.button{display:inline-block;padding:9px 13px;border:1px solid var(--ink);border-radius:999px;color:var(--ink);text-decoration:none;font-weight:700;font-size:14px;background:var(--card)}.button.primary{background:var(--ink);color:white}.eyebrow{color:var(--green);font-weight:800;letter-spacing:.09em;text-transform:uppercase;font-size:12px}h1{max-width:820px;margin:8px 0 18px;font:700 clamp(42px,7vw,76px)/.98 Georgia,serif;letter-spacing:-.045em}.lede{max-width:760px;color:var(--muted);font-size:20px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:38px 0 64px}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px}.metric{font:700 34px/1 Georgia,serif;margin:8px 0}.label{color:var(--muted);font-size:13px}section{margin:58px 0}h2{font:700 30px/1.15 Georgia,serif;letter-spacing:-.025em}table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line)}th,td{text-align:left;padding:14px;border-bottom:1px solid var(--line);vertical-align:top}th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}.pass{color:var(--green);font-weight:800}.fail{color:var(--red);font-weight:800}.decision{border-left:5px solid var(--red)}.artifacts{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.artifact{display:block;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--card);text-decoration:none;color:var(--ink)}.artifact span{display:block;color:var(--muted);font-size:13px;margin-top:4px}.note{color:var(--muted);border-top:1px solid var(--line);padding-top:18px}@media(max-width:760px){.grid,.artifacts{grid-template-columns:1fr}nav{align-items:flex-start;flex-direction:column}th:nth-child(3),td:nth-child(3){display:none}}
+  </style>
+</head>
+<body><main>
+  <nav><strong>CodeArchitect / evidence</strong><div><a class="button" href="https://github.com/ajorge2/code-viewer-demo">Source</a><a class="button primary" href="https://site--codearchitect--74wvcb9qzxr6.code.run/">Open live product</a></div></nav>
+  <header><div class="eyebrow">Decision evidence · frozen before review</div><h1>More coverage was possible. The quality bar said no.</h1><p class="lede">CodeArchitect maps code components to a learned software-concept taxonomy. This evaluation asked whether its semantic acceptance threshold could safely move from 0.72 to 0.62. The decision rule was frozen first; method-blinded human review supplied the labels afterward.</p></header>
+  <div class="grid" aria-label="Evaluation summary">
+    <article class="card"><div class="label">Held-out components</div><div class="metric">151</div><div class="label">from 132 repository families excluded from taxonomy fitting</div></article>
+    <article class="card"><div class="label">Coverage at 0.62</div><div class="metric">23.2%</div><div class="label">35 accepted, up from 11.9% at 0.72</div></article>
+    <article class="card"><div class="label">Strict precision at 0.62</div><div class="metric">68.6%</div><div class="label">below the pre-registered 80% guardrail</div></article>
+  </div>
+  <section><h2>The frozen launch gate</h2><table><thead><tr><th>Check</th><th>Observed</th><th>Required</th><th>Result</th></tr></thead><tbody>
+    <tr><td>Accepted coverage</td><td>23.2% (35/151)</td><td>≥ 20%</td><td class="pass">Pass</td></tr>
+    <tr><td>Strict human-reviewed precision</td><td>68.6% (24/35)</td><td>≥ 80%</td><td class="fail">Fail</td></tr>
+    <tr><td>Precision change vs. 0.72</td><td>−9.2 percentage points</td><td>No worse than −5 points</td><td class="fail">Fail</td></tr>
+    <tr><td>Review completeness</td><td>Complete</td><td>No missing labels</td><td class="pass">Pass</td></tr>
+  </tbody></table></section>
+  <section class="card decision"><div class="eyebrow" style="color:var(--red)">Decision: no-ship</div><h2>The threshold stayed at 0.72.</h2><p>The candidate nearly doubled accepted coverage, but the primary-metric gain could not override either quality failure. The system abstains more often instead of presenting a broader set of lower-confidence labels as reliable.</p></section>
+  <section><h2>What a reviewer can inspect</h2><div class="artifacts">
+    <a class="artifact" href="evidence/preregistration.md">Pre-registration <span>Population, rubric, metrics, and decision bars frozen before human labels.</span></a>
+    <a class="artifact" href="evidence/human-review-result.md">Readable result <span>The final decision table, evaluation scope, and resume-ready wording.</span></a>
+    <a class="artifact" href="evidence/decision-result.json">Machine-readable result <span>Counts, rates, Wilson intervals, checks, and limitations.</span></a>
+    <a class="artifact" href="evidence/human-review.csv">Human labels <span>The completed blinded adjudication rows used by the analyzer.</span></a>
+    <a class="artifact" href="evidence/manifest.json">Evidence manifest <span>Source digest and construction metadata for the review packet.</span></a>
+    <a class="artifact" href="https://colab.research.google.com/drive/1fZfmiOZ7l35AeVMJTw1TlXOyQFkWI0gQ?usp=sharing">Research notebook <span>The broader taxonomy and repository-disjoint evaluation analysis.</span></a>
+  </div></section>
+  <section><h2>Claim ledger</h2><table><thead><tr><th>Claim</th><th>Public evidence</th><th>Status</th></tr></thead><tbody>
+    <tr><td>Threshold no-ship decision</td><td>Pre-registration + blinded labels + machine result</td><td class="pass">Verified</td></tr>
+    <tr><td>151 held-out components / 132 unseen repository families</td><td>Frozen population and decision report</td><td class="pass">Verified</td></tr>
+    <tr><td>61% context-preparation latency reduction</td><td>No raw benchmark artifact published here</td><td style="color:var(--amber);font-weight:800">Historical; not evidenced here</td></tr>
+    <tr><td>80% summarization-cost reduction</td><td>No raw benchmark artifact published here</td><td style="color:var(--amber);font-weight:800">Historical; not evidenced here</td></tr>
+  </tbody></table></section>
+  <p class="note"><strong>Limitations.</strong> The human adjudication is new, but the holdout and earlier model judgments had already informed development. The evaluation measures precision among accepted predictions on repository-disjoint components—not recall across every software concept, end-user comprehension, or downstream product outcomes.</p>
+</main></body></html>

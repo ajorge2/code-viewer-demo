@@ -1,0 +1,54 @@
+{
+  "decision": "no-ship",
+  "change": "lower semantic acceptance threshold from 0.72 to 0.62",
+  "checks": {
+    "candidate_coverage_at_least_20_percent": true,
+    "candidate_strict_precision_at_least_80_percent": false,
+    "precision_drop_no_more_than_5_points": false,
+    "review_complete": true
+  },
+  "candidate_0_62": {
+    "accepted": 35,
+    "coverage": 0.23178807947019867,
+    "abstention": 0.7682119205298014,
+    "strict_correct": 24,
+    "strict_precision": 0.6857142857142857,
+    "strict_precision_wilson_95": [
+      0.5202023638793081,
+      0.8144915532573418
+    ],
+    "correct_or_partial": 30,
+    "concept_fit_precision": 0.8571428571428571
+  },
+  "conservative_0_72": {
+    "accepted": 18,
+    "coverage": 0.11920529801324503,
+    "abstention": 0.880794701986755,
+    "strict_correct": 14,
+    "strict_precision": 0.7777777777777778,
+    "strict_precision_wilson_95": [
+      0.5478541568378739,
+      0.9099907189139831
+    ],
+    "correct_or_partial": 16,
+    "concept_fit_precision": 0.8888888888888888
+  },
+  "exact_token_baseline": {
+    "accepted": 9,
+    "coverage": 0.059602649006622516,
+    "abstention": 0.9403973509933775,
+    "strict_correct": 5,
+    "strict_precision": 0.5555555555555556,
+    "strict_precision_wilson_95": [
+      0.26665129349549305,
+      0.8112214789023355
+    ],
+    "correct_or_partial": 7,
+    "concept_fit_precision": 0.7777777777777778
+  },
+  "candidate_minus_conservative_strict_precision": -0.09206349206349207,
+  "limitations": [
+    "Human adjudication is new, but the holdout and model judgments previously informed development.",
+    "The evaluation measures prediction quality on repository-disjoint components, not end-user outcomes."
+  ]
+}

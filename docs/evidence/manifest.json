@@ -1,0 +1,18 @@
+{
+  "schema_version": "codearchitect-human-review/v1",
+  "source": ".data/intent-semantic-taxonomy-cli-v1/evaluated-holdout.jsonl",
+  "source_sha256": "7729673c943f71b108e61f948637b6b4f1ff11045108b8a02476111018c1c8ea",
+  "taxonomy": ".data/intent-semantic-taxonomy-cli-v1/accepted-taxonomy.json",
+  "taxonomy_sha256": "2d9cefd87fa4dd2ba72018187142b9ac0181b65ec87105a98546e5b381725f55",
+  "seed": "codearchitect-human-review-v1",
+  "holdout_components": 151,
+  "review_items": 39,
+  "semantic_accepts": 35,
+  "baseline_accepts": 9,
+  "valid_labels": [
+    "correct",
+    "partial",
+    "incorrect",
+    "cannot_judge"
+  ]
+}
