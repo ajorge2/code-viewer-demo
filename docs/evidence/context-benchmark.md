@@ -1,6 +1,6 @@
 # Context-preparation benchmark reconstruction
 
-This page reconstructs the benchmark behind CodeArchitect's historical “61% latency / 80% cost” resume bullet from the original local runner and its dated machine-readable result.
+This page reconstructs CodeArchitect's historical “61% latency / 80% cost” performance claim from the original local runner and its dated machine-readable result.
 
 ## Correct conclusion
 

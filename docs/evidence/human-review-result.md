@@ -24,7 +24,7 @@ the threshold reduction.
 - Candidate strict-precision Wilson 95% interval: 52.0%–81.4%.
 - Conservative strict-precision Wilson 95% interval: 54.8%–91.0%.
 
-## Resume-ready claim
+## Supported result summary
 
 Blocked lowering CodeArchitect's acceptance threshold from 0.72 to 0.62: coverage
 cleared the pre-registered 20% bar (11.9% to 23.2%), but strict precision in blinded

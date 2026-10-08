@@ -39,21 +39,21 @@
   </tbody></table></section>
   <section class="card decision"><div class="eyebrow" style="color:var(--red)">Decision: no-ship</div><h2>The threshold stayed at 0.72.</h2><p>The candidate nearly doubled accepted coverage, but the primary-metric gain could not override either quality failure. The system abstains more often instead of presenting a broader set of lower-confidence labels as reliable.</p></section>
   <section><h2>Engineering result</h2><div class="card"><p>Separately from taxonomy quality, a dated self-benchmark measured the product's context-preparation path. Content-addressed prewarming reduced median pre-answer context latency from 33.2 seconds cold to 12.9 seconds prewarmed—a 61.3% reduction—across three fixed questions on a 36-file, 9.7K-line repository. An immediate repeat prepared context in 0.81 milliseconds.</p><p><a href="evidence/context-benchmark.html">Inspect the benchmark method, raw measurements, and limitations.</a></p></div></section>
-  <section><h2>What a reviewer can inspect</h2><div class="artifacts">
+  <section><h2>Research artifacts</h2><div class="artifacts">
     <a class="artifact" href="https://colab.research.google.com/drive/1fZfmiOZ7l35AeVMJTw1TlXOyQFkWI0gQ?usp=sharing">Evidence notebook <span>Concept discovery, recursive clustering, structural gates, repository-disjoint evaluation, plots, and failure analysis.</span></a>
     <a class="artifact" href="evidence/preregistration.md">Pre-registration <span>Population, rubric, metrics, and decision bars frozen before human labels.</span></a>
-    <a class="artifact" href="evidence/human-review-result.md">Readable result <span>The final decision table, evaluation scope, and resume-ready wording.</span></a>
+    <a class="artifact" href="evidence/human-review-result.md">Readable result <span>The final decision table, evaluation scope, and interpretation boundary.</span></a>
     <a class="artifact" href="evidence/decision-result.json">Machine-readable result <span>Counts, rates, Wilson intervals, checks, and limitations.</span></a>
     <a class="artifact" href="evidence/human-review.csv">Human labels <span>The completed blinded adjudication rows used by the analyzer.</span></a>
     <a class="artifact" href="evidence/manifest.json">Evidence manifest <span>Source digest and construction metadata for the review packet.</span></a>
     <a class="artifact" href="evidence/context-benchmark.html">Context benchmark <span>The recovered raw result, exact calculation, instrumentation, and limitations.</span></a>
     <a class="artifact" href="https://github.com/ajorge2/code-viewer-demo/tree/main/benchmark-results">Raw latency artifacts <span>The original JSON and Markdown output plus a plain-language interpretation.</span></a>
   </div></section>
-  <section><h2>Supported findings</h2><table><thead><tr><th>Finding</th><th>Public evidence</th><th>Status</th></tr></thead><tbody>
-    <tr><td>Fourteen human-readable concepts learned from 685 diffs across 668 repository families</td><td>Notebook + accepted taxonomy + provenance</td><td class="pass">Reproducible</td></tr>
-    <tr><td>151 held-out components from 132 repository families excluded from taxonomy fitting</td><td>Frozen population + artifact manifest</td><td class="pass">Verified</td></tr>
-    <tr><td>Threshold remained at 0.72 after the 0.62 candidate missed both quality bars</td><td>Pre-registration + blinded labels + machine result</td><td class="pass">Verified</td></tr>
-    <tr><td>61% context-preparation latency reduction</td><td>Dated raw JSON + runner + three fixed questions</td><td style="color:var(--amber);font-weight:800">Limited self-benchmark</td></tr>
+  <section><h2>Results and scope</h2><table><thead><tr><th>Result</th><th>Evidence</th><th>Boundary</th></tr></thead><tbody>
+    <tr><td>Fourteen human-readable concepts learned from 685 diffs across 668 repository families</td><td>Notebook + accepted taxonomy + provenance</td><td>Vocabulary concentrates on configuration, testing, versioning, and state metadata</td></tr>
+    <tr><td>151 held-out components from 132 repository families excluded from taxonomy fitting</td><td>Frozen population + artifact manifest</td><td>Measures precision among accepted predictions, not recall over all software concepts</td></tr>
+    <tr><td>Threshold remained at 0.72 after the 0.62 candidate missed both quality bars</td><td>Pre-registration + blinded labels + machine result</td><td>The holdout and earlier model judgments had informed development before human adjudication</td></tr>
+    <tr><td>61% context-preparation latency reduction</td><td>Dated raw JSON + runner + three fixed questions</td><td>Three-question self-benchmark on one repository</td></tr>
   </tbody></table></section>
   <p class="note"><strong>Limitations.</strong> The 14-concept vocabulary is concentrated in configuration, testing, versioning, and state metadata. The human adjudication is new, but the holdout and earlier model judgments had already informed development. The evaluation measures precision among accepted predictions—not recall over all software concepts, end-user comprehension, or downstream product outcomes. The latency result is a three-question self-benchmark on one repository.</p>
 </main></body></html>
