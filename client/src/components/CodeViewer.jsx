@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { fetchRaw, fetchChunks, fetchChunksAround, askQuestion, suggestEdits, fetchReferences } from '../lib/api.js'
 import { renderRich } from '../lib/richText.jsx'
+import { sourceRangeLabel } from '../lib/sourceRange.js'
 import { humanizeError } from '../lib/humanizeError.js'
 import ContextAttach from './ContextAttach.jsx'
 import InsightTabbar from './InsightTabbar.jsx'
@@ -259,6 +260,19 @@ export default function CodeViewer({
   const lineEls = useRef({}) // line index -> element
   const editBackRef = useRef(null) // diff backdrop behind the Edits textarea
 
+  // Opening file chat should feel like opening a composer, not a panel that needs
+  // a second click before it accepts typing.
+  useEffect(() => {
+    if (!chatOpen) return undefined
+    const frame = requestAnimationFrame(() => chatInputRef.current?.focus())
+    return () => cancelAnimationFrame(frame)
+  }, [chatOpen])
+
+  const useExampleQuestion = (question) => {
+    setChatInput(question)
+    requestAnimationFrame(() => chatInputRef.current?.focus())
+  }
+
   const beginInsightResize = (event) => {
     if (window.innerWidth < 1180) return
     event.preventDefault()
@@ -301,17 +315,7 @@ export default function CodeViewer({
   // Human-readable source ranges. Keep the user's exact drag selection distinct
   // from the larger structural box resolved around it; conflating the two made the
   // toolbar claim line numbers that did not match the visible highlight.
-  const sourceRangeLabel = (range) => {
-    if (!text || !range) return 'Selection'
-    const upto = (end) => (text.slice(0, Math.max(0, end)).match(/\n/g)?.length || 0) + 1
-    const a = upto(range.start)
-    const b = upto(Math.max(range.start, range.end - 1))
-    return a === b ? `Line ${a}` : `Lines ${a}–${b}`
-  }
-  // Structural labels remain useful in the chat, where questions target the box
-  // resolved around the exact selection rather than the raw character range.
-  const selectionLabel = (chunk) => sourceRangeLabel(chunk)
-  const highlightLabel = (range) => sourceRangeLabel(range)
+  const evidenceScopeLabel = pendingRange ? sourceRangeLabel(text, pendingRange) : 'Whole file'
 
   // Displayed chunks are exactly the boxes the server returned — every chunk is a
   // real tree node with one stable nodeId and one structural path through the file.
@@ -426,7 +430,7 @@ export default function CodeViewer({
       setLastQuestion(question)
       setChatLog((log) => [...log, {
         role: 'assistant', text: r.answer, path: r.path, depth: r.depth ?? 0, atBottom: !!r.atBottom,
-        scope: selected != null && chunks[selected] ? selectionLabel(chunks[selected]) : 'Whole file',
+        scope: evidenceScopeLabel,
         nodeId: targetNodeId,
       }])
       // This question recorded a new mark server-side → re-derive the distribution so
@@ -812,10 +816,9 @@ export default function CodeViewer({
       setTimeout(() => ln.classList.remove('bulging'), 650)
     }
   }
-  // The toolbar describes the user's exact drag selection; the chat describes
-  // the structural target resolved around it. Each label now reveals its own range.
+  // The toolbar and file chat both describe the same exact drag selection. The
+  // structural target remains internal context and is shown separately in Trace.
   const bulgeExactFocus = () => bulgeRange(pendingRange)
-  const bulgeSelection = () => bulgeRange(selected != null ? chunks[selected] : null)
 
   // Scroll a file offset into view and flash its line.
   const jumpToOffset = (off) => {
@@ -888,7 +891,7 @@ export default function CodeViewer({
         {!demo && (
           <div className="scope-ledger" aria-label="Active context">
             <button type="button" onClick={bulgeExactFocus} title="Reveal the highlighted lines">
-              {pendingRange ? highlightLabel(pendingRange) : 'Whole file'}
+              {evidenceScopeLabel}
             </button>
           </div>
         )}
@@ -1139,12 +1142,10 @@ export default function CodeViewer({
                 <button
                   type="button"
                   className="chat-sel"
-                  onClick={bulgeSelection}
-                  title={selected != null ? 'Show the selected code' : 'Chatting about the whole file'}
+                  onClick={bulgeExactFocus}
+                  title={pendingRange ? 'Show the highlighted code' : 'Chatting about the whole file'}
                 >
-                  {selected != null && chunks[selected]
-                    ? selectionLabel(chunks[selected])
-                    : 'Whole file'}
+                  {evidenceScopeLabel}
                 </button>
               </span>
             </div>
@@ -1162,9 +1163,7 @@ export default function CodeViewer({
                     {ctxFileId ? ' One supporting file is attached.' : ' Attach one supporting file when a comparison needs it.'}
                   </span>
                   <div className="insight-prompt-list" aria-label="Example questions">
-                    <button type="button" onClick={() => setChatInput('Explain the responsibility of this code.')}>Explain this responsibility</button>
-                    <button type="button" onClick={() => setChatInput('What depends on this code?')}>What depends on this?</button>
-                    <button type="button" onClick={() => setChatInput('What should I inspect next?')}>What should I inspect next?</button>
+                    <button type="button" onClick={() => useExampleQuestion('Explain the responsibility of this code.')}>Explain this responsibility</button>
                   </div>
                 </div>
               )}

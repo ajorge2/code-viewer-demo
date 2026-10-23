@@ -58,9 +58,9 @@ context model, not only the vertical ancestor fold described in
 | Client | React 19 + Vite 6 | `@vitejs/plugin-react`; no router, no state library, no CSS framework |
 | Dev orchestration | `concurrently` | `npm run dev` runs server (`node --watch`) + Vite together |
 
-There is **no automated test suite** in the repo today. Several pure functions are
-written to be test-friendly and a few are exported for that purpose
-(`boxFromParse` in `codeTree.js`), but CI/tests are not wired up.
+The repo has a Node `--test` suite (`npm test`) covering cache/session isolation,
+telemetry, source scanning, intent-analysis utilities, and UI-facing source-range
+labels. It runs locally; a hosted CI workflow is not configured yet.
 
 `Procfile` (`web: npm start`) + the `build`/`start` scripts make the repo
 deployable to a Heroku-style PaaS or a container: `build` installs and Vite-builds
@@ -78,6 +78,7 @@ static bundle from the same origin (see §3).
 ├── .env / .env.example     # OPENAI_API_KEY, PROJECT_DIR, PORT, model + window overrides
 ├── .tree-cache/            # gitignored: one JSON per parsed file (content-addressed)
 ├── .meaning-cache/         # gitignored: durable basic-summaries.jsonl only
+├── test/                   # Node test suite (cache, telemetry, ingest, intent, source ranges)
 ├── docs/
 │   └── highlight-to-chunk.md   # deep-dive on highlight→tightest-box→path (still accurate
 │                                #   for the box mechanics; superseded for the *meaning* fold)
@@ -103,15 +104,16 @@ static bundle from the same origin (see §3).
     └── src/
         ├── main.jsx        # createRoot
         ├── App.jsx         # top-level state, views (main/help), modals, localStorage, welcome animation
-        ├── index.css       # ~1.65k lines: the entire design system (no framework)
+        ├── index.css       # the entire hand-written design system (no framework)
         ├── components/
-        │   ├── CodeViewer.jsx     # ~1.2k lines: viewer, chunking modes, chat, edits/diff, refs peek
+        │   ├── CodeViewer.jsx     # viewer, chunking modes, chat, edits/diff, refs peek
         │   ├── Library.jsx        # file tree + per-folder chat + inline ref linking
         │   ├── ProjectSwitcher.jsx# manila-tab project bar, drag-reorder, 3 upload paths, window slider
         │   └── ContextAttach.jsx  # 📎 attach-one-file-as-context picker
         └── lib/
             ├── api.js        # thin fetch wrappers for every endpoint
             ├── richText.jsx  # minimal Markdown renderer + clickable mentions/symbols
+            ├── sourceRange.js# shared half-open offset → exact line-label conversion
             └── uploadFolder.js# read a browser-picked folder (3 APIs) into {relPath, content}[]
 ```
 
@@ -513,15 +515,17 @@ things you've asked about in this file. The *distribution itself* is the context
 - `minimalFrontier(nodes, idx, rootId, marks)` (§9.1) gives the current tiling.
 - `foldPeers(node, selfBare, peerBares, rootContext)` folds the asked node's bare
   against the bares of the **other** frontier members (its "peers"), with the folder
-  `rootContext` as low-weight background. Model = `MEANING_MODEL` (Opus).
+  `rootContext` as low-weight background. Model = `MEANING_MODEL` (`gpt-5.1` by
+  default).
 - **Cache key** `cp:<ctxNS>:<askedId>:<frontierSig>` where `frontierSig =
   sha1(frontierIds)`. A new mark changes the signature and recomputes exactly **one**
   `foldPeers` call; the peer bares stay cached (content-addressed), so a fresh mark is
   cheap on a warm file. Cached kind `ctxpeers`, held only in that tab's session cache.
 
-The viewer mirrors this exactly: after each answered question it bumps
-`marksVersion`, refetches the highlight-mode chunks, and re-bands the file with the
-*refined* frontier — so you watch retrieval get finer where you've looked.
+After each answered question the viewer bumps `marksVersion` and refetches the
+highlight-mode frontier. That refined structure updates the internal target, Trace
+view, and chunk count; the project viewer deliberately keeps the code surface clean
+by showing only the user's exact selection rather than persistent chunk bands.
 
 ### 11.3 Optional eager warm pass — `warmProjectBares`
 
@@ -569,8 +573,9 @@ push *deeper into the same unit*:
 
 - **Explicit** "More detail" button ⇒ `intent: 'deepen'` ⇒ `effDepth =
   min(depth + 1, maxDepth)`.
-- **Typed** message ⇒ `classifyIntent(transcript, question)` (a 1-word Opus call,
-  `effort: low`, max 8 tokens) decides `deepen` (dissatisfaction / "more specific
+- **Typed** message ⇒ `classifyIntent(transcript, question)` (a 1-word
+  `MEANING_MODEL` call, `reasoning_effort: none`, max 16 tokens) decides `deepen`
+  (dissatisfaction / "more specific
   about the same thing") vs `new` (resets to depth 0).
 
 `drillDetail` descends `effDepth` semantic levels, then describes that level's units
@@ -599,7 +604,7 @@ short literal `highlight` quote (≤ `HIGHLIGHT_QUOTE_CAP = 200`) → assemble t
 answer prompt (recap of last 4 turns, file path, location breadcrumb, the contextual
 meaning, the sub-part breakdown, the code, any attached context file, any
 answer-focus, any highlight quote, the question) → `ANSWER_MODEL` call with
-`thinking: { type: 'adaptive' }` and `effort: medium`.
+`reasoning_effort: medium` and a 4,096-token completion ceiling.
 
 **`suggestEdits`** reuses the same frontier-peers context (but `record: false`),
 revises `baseCode` if supplied (so iterative edits stack) else the unit's source,
@@ -625,17 +630,18 @@ the highlight's start lands in as `targetNodeId`, plus a lean ancestor closure a
 | `classify` / vertical fold / peers fold | `MEANING_MODEL = gpt-5.1` | `reasoning_effort: low` |
 | user-facing answers / edits / folder answers | `ANSWER_MODEL = gpt-5.1` | `reasoning_effort: medium` |
 
-`supportsEffort(m)` gates the `output_config.effort` and `thinking` params to
-Opus-4.5+/Sonnet-4.6 (Haiku omits them). Every system prompt is sent with
-`cache_control: { type: 'ephemeral' }` to hit Anthropic prompt caching. Cost goes
-where it's visible: the many small "what does this mean" passes are cheap; the one
-answer you read is the strongest model.
+`supportsEffort(m)` adds OpenAI's `reasoning_effort` only for GPT-5-family models.
+The local compatibility adapter translates the engine's internal message shape into
+OpenAI Chat Completions and maps `max_tokens` to `max_completion_tokens`; legacy
+`thinking` and `cache_control` fields in the internal call shape are not sent to
+OpenAI. Cost goes where it is visible: the many small content-addressed bare-summary
+passes use `gpt-5-mini`, while the answer the user reads uses `gpt-5.1` by default.
 
 ### 11.9 Concurrency & dedup
 
 - **Global slot ceiling** `CONCURRENCY = 8`: every model call routes through
-  `withSlot`, so the eager whole-project pass and interactive requests share one
-  ceiling instead of each spawning unbounded fan-out.
+  `withSlot`, so an enabled eager whole-project pass and interactive requests share
+  one ceiling instead of each spawning unbounded fan-out.
 - **In-flight dedup** `barePending` / `ctxPending`: concurrent requests for the same
   cache key share one promise (and one model call), so parallel sibling drills can't
   each kick off the same shared-ancestor computation. Focused pending keys also include
@@ -833,7 +839,7 @@ library own their local interaction state. All server I/O goes through `lib/api.
 - Project switch/upload/remove all funnel through `loadActiveFiles()` and surface the
   loading state on the stage.
 
-### 16.2 `CodeViewer.jsx` (~1.2k lines)
+### 16.2 `CodeViewer.jsx`
 
 The heart of the UI. Notable mechanics:
 
@@ -842,22 +848,26 @@ The heart of the UI. Notable mechanics:
   granularity/depth sliders, now only exposed on the demo page). Re-chunk fires from
   one effect debounced ~80 ms on `[file.id, pendingRange, manualMode, chunkSize,
   depthSpread, marksVersion]`; `marksVersion` bumps after every answered question so
-  the bands follow the refined frontier.
+  the resolved context follows the refined frontier.
 - **Highlight → char offsets:** every rendered `.seg` carries `data-cs` (its absolute
   char start) and — by render invariant — exactly one text node, so a DOM
   `Selection` endpoint maps to a file offset by `Number(seg.dataset.cs) +
   offsetInNode` (`segOffset`). `onCodeMouseUp` resolves both endpoints (falls back to
   whichever resolves), drops the native selection, and sets `pendingRange`. A plain
   click clears the selection back to whole-file.
+- **Exact range labels:** the main file toolbar, file-chat header, and saved answer
+  scope all call `sourceRangeLabel(text, pendingRange)`. The helper treats offsets as
+  `[start,end)`, so every surface reports the same line or line span as the visible
+  selection instead of substituting the larger syntax node resolved around it.
 - **Rendering:** `segmentsFor(k)` builds runs of same-chunk-index segments per line
   via a binary-search `chunkAt(pos)` over the sorted `[start,end)` intervals (no
   per-char array). `splitSegByHighlight` overlays the user's blue highlight band
-  independently of chunk bands. Chunk bands use three muted alternating hues, with a
-  vivid variant for the selected chunk; bands are off by default and revealed when the
-  chat opens.
+  independently of chunk bands. Chunk bands use three muted alternating hues in the
+  dedicated demo; they remain disabled in the project viewer.
 - **Q&A chat:** per-file transcripts (`chatLogs[file.id]`), a genie-animated panel +
-  FAB, "More detail" drill button (with optional answer-text `focus`), an attach-file
-  control, and a "Suggest edits" toggle that turns messages into edit instructions.
+  FAB, "More detail" drill button (with optional answer-text `focus`), and an
+  attach-file control. The composer receives focus as soon as chat opens. The empty
+  state keeps one explanatory starter prompt rather than multiple overlapping prompts.
 - **Edits drawer + diff:** a transparent `textarea` over a backdrop that renders a
   **char-level LCS diff** (`charDiff`: trims common prefix/suffix, LCS only the
   changed middle, falls back to whole-replace past 4M cells) — inserted chars
@@ -876,7 +886,9 @@ The file tree (built from flat relPaths, rendered with `└/├` guide cells) pl
 its own conversation (`chatLogs[cwd]`). Answers get two kinds of linkification: a row
 of jump-to buttons for every child file/folder the answer named (`refsInText`), and
 inline clickable mentions where names appear in prose/`code` (via `richText`).
-Ambiguous basenames resolve to the target closest to the current folder.
+Ambiguous basenames resolve to the target closest to the current folder. Folder and
+project chat also focus their composer on open and use the same single starter prompt
+as file chat.
 
 ### 16.4 `ProjectSwitcher.jsx`
 
@@ -893,7 +905,10 @@ paths in `uploadFolder.js`:
 
 All three mirror the server's ingest filters client-side (skip dirs, lockfiles,
 non-source ext, `MAX_FILE_BYTES`, and a 50 MB POST cap) so `node_modules`/binaries
-never go over the wire. Capped at 4 open projects in the UI.
+never go over the wire. Capped at 4 open projects in the UI. The current demo passes
+`sandbox` to this component, so its project-close control and add-folder button are
+presentational and intentionally do nothing; clicking either shows a short custom
+“Disabled for demo mode!” tooltip so the constraint is explicit.
 
 ### 16.5 `richText.jsx`
 
@@ -904,7 +919,7 @@ Optional `mentions` make known file/folder names clickable wherever they appear
 (longest-name-first alternation so `app.test.js` beats `app.js`); optional `linkCode`
 makes inline `code` a clickable symbol (the references peek).
 
-### 16.6 Design system (`index.css`, ~1.65k lines, no framework)
+### 16.6 Design system (`index.css`, no framework)
 
 Hand-written. A fixed gradient "mesh" backdrop; warm off-white surfaces; the manila
 folder-tab motif (clip-path shapes with directional pseudo-element shadows) reused for
@@ -978,7 +993,9 @@ there; they exist only in server memory for the current browser session.
 
 ## 19. Known limitations & honest caveats
 
-- **No automated tests.** Pure functions are written to be testable; nothing is wired.
+- **No hosted CI workflow.** The automated Node test suite runs through `npm test`,
+  but the repository does not currently run it in GitHub Actions or another checked-in
+  CI definition.
 - **`r` / `sql` don't actually CST-chunk yet.** They're declared in `GRAMMAR` but
   their wasms aren't bundled (no `server/grammars/`) and aren't in the pack, so they
   use the generic chunker. `yaml` is intentionally generic (broken packed grammar).

@@ -263,6 +263,18 @@ export default function Library({
   useEffect(() => {
     onFolderInsightChange?.(chatOpen || chatClosing)
   }, [chatOpen, chatClosing, onFolderInsightChange])
+
+  // Put the caret in the folder/project composer as soon as the chat opens.
+  useEffect(() => {
+    if (!chatOpen) return undefined
+    const frame = requestAnimationFrame(() => chatInputRef.current?.focus())
+    return () => cancelAnimationFrame(frame)
+  }, [chatOpen])
+
+  const useExampleQuestion = (question) => {
+    setChatInput(question)
+    requestAnimationFrame(() => chatInputRef.current?.focus())
+  }
   // Current folder's view of the per-folder state.
   const chatLog = chatLogs[cwd] || []
   const chatBusy = busyDir === cwd
@@ -500,9 +512,7 @@ export default function Library({
                   The current {cwd ? 'folder and its indexed structure are' : 'project and its indexed structure are'} in scope. Attach one supporting file when a comparison needs it.
                 </span>
                 <div className="insight-prompt-list" aria-label="Example questions">
-                  <button type="button" onClick={() => setChatInput(`Explain the responsibility of this ${cwd ? 'folder' : 'project'}.`)}>Explain this responsibility</button>
-                  <button type="button" onClick={() => setChatInput(`What depends on this ${cwd ? 'folder' : 'project'}?`)}>What depends on this?</button>
-                  <button type="button" onClick={() => setChatInput('What should I inspect next?')}>What should I inspect next?</button>
+                  <button type="button" onClick={() => useExampleQuestion(`Explain the responsibility of this ${cwd ? 'folder' : 'project'}.`)}>Explain this responsibility</button>
                 </div>
               </div>
             )}

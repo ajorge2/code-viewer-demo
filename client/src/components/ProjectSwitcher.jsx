@@ -23,6 +23,7 @@ const ProjectSwitcher = forwardRef(function ProjectSwitcher({ projects, activeId
   const [dragOver, setDragOver] = useState(false) // a folder is being dragged over the dropzone
   const [pendingUpload, setPendingUpload] = useState(null)
   const [contextSlot, setContextSlot] = useState(null)
+  const [sandboxNotice, setSandboxNotice] = useState(null)
   // Fixed left-to-right order of the open folder tabs. Tabs keep their slot for
   // life — selecting one only brings it forward (z-index), it never moves. New
   // projects append to the right; removed ones drop out.
@@ -34,6 +35,18 @@ const ProjectSwitcher = forwardRef(function ProjectSwitcher({ projects, activeId
   const tabEls = useRef({})       // id -> tab DOM node, for midpoint hit-testing
   const dragRef = useRef(null)    // { id, startX, boundary } while a drag is in progress
   const suppressClick = useRef(false) // swallow the click that ends a real drag
+  const sandboxNoticeTimer = useRef(null)
+
+  const showSandboxNotice = (anchor) => {
+    if (!sandbox || !anchor || !ref.current) return
+    const hostRect = ref.current.getBoundingClientRect()
+    const anchorRect = anchor.getBoundingClientRect()
+    setSandboxNotice({ left: anchorRect.left - hostRect.left + anchorRect.width / 2 })
+    clearTimeout(sandboxNoticeTimer.current)
+    sandboxNoticeTimer.current = setTimeout(() => setSandboxNotice(null), 1600)
+  }
+
+  useEffect(() => () => clearTimeout(sandboxNoticeTimer.current), [])
 
   useEffect(() => {
     setContextSlot(document.getElementById('topbar-context-slot'))
@@ -80,10 +93,12 @@ const ProjectSwitcher = forwardRef(function ProjectSwitcher({ projects, activeId
   const chooser = (
     <button
       className={`proj-tab proj-chooser${sandbox ? ' sandbox-locked' : ''}`}
-      disabled={sandbox}
-      onClick={() => { setOpen((o) => !o); setSettingsOpen(false) }}
-      title={sandbox ? 'Adding folders is disabled in this sandbox' : 'Open folder'}
-      aria-label={sandbox ? 'Adding folders is disabled in this sandbox' : 'Open folder'}
+      onClick={(event) => {
+        if (sandbox) { showSandboxNotice(event.currentTarget); return }
+        setOpen((o) => !o); setSettingsOpen(false)
+      }}
+      title={sandbox ? undefined : 'Open folder'}
+      aria-label={sandbox ? 'Disabled for demo mode' : 'Open folder'}
       aria-expanded={open}
     >
       <svg className={`proj-caret${open ? ' open' : ''}`} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -297,13 +312,21 @@ const ProjectSwitcher = forwardRef(function ProjectSwitcher({ projects, activeId
               <div className={className} style={{ zIndex: 100 }} title={p.absPath}>
                 <span
                   className={`proj-current-remove${sandbox ? ' sandbox-locked' : ''}`}
-                  role={sandbox ? undefined : 'button'}
-                  tabIndex={sandbox ? -1 : 0}
-                  title={sandbox ? 'Removing this project is disabled in the sandbox' : 'Remove from list'}
-                  aria-label={sandbox ? undefined : `Remove ${p.name}`}
-                  aria-hidden={sandbox ? 'true' : undefined}
-                  onClick={sandbox ? undefined : (e) => { e.stopPropagation(); onRemove(p.id) }}
-                  onKeyDown={sandbox ? undefined : (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onRemove(p.id) } }}
+                  role="button"
+                  tabIndex={0}
+                  title={sandbox ? undefined : 'Remove from list'}
+                  aria-label={sandbox ? 'Disabled for demo mode' : `Remove ${p.name}`}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    if (sandbox) showSandboxNotice(event.currentTarget)
+                    else onRemove(p.id)
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return
+                    event.preventDefault(); event.stopPropagation()
+                    if (sandbox) showSandboxNotice(event.currentTarget)
+                    else onRemove(p.id)
+                  }}
                 >
                   ×
                 </span>
@@ -332,6 +355,16 @@ const ProjectSwitcher = forwardRef(function ProjectSwitcher({ projects, activeId
           dragged tab will land on release. Rendered last (and absolutely
           positioned) so it overlays without disturbing the tab layout. */}
       {dropLeft != null && <div className="proj-drop-line" style={{ left: dropLeft }} />}
+
+      {sandboxNotice && (
+        <div
+          className="sandbox-tooltip"
+          role="status"
+          style={{ left: sandboxNotice.left }}
+        >
+          Disabled for demo mode!
+        </div>
+      )}
 
       {open && (
         <div className="proj-menu">
