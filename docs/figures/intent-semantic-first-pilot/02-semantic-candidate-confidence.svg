@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900" role="img" aria-labelledby="title desc">
+<title id="title">Semantic term candidates remain provisional</title>
+<desc id="desc">Support and cumulative definition-to-member fit after the semantic coherence gate</desc>
+<rect width="1400" height="900" fill="#ffffff"/>
+<style>text{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.title{font-size:31px;font-weight:700;fill:#172033}.subtitle{font-size:17px;fill:#667085}.axis{font-size:15px;fill:#667085}.label{font-size:18px;fill:#172033}.value{font-size:18px;font-weight:700}.note{font-size:14px;fill:#667085}</style>
+<text x="70.0" y="65.0" text-anchor="start" class="title">Semantic term candidates remain provisional</text>
+<text x="70.0" y="98.0" text-anchor="start" class="subtitle">Support and cumulative definition-to-member fit after the semantic coherence gate</text>
+<text x="70.0" y="167.0" text-anchor="start" class="label" style="font-size:16px">Browser page navigation</text>
+<rect x="430.0" y="145.0" width="360.0" height="30.0" fill="#f2f4f7" rx="6.0"/>
+<rect x="430.0" y="145.0" width="360.0" height="30.0" fill="#d97706" rx="6.0"/>
+<text x="810.0" y="167.0" text-anchor="start" class="label" style="fill:#d97706;font-weight:700;font-size:15px">4 repos</text>
+<rect x="930.0" y="145.0" width="260.0" height="30.0" fill="#f2f4f7" rx="6.0"/>
+<rect x="930.0" y="145.0" width="129.8" height="30.0" fill="#7c3aed" rx="6.0"/>
+<text x="1210.0" y="167.0" text-anchor="start" class="label" style="fill:#7c3aed;font-weight:700;font-size:15px">fit 0.499</text>
+<text x="70.0" y="237.0" text-anchor="start" class="label" style="font-size:16px">Callback scheduling</text>
+<rect x="430.0" y="215.0" width="360.0" height="30.0" fill="#f2f4f7" rx="6.0"/>
+<rect x="430.0" y="215.0" width="360.0" height="30.0" fill="#d97706" rx="6.0"/>
+<text x="810.0" y="237.0" text-anchor="start" class="label" style="fill:#d97706;font-weight:700;font-size:15px">4 repos</text>
+<rect x="930.0" y="215.0" width="260.0" height="30.0" fill="#f2f4f7" rx="6.0"/>
+<rect x="930.0" y="215.0" width="121.3" height="30.0" fill="#7c3aed" rx="6.0"/>
+<text x="1210.0" y="237.0" text-anchor="start" class="label" style="fill:#7c3aed;font-weight:700;font-size:15px">fit 0.467</text>
+<text x="70.0" y="307.0" text-anchor="start" class="label" style="font-size:16px">External command execution</text>
+<rect x="430.0" y="285.0" width="360.0" height="30.0" fill="#f2f4f7" rx="6.0"/>
+<rect x="430.0" y="285.0" width="360.0" height="30.0" fill="#d97706" rx="6.0"/>
+<text x="810.0" y="307.0" text-anchor="start" class="label" style="fill:#d97706;font-weight:700;font-size:15px">4 repos</text>
+<rect x="930.0" y="285.0" width="260.0" height="30.0" fill="#f2f4f7" rx="6.0"/>
+<rect x="930.0" y="285.0" width="136.9" height="30.0" fill="#7c3aed" rx="6.0"/>
+<text x="1210.0" y="307.0" text-anchor="start" class="label" style="fill:#7c3aed;font-weight:700;font-size:15px">fit 0.526</text>
+<text x="70.0" y="377.0" text-anchor="start" class="label" style="font-size:16px">Incoming submission validation</text>
+<rect x="430.0" y="355.0" width="360.0" height="30.0" fill="#f2f4f7" rx="6.0"/>
+<rect x="430.0" y="355.0" width="360.0" height="30.0" fill="#d97706" rx="6.0"/>
+<text x="810.0" y="377.0" text-anchor="start" class="label" style="fill:#d97706;font-weight:700;font-size:15px">4 repos</text>
+<rect x="930.0" y="355.0" width="260.0" height="30.0" fill="#f2f4f7" rx="6.0"/>
+<rect x="930.0" y="355.0" width="112.2" height="30.0" fill="#7c3aed" rx="6.0"/>
+<text x="1210.0" y="377.0" text-anchor="start" class="label" style="fill:#7c3aed;font-weight:700;font-size:15px">fit 0.431</text>
+<text x="70.0" y="447.0" text-anchor="start" class="label" style="font-size:16px">Temporal value conversion</text>
+<rect x="430.0" y="425.0" width="360.0" height="30.0" fill="#f2f4f7" rx="6.0"/>
+<rect x="430.0" y="425.0" width="360.0" height="30.0" fill="#d97706" rx="6.0"/>
+<text x="810.0" y="447.0" text-anchor="start" class="label" style="fill:#d97706;font-weight:700;font-size:15px">4 repos</text>
+<rect x="930.0" y="425.0" width="260.0" height="30.0" fill="#f2f4f7" rx="6.0"/>
+<rect x="930.0" y="425.0" width="128.3" height="30.0" fill="#7c3aed" rx="6.0"/>
+<text x="1210.0" y="447.0" text-anchor="start" class="label" style="fill:#7c3aed;font-weight:700;font-size:15px">fit 0.494</text>
+<text x="70.0" y="517.0" text-anchor="start" class="label" style="font-size:16px">Execution diagnostic reporting</text>
+<rect x="430.0" y="495.0" width="360.0" height="30.0" fill="#f2f4f7" rx="6.0"/>
+<rect x="430.0" y="495.0" width="270.0" height="30.0" fill="#d97706" rx="6.0"/>
+<text x="810.0" y="517.0" text-anchor="start" class="label" style="fill:#d97706;font-weight:700;font-size:15px">3 repos</text>
+<rect x="930.0" y="495.0" width="260.0" height="30.0" fill="#f2f4f7" rx="6.0"/>
+<rect x="930.0" y="495.0" width="127.8" height="30.0" fill="#7c3aed" rx="6.0"/>
+<text x="1210.0" y="517.0" text-anchor="start" class="label" style="fill:#7c3aed;font-weight:700;font-size:15px">fit 0.492</text>
+<text x="70.0" y="587.0" text-anchor="start" class="label" style="font-size:16px">Password intake</text>
+<rect x="430.0" y="565.0" width="360.0" height="30.0" fill="#f2f4f7" rx="6.0"/>
+<rect x="430.0" y="565.0" width="270.0" height="30.0" fill="#d97706" rx="6.0"/>
+<text x="810.0" y="587.0" text-anchor="start" class="label" style="fill:#d97706;font-weight:700;font-size:15px">3 repos</text>
+<rect x="930.0" y="565.0" width="260.0" height="30.0" fill="#f2f4f7" rx="6.0"/>
+<rect x="930.0" y="565.0" width="126.9" height="30.0" fill="#7c3aed" rx="6.0"/>
+<text x="1210.0" y="587.0" text-anchor="start" class="label" style="fill:#7c3aed;font-weight:700;font-size:15px">fit 0.488</text>
+<text x="70.0" y="657.0" text-anchor="start" class="label" style="font-size:16px">Recursive file enumeration</text>
+<rect x="430.0" y="635.0" width="360.0" height="30.0" fill="#f2f4f7" rx="6.0"/>
+<rect x="430.0" y="635.0" width="270.0" height="30.0" fill="#d97706" rx="6.0"/>
+<text x="810.0" y="657.0" text-anchor="start" class="label" style="fill:#d97706;font-weight:700;font-size:15px">3 repos</text>
+<rect x="930.0" y="635.0" width="260.0" height="30.0" fill="#f2f4f7" rx="6.0"/>
+<rect x="930.0" y="635.0" width="150.4" height="30.0" fill="#7c3aed" rx="6.0"/>
+<text x="1210.0" y="657.0" text-anchor="start" class="label" style="fill:#7c3aed;font-weight:700;font-size:15px">fit 0.579</text>
+<text x="70.0" y="727.0" text-anchor="start" class="label" style="font-size:16px">User-facing previews</text>
+<rect x="430.0" y="705.0" width="360.0" height="30.0" fill="#f2f4f7" rx="6.0"/>
+<rect x="430.0" y="705.0" width="270.0" height="30.0" fill="#d97706" rx="6.0"/>
+<text x="810.0" y="727.0" text-anchor="start" class="label" style="fill:#d97706;font-weight:700;font-size:15px">3 repos</text>
+<rect x="930.0" y="705.0" width="260.0" height="30.0" fill="#f2f4f7" rx="6.0"/>
+<rect x="930.0" y="705.0" width="131.6" height="30.0" fill="#7c3aed" rx="6.0"/>
+<text x="1210.0" y="727.0" text-anchor="start" class="label" style="fill:#7c3aed;font-weight:700;font-size:15px">fit 0.506</text>
+<text x="70.0" y="797.0" text-anchor="start" class="label" style="font-size:16px">Web application initialization</text>
+<rect x="430.0" y="775.0" width="360.0" height="30.0" fill="#f2f4f7" rx="6.0"/>
+<rect x="430.0" y="775.0" width="270.0" height="30.0" fill="#d97706" rx="6.0"/>
+<text x="810.0" y="797.0" text-anchor="start" class="label" style="fill:#d97706;font-weight:700;font-size:15px">3 repos</text>
+<rect x="930.0" y="775.0" width="260.0" height="30.0" fill="#f2f4f7" rx="6.0"/>
+<rect x="930.0" y="775.0" width="139.5" height="30.0" fill="#7c3aed" rx="6.0"/>
+<text x="1210.0" y="797.0" text-anchor="start" class="label" style="fill:#7c3aed;font-weight:700;font-size:15px">fit 0.537</text>
+<text x="70.0" y="858.0" text-anchor="start" class="note">Every member preferred its own candidate label over all nine alternatives, but evidence is too small for promotion.</text>
+</svg>

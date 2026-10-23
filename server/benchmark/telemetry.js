@@ -27,20 +27,6 @@ function rounded(value) {
   return Math.round(value * 1000) / 1000;
 }
 
-const emptyUsage = () => ({
-  inputTokens: 0,
-  outputTokens: 0,
-  cacheCreationInputTokens: 0,
-  cacheReadInputTokens: 0,
-});
-
-function addUsage(bucket, usage = {}) {
-  bucket.inputTokens += Number(usage.input_tokens || 0);
-  bucket.outputTokens += Number(usage.output_tokens || 0);
-  bucket.cacheCreationInputTokens += Number(usage.cache_creation_input_tokens || 0);
-  bucket.cacheReadInputTokens += Number(usage.cache_read_input_tokens || 0);
-}
-
 function snapshot(context) {
   const timings = {};
   for (const [name, value] of Object.entries(context.timings)) {
@@ -72,14 +58,7 @@ export async function runWithTelemetry(label, metadata, fn) {
     startedAt: performance.now(),
     timings: {},
     cache: { hits: 0, misses: 0, sets: 0, byKind: {} },
-    models: {
-      calls: 0,
-      usage: emptyUsage(),
-      byPhase: {},
-      byModel: {},
-      usageByPhase: {},
-      usageByModel: {},
-    },
+    models: { calls: 0, byPhase: {}, byModel: {} },
   };
 
   return telemetryStore.run(context, async () => {
@@ -135,16 +114,4 @@ export function recordModelCall(phase, model) {
   context.models.calls += 1;
   context.models.byPhase[normalizedPhase] = (context.models.byPhase[normalizedPhase] || 0) + 1;
   context.models.byModel[normalizedModel] = (context.models.byModel[normalizedModel] || 0) + 1;
-}
-
-export function recordModelUsage(phase, model, usage) {
-  const context = telemetryStore.getStore();
-  if (!context || !usage) return;
-  const normalizedPhase = phase || 'unknown';
-  const normalizedModel = model || 'unknown';
-  const phaseBucket = counterBucket(context.models.usageByPhase, normalizedPhase, emptyUsage());
-  const modelBucket = counterBucket(context.models.usageByModel, normalizedModel, emptyUsage());
-  addUsage(context.models.usage, usage);
-  addUsage(phaseBucket, usage);
-  addUsage(modelBucket, usage);
 }

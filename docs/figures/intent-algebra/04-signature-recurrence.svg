@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="820" viewBox="0 0 1400 820" role="img" aria-labelledby="title desc">
+<title id="title">Structural-signature recurrence in eligible pilot changes</title>
+<desc id="desc">126 unique signatures across 139 eligible sample changes; support is within this pilot only</desc>
+<rect width="1400" height="820" fill="#ffffff"/>
+<style>text{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.title{font-size:31px;font-weight:700;fill:#172033}.subtitle{font-size:17px;fill:#667085}.axis{font-size:15px;fill:#667085}.label{font-size:18px;fill:#172033}.value{font-size:18px;font-weight:700}.note{font-size:14px;fill:#667085}</style>
+<text x="70.0" y="65.0" text-anchor="start" class="title">Structural-signature recurrence in eligible pilot changes</text>
+<text x="70.0" y="98.0" text-anchor="start" class="subtitle">126 unique signatures across 139 eligible sample changes; support is within this pilot only</text>
+<text x="152.0" y="229.0" text-anchor="end" class="label" style="font-weight:700;font-size:17px">Support 1</text>
+<rect x="180.0" y="200.0" width="1060.0" height="48.0" fill="#138a72" rx="5.0"/>
+<text x="1254.0" y="231.0" text-anchor="start" class="label" style="font-weight:700;font-size:17px">120 signatures</text>
+<text x="1254.0" y="253.0" text-anchor="start" class="note">120 changes</text>
+<text x="152.0" y="321.0" text-anchor="end" class="label" style="font-weight:700;font-size:17px">Support 2</text>
+<rect x="180.0" y="292.0" width="167.6" height="48.0" fill="#138a72" rx="5.0"/>
+<text x="361.6" y="323.0" text-anchor="start" class="label" style="font-weight:700;font-size:17px">3 signatures</text>
+<text x="361.6" y="345.0" text-anchor="start" class="note">6 changes</text>
+<text x="152.0" y="413.0" text-anchor="end" class="label" style="font-weight:700;font-size:17px">Support 3</text>
+<rect x="180.0" y="384.0" width="96.8" height="48.0" fill="#138a72" rx="5.0"/>
+<text x="290.8" y="415.0" text-anchor="start" class="label" style="font-weight:700;font-size:17px">1 signature</text>
+<text x="290.8" y="437.0" text-anchor="start" class="note">3 changes</text>
+<text x="152.0" y="505.0" text-anchor="end" class="label" style="font-weight:700;font-size:17px">Support 4</text>
+<rect x="180.0" y="476.0" width="96.8" height="48.0" fill="#138a72" rx="5.0"/>
+<text x="290.8" y="507.0" text-anchor="start" class="label" style="font-weight:700;font-size:17px">1 signature</text>
+<text x="290.8" y="529.0" text-anchor="start" class="note">4 changes</text>
+<text x="152.0" y="597.0" text-anchor="end" class="label" style="font-weight:700;font-size:17px">Support 5+</text>
+<rect x="180.0" y="568.0" width="96.8" height="48.0" fill="#138a72" rx="5.0"/>
+<text x="290.8" y="599.0" text-anchor="start" class="label" style="font-weight:700;font-size:17px">1 signature</text>
+<text x="290.8" y="621.0" text-anchor="start" class="note">6 changes</text>
+<rect x="70.0" y="685.0" width="1260.0" height="85.0" fill="#f7f9fc" rx="10.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="95.0" y="719.0" text-anchor="start" class="label" style="font-weight:700">120 / 126 signatures (95.2%) appeared once; 6 recurred.</text>
+<text x="95.0" y="748.0" text-anchor="start" class="note">Recurrent signatures cover 19 / 139 eligible changes (13.7%). No population-level recurrence is inferred.</text>
+<text x="1240.0" y="650.0" text-anchor="end" class="note">Bar length uses a square-root scale</text>
+</svg>

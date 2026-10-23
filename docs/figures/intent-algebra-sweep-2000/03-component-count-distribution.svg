@@ -1,0 +1,205 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="820" viewBox="0 0 1400 820" role="img" aria-labelledby="title desc">
+<title id="title">AST component-count distribution</title>
+<desc id="desc">Deterministic pilot sample; all 200 sampled changes, including ineligible changes and parse errors</desc>
+<rect width="1400" height="820" fill="#ffffff"/>
+<style>text{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.title{font-size:31px;font-weight:700;fill:#172033}.subtitle{font-size:17px;fill:#667085}.axis{font-size:15px;fill:#667085}.label{font-size:18px;fill:#172033}.value{font-size:18px;font-weight:700}.note{font-size:14px;fill:#667085}</style>
+<text x="70.0" y="65.0" text-anchor="start" class="title">AST component-count distribution</text>
+<text x="70.0" y="98.0" text-anchor="start" class="subtitle">Deterministic pilot sample; all 200 sampled changes, including ineligible changes and parse errors</text>
+<line x1="115.0" y1="665.0" x2="1320.0" y2="665.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="670.0" text-anchor="end" class="axis">0</text>
+<line x1="115.0" y1="658.3" x2="1320.0" y2="658.3" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="663.3" text-anchor="end" class="axis">10</text>
+<line x1="115.0" y1="651.6" x2="1320.0" y2="651.6" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="656.6" text-anchor="end" class="axis">20</text>
+<line x1="115.0" y1="644.9" x2="1320.0" y2="644.9" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="649.9" text-anchor="end" class="axis">30</text>
+<line x1="115.0" y1="638.2" x2="1320.0" y2="638.2" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="643.2" text-anchor="end" class="axis">40</text>
+<line x1="115.0" y1="631.4" x2="1320.0" y2="631.4" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="636.4" text-anchor="end" class="axis">50</text>
+<line x1="115.0" y1="624.7" x2="1320.0" y2="624.7" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="629.7" text-anchor="end" class="axis">60</text>
+<line x1="115.0" y1="618.0" x2="1320.0" y2="618.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="623.0" text-anchor="end" class="axis">70</text>
+<line x1="115.0" y1="611.3" x2="1320.0" y2="611.3" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="616.3" text-anchor="end" class="axis">80</text>
+<line x1="115.0" y1="604.6" x2="1320.0" y2="604.6" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="609.6" text-anchor="end" class="axis">90</text>
+<line x1="115.0" y1="597.9" x2="1320.0" y2="597.9" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="602.9" text-anchor="end" class="axis">100</text>
+<line x1="115.0" y1="591.2" x2="1320.0" y2="591.2" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="596.2" text-anchor="end" class="axis">110</text>
+<line x1="115.0" y1="584.5" x2="1320.0" y2="584.5" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="589.5" text-anchor="end" class="axis">120</text>
+<line x1="115.0" y1="577.7" x2="1320.0" y2="577.7" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="582.7" text-anchor="end" class="axis">130</text>
+<line x1="115.0" y1="571.0" x2="1320.0" y2="571.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="576.0" text-anchor="end" class="axis">140</text>
+<line x1="115.0" y1="564.3" x2="1320.0" y2="564.3" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="569.3" text-anchor="end" class="axis">150</text>
+<line x1="115.0" y1="557.6" x2="1320.0" y2="557.6" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="562.6" text-anchor="end" class="axis">160</text>
+<line x1="115.0" y1="550.9" x2="1320.0" y2="550.9" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="555.9" text-anchor="end" class="axis">170</text>
+<line x1="115.0" y1="544.2" x2="1320.0" y2="544.2" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="549.2" text-anchor="end" class="axis">180</text>
+<line x1="115.0" y1="537.5" x2="1320.0" y2="537.5" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="542.5" text-anchor="end" class="axis">190</text>
+<line x1="115.0" y1="530.8" x2="1320.0" y2="530.8" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="535.8" text-anchor="end" class="axis">200</text>
+<line x1="115.0" y1="524.0" x2="1320.0" y2="524.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="529.0" text-anchor="end" class="axis">210</text>
+<line x1="115.0" y1="517.3" x2="1320.0" y2="517.3" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="522.3" text-anchor="end" class="axis">220</text>
+<line x1="115.0" y1="510.6" x2="1320.0" y2="510.6" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="515.6" text-anchor="end" class="axis">230</text>
+<line x1="115.0" y1="503.9" x2="1320.0" y2="503.9" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="508.9" text-anchor="end" class="axis">240</text>
+<line x1="115.0" y1="497.2" x2="1320.0" y2="497.2" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="502.2" text-anchor="end" class="axis">250</text>
+<line x1="115.0" y1="490.5" x2="1320.0" y2="490.5" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="495.5" text-anchor="end" class="axis">260</text>
+<line x1="115.0" y1="483.8" x2="1320.0" y2="483.8" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="488.8" text-anchor="end" class="axis">270</text>
+<line x1="115.0" y1="477.1" x2="1320.0" y2="477.1" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="482.1" text-anchor="end" class="axis">280</text>
+<line x1="115.0" y1="470.3" x2="1320.0" y2="470.3" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="475.3" text-anchor="end" class="axis">290</text>
+<line x1="115.0" y1="463.6" x2="1320.0" y2="463.6" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="468.6" text-anchor="end" class="axis">300</text>
+<line x1="115.0" y1="456.9" x2="1320.0" y2="456.9" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="461.9" text-anchor="end" class="axis">310</text>
+<line x1="115.0" y1="450.2" x2="1320.0" y2="450.2" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="455.2" text-anchor="end" class="axis">320</text>
+<line x1="115.0" y1="443.5" x2="1320.0" y2="443.5" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="448.5" text-anchor="end" class="axis">330</text>
+<line x1="115.0" y1="436.8" x2="1320.0" y2="436.8" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="441.8" text-anchor="end" class="axis">340</text>
+<line x1="115.0" y1="430.1" x2="1320.0" y2="430.1" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="435.1" text-anchor="end" class="axis">350</text>
+<line x1="115.0" y1="423.4" x2="1320.0" y2="423.4" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="428.4" text-anchor="end" class="axis">360</text>
+<line x1="115.0" y1="416.6" x2="1320.0" y2="416.6" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="421.6" text-anchor="end" class="axis">370</text>
+<line x1="115.0" y1="409.9" x2="1320.0" y2="409.9" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="414.9" text-anchor="end" class="axis">380</text>
+<line x1="115.0" y1="403.2" x2="1320.0" y2="403.2" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="408.2" text-anchor="end" class="axis">390</text>
+<line x1="115.0" y1="396.5" x2="1320.0" y2="396.5" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="401.5" text-anchor="end" class="axis">400</text>
+<line x1="115.0" y1="389.8" x2="1320.0" y2="389.8" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="394.8" text-anchor="end" class="axis">410</text>
+<line x1="115.0" y1="383.1" x2="1320.0" y2="383.1" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="388.1" text-anchor="end" class="axis">420</text>
+<line x1="115.0" y1="376.4" x2="1320.0" y2="376.4" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="381.4" text-anchor="end" class="axis">430</text>
+<line x1="115.0" y1="369.7" x2="1320.0" y2="369.7" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="374.7" text-anchor="end" class="axis">440</text>
+<line x1="115.0" y1="362.9" x2="1320.0" y2="362.9" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="367.9" text-anchor="end" class="axis">450</text>
+<line x1="115.0" y1="356.2" x2="1320.0" y2="356.2" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="361.2" text-anchor="end" class="axis">460</text>
+<line x1="115.0" y1="349.5" x2="1320.0" y2="349.5" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="354.5" text-anchor="end" class="axis">470</text>
+<line x1="115.0" y1="342.8" x2="1320.0" y2="342.8" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="347.8" text-anchor="end" class="axis">480</text>
+<line x1="115.0" y1="336.1" x2="1320.0" y2="336.1" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="341.1" text-anchor="end" class="axis">490</text>
+<line x1="115.0" y1="329.4" x2="1320.0" y2="329.4" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="334.4" text-anchor="end" class="axis">500</text>
+<line x1="115.0" y1="322.7" x2="1320.0" y2="322.7" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="327.7" text-anchor="end" class="axis">510</text>
+<line x1="115.0" y1="316.0" x2="1320.0" y2="316.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="321.0" text-anchor="end" class="axis">520</text>
+<line x1="115.0" y1="309.2" x2="1320.0" y2="309.2" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="314.2" text-anchor="end" class="axis">530</text>
+<line x1="115.0" y1="302.5" x2="1320.0" y2="302.5" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="307.5" text-anchor="end" class="axis">540</text>
+<line x1="115.0" y1="295.8" x2="1320.0" y2="295.8" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="300.8" text-anchor="end" class="axis">550</text>
+<line x1="115.0" y1="289.1" x2="1320.0" y2="289.1" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="294.1" text-anchor="end" class="axis">560</text>
+<line x1="115.0" y1="282.4" x2="1320.0" y2="282.4" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="287.4" text-anchor="end" class="axis">570</text>
+<line x1="115.0" y1="275.7" x2="1320.0" y2="275.7" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="280.7" text-anchor="end" class="axis">580</text>
+<line x1="115.0" y1="269.0" x2="1320.0" y2="269.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="274.0" text-anchor="end" class="axis">590</text>
+<line x1="115.0" y1="262.3" x2="1320.0" y2="262.3" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="267.3" text-anchor="end" class="axis">600</text>
+<line x1="115.0" y1="255.5" x2="1320.0" y2="255.5" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="260.5" text-anchor="end" class="axis">610</text>
+<line x1="115.0" y1="248.8" x2="1320.0" y2="248.8" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="253.8" text-anchor="end" class="axis">620</text>
+<line x1="115.0" y1="242.1" x2="1320.0" y2="242.1" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="247.1" text-anchor="end" class="axis">630</text>
+<line x1="115.0" y1="235.4" x2="1320.0" y2="235.4" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="240.4" text-anchor="end" class="axis">640</text>
+<line x1="115.0" y1="228.7" x2="1320.0" y2="228.7" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="233.7" text-anchor="end" class="axis">650</text>
+<line x1="115.0" y1="222.0" x2="1320.0" y2="222.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="227.0" text-anchor="end" class="axis">660</text>
+<line x1="115.0" y1="215.3" x2="1320.0" y2="215.3" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="220.3" text-anchor="end" class="axis">670</text>
+<line x1="115.0" y1="208.6" x2="1320.0" y2="208.6" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="213.6" text-anchor="end" class="axis">680</text>
+<line x1="115.0" y1="201.8" x2="1320.0" y2="201.8" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="206.8" text-anchor="end" class="axis">690</text>
+<line x1="115.0" y1="195.1" x2="1320.0" y2="195.1" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="200.1" text-anchor="end" class="axis">700</text>
+<line x1="115.0" y1="188.4" x2="1320.0" y2="188.4" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="193.4" text-anchor="end" class="axis">710</text>
+<line x1="115.0" y1="181.7" x2="1320.0" y2="181.7" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="186.7" text-anchor="end" class="axis">720</text>
+<line x1="115.0" y1="175.0" x2="1320.0" y2="175.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="180.0" text-anchor="end" class="axis">730</text>
+<text x="115.0" y="157.0" text-anchor="start" class="axis">Number of sampled changes</text>
+<rect x="140.3" y="177.0" width="45.0" height="488.0" fill="#2563eb" rx="4.0"/>
+<text x="162.8" y="167.0" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">727</text>
+<rect x="195.3" y="247.5" width="45.0" height="417.5" fill="#d97706" rx="4.0"/>
+<text x="217.8" y="237.5" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">622</text>
+<text x="190.3" y="697.0" text-anchor="middle" class="axis">1</text>
+<rect x="290.9" y="403.9" width="45.0" height="261.1" fill="#2563eb" rx="4.0"/>
+<text x="313.4" y="393.9" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">389</text>
+<rect x="345.9" y="349.5" width="45.0" height="315.5" fill="#d97706" rx="4.0"/>
+<text x="368.4" y="339.5" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">470</text>
+<text x="340.9" y="697.0" text-anchor="middle" class="axis">2</text>
+<rect x="441.6" y="512.6" width="45.0" height="152.4" fill="#2563eb" rx="4.0"/>
+<text x="464.1" y="502.6" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">227</text>
+<rect x="496.6" y="532.1" width="45.0" height="132.9" fill="#d97706" rx="4.0"/>
+<text x="519.1" y="522.1" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">198</text>
+<text x="491.6" y="697.0" text-anchor="middle" class="axis">3</text>
+<rect x="592.2" y="558.3" width="45.0" height="106.7" fill="#2563eb" rx="4.0"/>
+<text x="614.7" y="548.3" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">159</text>
+<rect x="647.2" y="552.2" width="45.0" height="112.8" fill="#d97706" rx="4.0"/>
+<text x="669.7" y="542.2" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">168</text>
+<text x="642.2" y="697.0" text-anchor="middle" class="axis">4</text>
+<rect x="742.8" y="611.3" width="45.0" height="53.7" fill="#2563eb" rx="4.0"/>
+<text x="765.3" y="601.3" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">80</text>
+<rect x="797.8" y="606.6" width="45.0" height="58.4" fill="#d97706" rx="4.0"/>
+<text x="820.3" y="596.6" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">87</text>
+<text x="792.8" y="697.0" text-anchor="middle" class="axis">5</text>
+<rect x="893.4" y="498.5" width="45.0" height="166.5" fill="#2563eb" rx="4.0"/>
+<text x="915.9" y="488.5" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">248</text>
+<rect x="948.4" y="509.9" width="45.0" height="155.1" fill="#d97706" rx="4.0"/>
+<text x="970.9" y="499.9" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">231</text>
+<text x="943.4" y="697.0" text-anchor="middle" class="axis">6–10</text>
+<rect x="1044.1" y="574.4" width="45.0" height="90.6" fill="#2563eb" rx="4.0"/>
+<text x="1066.6" y="564.4" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">135</text>
+<rect x="1099.1" y="563.0" width="45.0" height="102.0" fill="#d97706" rx="4.0"/>
+<text x="1121.6" y="553.0" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">152</text>
+<text x="1094.1" y="697.0" text-anchor="middle" class="axis">11+</text>
+<rect x="1194.7" y="641.5" width="45.0" height="23.5" fill="#2563eb" rx="4.0"/>
+<text x="1217.2" y="631.5" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">35</text>
+<rect x="1249.7" y="616.7" width="45.0" height="48.3" fill="#d97706" rx="4.0"/>
+<text x="1272.2" y="606.7" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">72</text>
+<text x="1244.7" y="697.0" text-anchor="middle" class="axis">Error</text>
+<line x1="566.9" y1="175.0" x2="566.9" y2="715.0" stroke="#d95d39" stroke-width="2" stroke-dasharray="8 7"/>
+<text x="556.9" y="161.0" text-anchor="end" class="label" style="fill:#d95d39;font-weight:700;font-size:15px">≤3-component inclusion boundary</text>
+<rect x="965.0" y="125.0" width="20.0" height="20.0" fill="#2563eb" rx="3.0"/>
+<text x="995.0" y="142.0" text-anchor="start" class="label" style="font-size:15px">Python</text>
+<rect x="1085.0" y="125.0" width="20.0" height="20.0" fill="#d97706" rx="3.0"/>
+<text x="1115.0" y="142.0" text-anchor="start" class="label" style="font-size:15px">JavaScript</text>
+<text x="717.5" y="737.0" text-anchor="middle" class="axis">Connected AST edit components per observed file</text>
+<text x="70.0" y="785.0" text-anchor="start" class="note">Counts above 5 are grouped to keep the long tail readable; errors have no component count.</text>
+</svg>

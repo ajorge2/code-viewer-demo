@@ -1,12 +1,13 @@
 import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import express from 'express';
 import cors from 'cors';
 import { initLogger } from 'braintrust';
 
-initLogger({ projectName: 'My Project' });
+initLogger({ projectName: process.env.BRAINTRUST_PROJECT_NAME || 'CodeArchitect' });
 
 import {
   loadProject, listFiles, getFile, fileCount, getScanStats,
@@ -20,14 +21,17 @@ import { chunkCode } from './ingest/codeTree.js';
 import { chunkGeneric } from './ingest/genericTree.js';
 import { isParseable, loadTree, clearTreeCache, treeCacheKey, clearTreeCacheForKeys } from './ingest/parseTree.js';
 import { setProjectTree, getProjectTree, buildProjectTree } from './ingest/projectTree.js';
-import { ask, askFolder, suggestEdits, warmProjectBares, fileFrontier, frontierChunks, projectCacheHashes } from './llm/meaning.js';
-import { cacheDropByFileHash } from './llm/cache.js';
+import { ask, askFolder, suggestEdits, warmProjectBares, fileFrontier, frontierChunks, projectCacheHashes, clearMeaningSession } from './llm/meaning.js';
+import { cacheDropByFileHash, focusedCacheDropByFileHash } from './llm/cache.js';
 import { findReferences } from './ingest/references.js';
 
-// Build the active project's folder tree and kick off the eager bottom-up bare
-// pass in the BACKGROUND (don't block the response on thousands of model calls).
-// Idempotent — re-runs hit the content-addressed cache. No-ops without an API key.
-function warmActiveProject() {
+// Build the active project's folder tree. Whole-project LLM warming is deliberately
+// opt-in: the demo already has a persistent content-addressed meaning cache, so paying
+// to walk and summarize an entire repository on every new load is unnecessary. Cache
+// misses for a unit are still computed lazily by the ask path.
+const EAGER_PROJECT_WARM = /^(1|true|yes)$/i.test(process.env.EAGER_PROJECT_WARM || '');
+
+function prepareActiveProject() {
   try {
     const files = listFiles()
       .map((f) => getFile(f.id))
@@ -35,24 +39,19 @@ function warmActiveProject() {
       .map((f) => ({ relPath: f.relPath, content: f.content }));
     const name = (activeProjectDir() || '').split('/').filter(Boolean).pop() || '(project)';
     setProjectTree(name, files);
-    warmProjectBares(files, getBareWindow(activeProjectId())).catch(() => {}); // detached
+    if (EAGER_PROJECT_WARM) {
+      warmProjectBares(files, getBareWindow(activeProjectId())).catch(() => {}); // detached
+    }
   } catch { /* non-fatal: questions still work via lazy compute */ }
 }
 
-// Meaning-cache kinds: the bare summaries (expensive building blocks) vs. the
-// contextual reads folded off them. "Clear cache" drops the contextual reads + parse
-// trees but keeps bares; closing a project drops everything.
-const CTX_KINDS = new Set(['ctx', 'ctxpeers', 'dirctx']);
-
-// Clear a project's cached analysis. Two modes:
-//   • full=false ("clear cache") — drop ONLY the per-chunk in-context summaries (the
-//     contextual reads). The parse trees and bare summaries stay; they're the durable,
-//     expensive building blocks and only the contextual fold is re-derived (on next ask).
-//   • full=true (closing the project) — also drop the parse trees AND every bare.
+// Clear a project's cached analysis. Focused summaries are always session-only;
+// durable basic summaries and parse trees are touched only for a full invalidation.
 // `tree` supplies the folder tree the cache hashes derive from: the active project's
 // (getProjectTree) or a background one rebuilt via buildProjectTree.
-function clearProjectAnalysis(files, tree, { full }) {
+function clearProjectAnalysis(files, tree, { full, sessionId = null }) {
   if (!files || !files.length) return { trees: 0, meanings: 0 };
+  const hashes = projectCacheHashes(files, tree);
   let trees = 0;
   if (full) {
     const treeKeys = new Set();
@@ -62,8 +61,18 @@ function clearProjectAnalysis(files, tree, { full }) {
     }
     trees = clearTreeCacheForKeys(treeKeys);
   }
-  const meanings = cacheDropByFileHash(projectCacheHashes(files, tree), full ? null : CTX_KINDS);
+  const focused = focusedCacheDropByFileHash(hashes, full ? null : sessionId);
+  const basics = full ? cacheDropByFileHash(hashes) : 0;
+  if (sessionId) clearMeaningSession(sessionId);
+  const meanings = focused + basics;
   return { trees, meanings };
+}
+
+// Browser tabs use a sessionStorage-backed id. Headerless API calls get an ephemeral
+// request id: they still work, but cannot accidentally share focus state across users.
+function meaningSessionId(req) {
+  const raw = req.get('x-codearchitect-session');
+  return raw && /^[a-zA-Z0-9_-]{8,128}$/.test(raw) ? raw : `anonymous-${crypto.randomUUID()}`;
 }
 
 // Tree is parsed at most once ever (memoized + persisted to .tree-cache/),
@@ -78,6 +87,13 @@ const PORT = process.env.PORT || 8799;
 // The codebase to inspect. Defaults to this tool's own repo (zero-config,
 // self-demoing); override with PROJECT_DIR=/path/to/your/project.
 const PROJECT_DIR = path.resolve(process.env.PROJECT_DIR || path.join(__dirname, '..'));
+const SELF_DEMO_DIR = path.resolve(path.join(__dirname, '..'));
+const INITIAL_SCAN_OPTIONS = PROJECT_DIR === SELF_DEMO_DIR
+  ? {
+      excludeRootDirs: ['experiments', 'docs', 'test'],
+      excludeRootFiles: ['package.json', 'README.md'],
+    }
+  : {};
 
 const app = express();
 let startupState = { initializing: true, error: null };
@@ -116,16 +132,13 @@ app.get('/api/files', (req, res) => {
   });
 });
 
-// "Clear cache" for the ACTIVE project: drop ONLY the per-chunk in-context summaries
-// (the contextual reads answers are built from). The parse trees and the bare summaries
-// stay — they're the durable building blocks. The next question just re-folds context
-// off the kept bares. Parse + bares are wiped only when the project is closed (the ×
-// handler below) or its window size changes.
+// "Clear cache" for the ACTIVE project: drop only this browser session's focused
+// summaries and frontier marks. Parse trees and durable basic summaries stay.
 app.delete('/api/tree-cache', (req, res) => {
   const id = activeProjectId();
   const files = id ? getProjectFiles(id) : null;
   if (!files) return res.json({ ok: true, trees: 0, meanings: 0 });
-  res.json({ ok: true, ...clearProjectAnalysis(files, getProjectTree(), { full: false }) });
+  res.json({ ok: true, ...clearProjectAnalysis(files, getProjectTree(), { full: false, sessionId: meaningSessionId(req) }) });
 });
 
 // ── Project registry ────────────────────────────────────────────────────────
@@ -140,7 +153,7 @@ app.post('/api/projects', async (req, res) => {
   if (!inputPath.trim()) return res.status(400).json({ error: 'Missing "path".' });
   try {
     const project = await registerProject(inputPath);
-    warmActiveProject();
+    prepareActiveProject();
     res.json({ project, activeId: activeProjectId(), projects: listProjects() });
   } catch (e) {
     res.status(e.status || 500).json({ error: e.message });
@@ -158,7 +171,7 @@ app.post('/api/projects/upload', (req, res) => {
   }
   try {
     const project = registerUploadedProject(name, files, scan);
-    warmActiveProject();
+    prepareActiveProject();
     res.json({ project, activeId: activeProjectId(), projects: listProjects() });
   } catch (e) {
     res.status(e.status || 500).json({ error: e.message || 'Failed to load uploaded folder' });
@@ -169,24 +182,22 @@ app.post('/api/projects/upload', (req, res) => {
 app.post('/api/projects/:id/activate', async (req, res) => {
   try {
     const project = await activateProject(req.params.id);
-    warmActiveProject();
+    prepareActiveProject();
     res.json({ project, activeId: activeProjectId(), projects: listProjects() });
   } catch (e) {
     res.status(e.status || 500).json({ error: e.message });
   }
 });
 
-// Unregister a project. Closing it fully wipes its cache — parse trees AND every bare
-// summary — since they're no longer needed. Works for a background project too: its
-// cache hashes derive from its folder tree, which we rebuild from its files (hashes are
-// name-independent) when it isn't the active one. (An evicted project whose files aren't
-// resident can't be hashed; its content-addressed entries age out, harmless and reused.)
+// Unregister a project without throwing away its durable analysis. Content-addressed
+// file/folder bares and parse trees are reusable if the same project is opened again;
+// only contextual reads tied to the current project session are removed.
 app.delete('/api/projects/:id', (req, res) => {
   const id = req.params.id;
   const files = getProjectFiles(id);
   if (files) {
     const tree = id === activeProjectId() ? getProjectTree() : buildProjectTree('', files);
-    clearProjectAnalysis(files, tree, { full: true });
+    clearProjectAnalysis(files, tree, { full: false, sessionId: meaningSessionId(req) });
   }
   const ok = removeProject(id);
   if (!ok) return res.status(404).json({ error: 'Unknown project.' });
@@ -207,8 +218,11 @@ app.put('/api/projects/:id/bare-window', (req, res) => {
   const applied = setBareWindow(id, chars);
   if (applied == null) return res.status(404).json({ error: 'Unknown project.' });
   const files = getProjectFiles(id) || [];
-  const dropped = cacheDropByFileHash(projectCacheHashes(files));
-  warmProjectBares(files.map((f) => ({ relPath: f.relPath, content: f.content })), applied).catch(() => {}); // detached re-warm
+  const hashes = projectCacheHashes(files);
+  const dropped = cacheDropByFileHash(hashes) + focusedCacheDropByFileHash(hashes);
+  if (EAGER_PROJECT_WARM) {
+    warmProjectBares(files.map((f) => ({ relPath: f.relPath, content: f.content })), applied).catch(() => {}); // detached re-warm
+  }
   res.json({ ok: true, bareWindow: applied, dropped, projects: listProjects() });
 });
 
@@ -248,7 +262,7 @@ app.get('/api/files/:id/chunks', async (req, res) => {
   // so the viewer band-highlights and counts it; it refines as more questions are asked.
   if (around) {
     try {
-      return res.json({ ...meta, ...(await frontierChunks(file, around)) });
+      return res.json({ ...meta, ...(await frontierChunks(file, around, meaningSessionId(req))) });
     } catch (e) {
       // Frontier build failed → fall through to structural chunking below.
     }
@@ -294,7 +308,7 @@ app.get('/api/files/:id/frontier', async (req, res) => {
   const file = getFile(req.params.id);
   if (!file) return res.status(404).json({ error: 'Not found' });
   try {
-    res.json(await fileFrontier(file));
+    res.json(await fileFrontier(file, meaningSessionId(req)));
   } catch (e) {
     res.status(e.status || 500).json({ error: e.message || 'Failed to derive frontier' });
   }
@@ -342,6 +356,7 @@ app.post('/api/files/:id/ask', async (req, res) => {
       focus: typeof focus === 'string' ? focus : '',
       highlight: typeof highlight === 'string' ? highlight : '',
       traceContext: traceContext && typeof traceContext === 'object' && !Array.isArray(traceContext) ? traceContext : null,
+      sessionId: meaningSessionId(req),
     });
     res.json(result); // { answer, meaning, path, depth, atBottom, maxDepth }
   } catch (e) {
@@ -366,6 +381,7 @@ app.post('/api/files/:id/suggest-edits', async (req, res) => {
       baseCode: typeof baseCode === 'string' ? baseCode : '',
       contextFile: ctx ? { relPath: ctx.relPath, content: ctx.content } : null,
       bareWindow: getBareWindow(activeProjectId()),
+      sessionId: meaningSessionId(req),
     });
     res.json(result); // { code, original, path }
   } catch (e) {
@@ -388,6 +404,7 @@ app.post('/api/folders/ask', async (req, res) => {
       question: String(question),
       transcript: Array.isArray(transcript) ? transcript.slice(-6) : [],
       contextFile: ctx ? { relPath: ctx.relPath, content: ctx.content } : null,
+      sessionId: meaningSessionId(req),
     });
     res.json(result); // { answer, summary, path }
   } catch (e) {
@@ -438,8 +455,8 @@ app.listen(PORT, async () => {
   console.log(`  Project: ${PROJECT_DIR}`);
   console.log('  Scanning source files …');
   try {
-    const s = await loadProject(PROJECT_DIR);
-    warmActiveProject(); // build folder tree + background eager bare pass
+    const s = await loadProject(PROJECT_DIR, INITIAL_SCAN_OPTIONS);
+    prepareActiveProject(); // build folder tree; cached meanings remain on disk
     startupState = { initializing: false, error: null };
     console.log(`  ${s.count} source file(s) ready (${(s.totalBytes / 1e6).toFixed(1)} MB).`);
     if (s.skipped) console.log(`  ⚠ ${s.skipped} file(s) skipped (too large, >1 MB).`);

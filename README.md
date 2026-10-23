@@ -53,7 +53,7 @@ context model, not only the vertical ancestor fold described in
 | Server runtime | Node ≥ 20 (developed on v23), ES modules (`"type": "module"`) | single process, no worker threads |
 | HTTP | `express@4` + `cors` | `express.json({ limit: '50mb' })` for folder uploads |
 | Parsing | `web-tree-sitter@0.22` (WASM) + `tree-sitter-wasms@0.1` | no native addon, no node-gyp, no grammar-ABI conflicts |
-| LLM | `@anthropic-ai/sdk@0.100` | two model tiers (see §11.8) |
+| LLM | OpenAI JavaScript SDK (Chat Completions) | two model tiers (see §11.8) |
 | Config | `dotenv` | `.env` at repo root |
 | Client | React 19 + Vite 6 | `@vitejs/plugin-react`; no router, no state library, no CSS framework |
 | Dev orchestration | `concurrently` | `npm run dev` runs server (`node --watch`) + Vite together |
@@ -75,9 +75,9 @@ static bundle from the same origin (see §3).
 .
 ├── package.json            # root: server deps + dev/build/start scripts
 ├── Procfile                # web: npm start
-├── .env / .env.example     # ANTHROPIC_API_KEY, PROJECT_DIR, PORT, model + window overrides
+├── .env / .env.example     # OPENAI_API_KEY, PROJECT_DIR, PORT, model + window overrides
 ├── .tree-cache/            # gitignored: one JSON per parsed file (content-addressed)
-├── .meaning-cache/         # gitignored: append-only meanings.jsonl
+├── .meaning-cache/         # gitignored: durable basic-summaries.jsonl only
 ├── docs/
 │   └── highlight-to-chunk.md   # deep-dive on highlight→tightest-box→path (still accurate
 │                                #   for the box mechanics; superseded for the *meaning* fold)
@@ -96,7 +96,7 @@ static bundle from the same origin (see §3).
 │   │   └── references.js   # search-based find-references (tree-sitter identifiers + text fallback)
 │   └── llm/
 │       ├── meaning.js      # the RAG engine: bare/ctx/peers, marks, drill, folder chat, prompts, model routing
-│       └── cache.js        # append-only JSONL memo; two-tier drop-by-fileHash
+│       └── cache.js        # durable basics on disk + per-session focused meanings in RAM
 └── client/
     ├── index.html          # fonts (Inter / JetBrains Mono / Crete Round / Roboto Slab), #root
     ├── vite.config.js      # port 5174, proxy /api → :8799
@@ -506,7 +506,8 @@ contextual meaning. Instead of folding the ancestor chain, it interprets the ask
 node against the **other regions of the minimal frontier** — i.e. against the other
 things you've asked about in this file. The *distribution itself* is the context.
 
-- **Marks** are per-file, in-memory for the session: `fileMarks: Map<ctxNS, Set<id>>`.
+- **Marks** are per-file and per-tab in memory:
+  `fileMarks: Map<sessionId, { files: Map<ctxNS, Set<id>> }>`.
   Asking about a node `record`s its id as a mark (`suggestEdits` passes
   `record: false` — an edit isn't a question).
 - `minimalFrontier(nodes, idx, rootId, marks)` (§9.1) gives the current tiling.
@@ -516,21 +517,22 @@ things you've asked about in this file. The *distribution itself* is the context
 - **Cache key** `cp:<ctxNS>:<askedId>:<frontierSig>` where `frontierSig =
   sha1(frontierIds)`. A new mark changes the signature and recomputes exactly **one**
   `foldPeers` call; the peer bares stay cached (content-addressed), so a fresh mark is
-  cheap on a warm file. Cached kind `ctxpeers`.
+  cheap on a warm file. Cached kind `ctxpeers`, held only in that tab's session cache.
 
 The viewer mirrors this exactly: after each answered question it bumps
 `marksVersion`, refetches the highlight-mode chunks, and re-bands the file with the
 *refined* frontier — so you watch retrieval get finer where you've looked.
 
-### 11.3 The eager warm pass — `warmProjectBares`
+### 11.3 Optional eager warm pass — `warmProjectBares`
 
-On project load/upload (and on a window-size change), a **detached, background**
-bottom-up pass computes every file's bare and every folder's bare up to the root.
-It's idempotent (re-runs are cache hits), slot-bounded (§11.9), and a no-op without
-an API key. So by the time you ask, the *cheap* building blocks (bares) are usually
-already warm and only the *contextual* fold is computed on demand. `bareFile` keys a
-file's bare under its content hash (== its folder-leaf `bareKey`); `bareFolder`
-summarizes its direct children's bares under the folder hash.
+Project load/upload always builds the local folder tree, but whole-project LLM
+warming is **off by default**. Existing content-addressed summaries persist on disk,
+and a cache miss for a selected unit is computed lazily by the ask path. Set
+`EAGER_PROJECT_WARM=1` to restore the detached, bottom-up pass that computes every
+file's bare and every folder's bare up to the root. The pass is idempotent, slot-bounded
+(§11.9), and a no-op without an API key. `bareFile` keys a file's bare under its
+content hash (== its folder-leaf `bareKey`); `bareFolder` summarizes its direct
+children's bares under the folder hash.
 
 ### 11.4 `ctxNS` — the contextual namespace
 
@@ -619,9 +621,9 @@ the highlight's start lands in as `targetNodeId`, plus a lean ancestor closure a
 
 | Role | Default model | Knobs |
 | --- | --- | --- |
-| `bare` / window / folder bares / combine | `BARE_MODEL = claude-haiku-4-5` | cheap, no `effort` (Haiku 400s on it) |
-| `classify` / vertical fold / peers fold | `MEANING_MODEL = claude-opus-4-8` | `effort: low` |
-| user-facing answers / edits / folder answers | `ANSWER_MODEL = claude-opus-4-8` | `thinking: adaptive`, `effort: medium` |
+| `bare` / window / folder bares / combine | `BARE_MODEL = gpt-5-mini` | cost-efficient, `reasoning_effort: low` |
+| `classify` / vertical fold / peers fold | `MEANING_MODEL = gpt-5.1` | `reasoning_effort: low` |
+| user-facing answers / edits / folder answers | `ANSWER_MODEL = gpt-5.1` | `reasoning_effort: medium` |
 
 `supportsEffort(m)` gates the `output_config.effort` and `thinking` params to
 Opus-4.5+/Sonnet-4.6 (Haiku omits them). Every system prompt is sent with
@@ -636,14 +638,18 @@ answer you read is the strongest model.
   ceiling instead of each spawning unbounded fan-out.
 - **In-flight dedup** `barePending` / `ctxPending`: concurrent requests for the same
   cache key share one promise (and one model call), so parallel sibling drills can't
-  each kick off the same shared-ancestor computation. Keyed identically to the
-  persistent cache.
+  each kick off the same shared-ancestor computation. Focused pending keys also include
+  the browser-session id, so concurrent users never share contextual work.
 
 ### 11.10 Prompt design — the `VOICE` block
 
 The answer/folder system prompts embed a long, deliberate `VOICE` style guide whose
-goal is "a person who knows the code talking to a peer," not the hedged,
-summary-closing register an LLM defaults to. It bans the autopilot tells: stance
+goal is a product-level explanation from a person who knows the code. Answers lead
+with the capability, workflow, user-visible behavior, constraint, or failure mode;
+implementation details support that explanation instead of becoming the headline.
+Explicitly technical questions still get direct technical answers, tied back to their
+product effect. The guide also avoids the hedged, summary-closing register an LLM
+defaults to. It bans the autopilot tells: stance
 adverbs ("Notably/Crucially"), "-ing" tack-on tails, "it's not just X, it's Y",
 "In essence/Ultimately" wrap-ups, "Moreover/Furthermore" signposting, flattery
 openers, both-sides hedging, and restating sentences. The internal scaffolding
@@ -655,10 +661,18 @@ target ≤ ~500 chars.
 
 ## 12. The cache (`cache.js`) and invalidation
 
-A persistent memo table for every meaning. Same philosophy as the tree cache —
-in-memory Map in front, disk behind, no daemon — but **one append-only JSONL file**
-(`.meaning-cache/meanings.jsonl`) instead of file-per-entry, because meanings are
-many and small.
+There are two cache lifecycles, separated by what can safely be reused:
+
+- **Basic summaries** (`bare`, `barewindow`, `folderbare`) are pure functions of
+  content. They are shared across sessions and persisted in the append-only
+  `.meaning-cache/basic-summaries.jsonl` log.
+- **Focused summaries** (`ctx`, `ctxpeers`, `dirctx`) depend on the path one user has
+  explored. They live only in an in-memory map keyed by the browser tab's
+  `sessionStorage` id. They are neither read from nor written to disk, expire after
+  inactivity, and disappear on server restart.
+
+On first load, an old mixed `meanings.jsonl` is migrated: only its basic rows are
+copied into `basic-summaries.jsonl`; its focused rows are discarded.
 
 - **Append-only.** A cache miss is the only write, and it's an O(1) append of
   `{ k: key, v: value, f: fileHash, t: kind }`. Crash-tolerant: a torn final line is
@@ -679,26 +693,28 @@ many and small.
 | `ctxpeers` | `cp:<ctxNS>:<askedId>:<sig>` | ctxNS | horizontal frontier-peers meaning |
 | `dirctx` | `c:dir:<folderHash>` | folderHash | a folder's folded contextual meaning |
 
-### 12.2 Two-tier drop (`cacheDropByFileHash`, `clearProjectAnalysis`)
+### 12.2 Lifecycle-aware drop (`cacheDropByFileHash`, `clearProjectAnalysis`)
 
 `projectCacheHashes(files, tree)` collects every `f` a project's entries were stored
 under: each file's `ctxNS` (covers in-file bares, windows, `ctx`, `ctxpeers`) plus
 every folder/file node hash in the tree (covers file bares, folder bares, `dirctx`).
-`cacheDropByFileHash(hashSet, dropKinds?)` rewrites the JSONL without the matching
-lines (temp-file + atomic rename) and drops them from memory.
+`cacheDropByFileHash(hashSet)` rewrites the durable basic-summary JSONL without the
+matching lines (temp-file + atomic rename). `focusedCacheDropByFileHash` independently
+drops focused values from one tab session or, for integrity invalidation, every live
+session.
 
-- **"Clear cache"** (`DELETE /api/tree-cache`, `full: false`): `dropKinds =
-  CTX_KINDS = { ctx, ctxpeers, dirctx }`. Drops only the per-chunk in-context reads
-  (what answers are built from). **Keeps** parse trees and all bares — the durable,
-  expensive building blocks. The next question just re-folds context off the kept
-  bares, so it's fast. This is the UI's reset.
-- **"Close project"** (`DELETE /api/projects/:id`, `full: true`): `dropKinds = null`
-  (everything) **and** `clearTreeCacheForKeys` for the parse trees. Works for a
-  background (non-active) project too, by rebuilding its folder tree from its files
-  (hashes are name-independent).
+- **"Clear cache"** (`DELETE /api/tree-cache`, `full: false`): drops only the calling
+  tab's focused values and exploration marks. **Keeps** parse trees and all basics —
+  the durable, expensive building blocks. The next question just re-folds context off
+  the kept basics. This is the UI's reset.
+- **"Close project"** (`DELETE /api/projects/:id`, `full: false`): drops focused
+  values for the calling tab but deliberately keeps parse trees and all file/folder
+  basics. Reopening the same content therefore reuses the expensive summaries.
 
 A window-size change (`PUT /bare-window`) drops the project's *entire* meaning set
-(all kinds) and re-warms, because the bares were built at the old window.
+(all kinds), because the bares were built at the old window. It re-warms immediately
+only when `EAGER_PROJECT_WARM=1`; otherwise the next selected-unit cache miss is
+computed lazily.
 
 ---
 
@@ -757,8 +773,10 @@ search rather than vectors (see §19).
 ## 15. HTTP API reference (`index.js`)
 
 All JSON unless noted. Errors are `{ error }` with an appropriate status (handlers
-honor an `e.status` set by the lower layers, e.g. `503` when `ANTHROPIC_API_KEY` is
-missing, `404` for an unknown/stale `nodeId`).
+honor an `e.status` set by the lower layers, e.g. `503` when `OPENAI_API_KEY` is
+missing, `404` for an unknown/stale `nodeId`). Focus-aware browser requests include
+`X-CodeArchitect-Session`, generated once per tab in `sessionStorage`; headerless API
+calls remain functional but intentionally receive no cross-request focused-cache reuse.
 
 | Method | Route | Body / query | Returns |
 | --- | --- | --- | --- |
@@ -776,15 +794,16 @@ missing, `404` for an unknown/stale `nodeId`).
 | POST | `/api/projects` | `{ path }` (local abs/rel dir) | `{ project, activeId, projects }` |
 | POST | `/api/projects/upload` | `{ name, files: [{ relPath, content }] }` | `{ project, activeId, projects }` |
 | POST | `/api/projects/:id/activate` | — | `{ project, activeId, projects }` |
-| DELETE | `/api/projects/:id` | — | `{ activeId, projects }` (also full cache wipe) |
+| DELETE | `/api/projects/:id` | — | `{ activeId, projects }` (durable summaries retained) |
 | PUT | `/api/projects/:id/bare-window` | `{ chars }` (active project only) | `{ ok, bareWindow, dropped, projects }` |
-| DELETE | `/api/tree-cache` | — | `{ ok, trees, meanings }` (CTX-kinds-only drop) |
+| DELETE | `/api/tree-cache` | — | `{ ok, trees, meanings }` (calling session's focused values only) |
 
 `/chunks` clamps `granularity` to `[1, 1_000_000]` and `depthSpread` to `[0, 50]`;
 `rangeStart`/`rangeEnd` are clamped into the file. Mode precedence inside the handler:
 **highlight** (`rangeStart`/`rangeEnd` present → `frontierChunks`, falls back to
 structural on error) → **json** → **tree-sitter code** → **generic**. Every project
-mutation re-runs `warmActiveProject()` (rebuild folder tree + detached warm pass).
+mutation re-runs `prepareActiveProject()` to rebuild the local folder tree. The
+detached LLM warm pass only runs when `EAGER_PROJECT_WARM=1`.
 
 ---
 
@@ -902,13 +921,16 @@ covers the top bar too. Fonts: Inter (UI, ExtraLight default), JetBrains Mono
 
 | Var | Default | Effect |
 | --- | --- | --- |
-| `ANTHROPIC_API_KEY` | — | required for chat / edits / folder summaries (chunking + viewer work without it) |
+| `OPENAI_API_KEY` | — | required for chat / edits / folder summaries (chunking + viewer work without it) |
+| `BRAINTRUST_API_KEY` | — | optional; records instrumented OpenAI calls, token usage, latency, and cost in Braintrust |
+| `BRAINTRUST_PROJECT_NAME` | `CodeArchitect` | Braintrust project that receives the traces |
 | `PROJECT_DIR` | this repo | the codebase to inspect on local runs |
 | `PORT` | `8799` | API port (Vite proxies `/api` here in dev) |
-| `ANSWER_MODEL` | `claude-opus-4-8` | user-facing answers + edits |
-| `MEANING_MODEL` | `claude-opus-4-8` | classify + context folds |
-| `BARE_MODEL` | `claude-haiku-4-5` | the many small bare passes (incl. the eager project pass) |
+| `ANSWER_MODEL` | `gpt-5.1` | user-facing answers + edits |
+| `MEANING_MODEL` | `gpt-5.1` | classify + context folds |
+| `BARE_MODEL` | `gpt-5-mini` | the many small bare passes (incl. the eager project pass) |
 | `BARE_WINDOW_CHARS` | `48000` | default bare-window (per-project overridable in UI) |
+| `EAGER_PROJECT_WARM` | unset/off | set to `1` to opt into whole-project background warming |
 
 ### 17.2 Constants worth knowing
 
@@ -928,8 +950,9 @@ covers the top bar too. Fonts: Inter (UI, ExtraLight default), JetBrains Mono
 | `GRAN_CAP` | 500 | CodeViewer.jsx | generic-file granularity slider cap |
 | UI open-project cap | 4 | ProjectSwitcher.jsx | tabs |
 
-The caches (`.tree-cache/`, `.meaning-cache/`) live in **this** repo, are gitignored,
-and rebuild on demand — safe to delete anytime.
+The durable caches (`.tree-cache/`, `.meaning-cache/basic-summaries.jsonl`) live in
+**this** repo, are gitignored, and rebuild on demand. Focused meanings never live
+there; they exist only in server memory for the current browser session.
 
 ---
 
@@ -943,9 +966,9 @@ and rebuild on demand — safe to delete anytime.
   are keyed by node id within `ctxNS`, so shared ancestor prefixes (vertical) and
   unchanged peer bares (horizontal) are reused; a new mark recomputes exactly one
   fold.
-- **The expensive work is front-loaded off-thread.** The eager bare pass warms the
-  cheap layer in the background under one concurrency ceiling; interactive requests
-  then mostly pay for a single fold + a single answer.
+- **Whole-project warm-up is optional.** By default the app reuses any durable basics
+  already present and computes missing selected-unit basics lazily. Setting
+  `EAGER_PROJECT_WARM=1` opts into a background whole-project pass.
 - **The client doesn't window the code** (it relies on contiguous chunk intervals +
   binary search), so very large files render as plain DOM; the drawer/animation costs
   are mitigated with `will-change`/GPU-layer hints in CSS rather than virtualization.
@@ -959,9 +982,9 @@ and rebuild on demand — safe to delete anytime.
 - **`r` / `sql` don't actually CST-chunk yet.** They're declared in `GRAMMAR` but
   their wasms aren't bundled (no `server/grammars/`) and aren't in the pack, so they
   use the generic chunker. `yaml` is intentionally generic (broken packed grammar).
-- **Marks are in-memory and per-session.** The frontier-peers context resets on
-  server restart (the bares/ctx it folds are still persisted). Keyed by `ctxNS`, so a
-  file edit self-invalidates them.
+- **Focus is in-memory and per-session.** Both the frontier marks and every contextual
+  fold reset with the browser/server session; only content-addressed basics persist.
+  Keys still include `ctxNS`, so a file edit self-invalidates focused values.
 - **Edit-invalidation is plumbed but not active.** Folder hashes change with content
   and `cacheSet` stores `fileHash` for later GC, but the app doesn't write edits back
   to disk, so meanings aren't recomputed from edits today.
@@ -1011,5 +1034,5 @@ because the access pattern is "walk from here," not "search for something like t
 ---
 
 *Build:* `npm install && npm install --prefix client && cp .env.example .env` (add
-`ANTHROPIC_API_KEY`), then `npm run dev` and open <http://localhost:5174>. Viewer +
+`OPENAI_API_KEY`), then `npm run dev` and open <http://localhost:5174>. Viewer +
 chunking need no key; chat / edits / folder summaries do.

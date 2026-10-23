@@ -1,0 +1,98 @@
+<link rel="stylesheet" href="/review.css">
+<main class="shell">
+  <header>
+    <div>
+      <p class="eyebrow">CodeArchitect · Intent Algebra</p>
+      <h1>Human grounding review</h1>
+      <p class="lede">Decide whether one concise intent is entailed by every supporting change.</p>
+      <p><a class="mode-link" href="/clusters">Review semantic clusters →</a></p>
+    </div>
+    <div class="reviewer-box">
+      <label for="reviewer-id">Reviewer ID</label>
+      <div class="reviewer-row">
+        <input id="reviewer-id" autocomplete="off" placeholder="e.g. andrew" maxlength="64">
+        <button id="load-reviewer" type="button">Load</button>
+      </div>
+    </div>
+  </header>
+
+  <section id="workspace" hidden>
+    <div class="toolbar">
+      <button id="previous" type="button">← Previous</button>
+      <div>
+        <strong id="progress"></strong>
+        <span id="saved-count"></span>
+      </div>
+      <button id="next" type="button">Next →</button>
+    </div>
+
+    <article class="candidate">
+      <div class="candidate-heading">
+        <div>
+          <p id="candidate-id" class="eyebrow"></p>
+          <h2 id="candidate-title"></h2>
+        </div>
+        <div id="candidate-support" class="support"></div>
+      </div>
+      <div id="pattern" class="pattern" aria-label="Structural pattern"></div>
+    </article>
+
+    <section>
+      <div class="section-heading">
+        <h2>Evidence</h2>
+        <p>Judge the code first. Commit text is supporting evidence, not ground truth.</p>
+      </div>
+      <div id="evidence"></div>
+    </section>
+
+    <form id="review-form">
+      <h2>Judgment</h2>
+      <div class="form-grid">
+        <label>Does one shared intent exist?
+          <select id="shared-intent" required>
+            <option value="">Choose…</option>
+            <option value="yes">Yes — one phrase is entailed by every example</option>
+            <option value="no">No — structurally similar but semantically mixed</option>
+            <option value="uncertain">Uncertain — needs more evidence</option>
+          </select>
+        </label>
+        <label>Proposed verb–object meaning
+          <input id="output-meaning" maxlength="240" placeholder="e.g. Increase the test timeout">
+        </label>
+        <label>Entailment
+          <select id="entailment">
+            <option value="">Not scored</option>
+            <option value="1">1 — contradicted</option><option value="2">2 — weak</option>
+            <option value="3">3 — mostly supported</option><option value="4">4 — supported</option>
+            <option value="5">5 — directly entailed</option>
+          </select>
+        </label>
+        <label>Specificity
+          <select id="specificity">
+            <option value="">Not scored</option>
+            <option value="1">1 — unusably vague</option><option value="2">2 — too broad</option>
+            <option value="3">3 — acceptable</option><option value="4">4 — precise</option>
+            <option value="5">5 — maximally precise without overclaiming</option>
+          </select>
+        </label>
+        <label>Confidence
+          <select id="confidence" required>
+            <option value="">Choose…</option>
+            <option value="1">1 — very low</option><option value="2">2 — low</option>
+            <option value="3">3 — medium</option><option value="4">4 — high</option>
+            <option value="5">5 — very high</option>
+          </select>
+        </label>
+        <label class="notes">Reviewer notes
+          <textarea id="notes" rows="4" maxlength="2000" placeholder="Why does this pattern share—or fail to share—one intent?"></textarea>
+        </label>
+      </div>
+      <div class="form-actions">
+        <p id="status" role="status" aria-live="polite"></p>
+        <button id="save" type="submit">Save review &amp; next</button>
+      </div>
+    </form>
+  </section>
+</main>
+<script src="/text-diff.js"></script>
+<script src="/review.js"></script>

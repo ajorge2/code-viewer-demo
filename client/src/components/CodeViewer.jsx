@@ -18,22 +18,43 @@ function segOffset(node, offsetInNode) {
   return Number(seg.dataset.cs) + offsetInNode
 }
 
-// Subtle alternating bands so consecutive chunks are visually distinct. Muted,
-// desaturated tones (dusty-plum / pine / sand) keep things calm and
-// business-formal rather than candy-bright.
+// Subtle alternating bands so consecutive chunks are visually distinct while
+// staying inside the workbench's evidence-green / support-amber vocabulary.
 const BANDS = [
-  'rgba(217,155,43,0.14)',  // supporting context — amber
-  'rgba(135,147,165,0.14)', // previously inspected / broader context — slate
+  'rgba(79,145,107,0.11)',  // structural context — sage
+  'rgba(205,164,67,0.11)',  // supporting context — amber
 ]
 const bandFor = (i) => BANDS[i % BANDS.length]
 // Selected = the same hue but VIVID — no longer dusty — and a bit brighter, so the
 // picked chunk clearly pops out of the muted unselected bands. Higher alpha lets
 // the saturated hue read through instead of washing toward grey.
-const BANDS_SELECTED = ['rgba(107,124,147,0.22)']
+const BANDS_SELECTED = ['rgba(82,190,124,0.21)']
 const bandSelectedFor = (i) => BANDS_SELECTED[i % BANDS_SELECTED.length]
 // The user's own highlighted range — persists (over the code, and over any chunk
-// bands) until they drag a new selection. A calm accent-blue marker.
-const USER_HL = 'rgba(59, 180, 240, 0.26)'
+// bands) until they drag a new selection. Uses the live evidence accent.
+const USER_HL = 'rgba(119, 217, 155, 0.27)'
+// Trace list hover preview. This temporarily wins over USER_HL only where the
+// hovered structural chunk overlaps the user's exact selection.
+const TRACE_HOVER_HL = 'rgba(166, 76, 114, 0.30)'
+
+// One vertical color cycle for the line-number gutter. Raspberry bridges the
+// bright lime back into green so long files can repeat without a hard jump.
+const LINE_NUMBER_STOPS = [
+  [63, 191, 145],  // green
+  [183, 239, 105], // lime
+  [166, 76, 114],  // raspberry
+  [63, 191, 145],  // green again for a seamless repeat
+]
+const LINE_NUMBER_CYCLE = 96
+function lineNumberColor(index) {
+  const position = ((index % LINE_NUMBER_CYCLE) / LINE_NUMBER_CYCLE) * (LINE_NUMBER_STOPS.length - 1)
+  const segment = Math.min(LINE_NUMBER_STOPS.length - 2, Math.floor(position))
+  const mix = position - segment
+  const from = LINE_NUMBER_STOPS[segment]
+  const to = LINE_NUMBER_STOPS[segment + 1]
+  const channel = (i) => Math.round(from[i] + (to[i] - from[i]) * mix)
+  return `rgb(${channel(0)}, ${channel(1)}, ${channel(2)})`
+}
 
 // Split a line segment at a highlight range [hs, he), tagging the overlapping
 // piece with `hl: true`. Lets the user's selection paint independently of the
@@ -51,9 +72,8 @@ function splitSegByHighlight(s, hs, he) {
 }
 // Glossy per-band gradients (light → deep, same muted hue) for the legend dots.
 const DOT_GRADS = [
-  'linear-gradient(135deg, #a78faf, #6e5573)', // dusty plum
-  'linear-gradient(135deg, #74a896, #44746a)', // dusty pine
-  'linear-gradient(135deg, #d3bd86, #a8893f)', // sand
+  'linear-gradient(135deg, #a5e2b8, #3f9867)', // evidence green
+  'linear-gradient(135deg, #dcca8a, #a8893f)', // support amber
 ]
 const dotGradFor = (i) => DOT_GRADS[i % DOT_GRADS.length]
 
@@ -138,6 +158,7 @@ export default function CodeViewer({
   const [loading, setLoading] = useState(true)
   const [viewerError, setViewerError] = useState('')
   const [selected, setSelected] = useState(null)
+  const [hoveredTraceLabel, setHoveredTraceLabel] = useState(null)
   // Chunking mode. Default (both null/false) = whole file as one chunk. Highlight
   // a region → `pendingRange` drives "chunk around that range". Moving an Advanced
   // slider → `manualMode` drives the granularity/depth chunking. Last action wins.
@@ -152,7 +173,7 @@ export default function CodeViewer({
   const [historyIdx, setHistoryIdx] = useState(0) // edit-history carousel position
   const pendingJumpRef = useRef(null) // nodeId to select once chunks reflect a jump
   const [insightTab, setInsightTab] = useState('understand')
-  const [insightOpen, setInsightOpen] = useState(() => !demo && (typeof window === 'undefined' || window.innerWidth >= 768))
+  const [insightOpen, setInsightOpen] = useState(false)
   const [insightWidth, setInsightWidth] = useState(() => {
     try {
       const saved = Number(localStorage.getItem('cv:insightWidth'))
@@ -162,9 +183,9 @@ export default function CodeViewer({
     }
   })
   const drawerOpen = insightOpen && insightTab === 'drafts'
-  // Chunk band highlights are off by default — usually you don't need to see the
-  // other chunks, just work with your highlighted target. Toggle in the toolbar.
-  const [showChunks, setShowChunks] = useState(false)
+  // Structural chunk bands are teaching aids for the chunking demo. In the
+  // project viewer, keep only the user's exact text selection highlighted.
+  const showChunks = demo
   // RAG Q&A chat panel (scaffold — backend wired later). `chatClosing` keeps the
   // panel mounted through its genie close animation before it unmounts.
   const chatOpen = insightOpen && insightTab === 'understand'
@@ -175,12 +196,9 @@ export default function CodeViewer({
   const fabPulseTimer = useRef(null)
   const chatPanelRef = useRef(null)
   const chatFabRef = useRef(null)
-  // Opening the Q&A reveals the chunk highlights — the chunking is configured
-  // (around your highlight) and you're ready to ask. Closing returns to the clean
-  // view. The toolbar toggle still overrides while the chat is closed.
   const openChat = () => {
     onOpenFileChat?.()
-    setInsightOpen(true); setInsightTab('understand'); setShowChunks(true)
+    setInsightOpen(true); setInsightTab('understand')
     setFabPulse(false); clearTimeout(fabPulseTimer.current) // opened — stop nudging
   }
   const closeChat = () => setInsightOpen(false)
@@ -280,20 +298,45 @@ export default function CodeViewer({
   // Root-first ancestor path for a node id, kept to real structural units: drop
   // synthetic balancing groups, the file root (implied), and collapse the
   // consecutive duplicate labels JSON's key/value boxes produce.
-  // What the user actually selected, in human terms: the file line range the chunk
-  // covers. The internal node "path" labels ("permissions ▸ allow ▸ 0 … (25)") are an
-  // implementation detail nobody outside the system cares about, so we don't show them.
-  const selectionLabel = (chunk) => {
-    if (!text || !chunk) return 'Selection'
+  // Human-readable source ranges. Keep the user's exact drag selection distinct
+  // from the larger structural box resolved around it; conflating the two made the
+  // toolbar claim line numbers that did not match the visible highlight.
+  const sourceRangeLabel = (range) => {
+    if (!text || !range) return 'Selection'
     const upto = (end) => (text.slice(0, Math.max(0, end)).match(/\n/g)?.length || 0) + 1
-    const a = upto(chunk.start)
-    const b = upto(Math.max(chunk.start, chunk.end - 1))
+    const a = upto(range.start)
+    const b = upto(Math.max(range.start, range.end - 1))
     return a === b ? `Line ${a}` : `Lines ${a}–${b}`
   }
+  // Structural labels remain useful in the chat, where questions target the box
+  // resolved around the exact selection rather than the raw character range.
+  const selectionLabel = (chunk) => sourceRangeLabel(chunk)
+  const highlightLabel = (range) => sourceRangeLabel(range)
 
   // Displayed chunks are exactly the boxes the server returned — every chunk is a
   // real tree node with one stable nodeId and one structural path through the file.
   const chunks = baseChunks
+  const focusChunks = pendingRange
+    ? chunks.filter((chunk) => chunk.start < pendingRange.end && chunk.end > pendingRange.start)
+    : []
+  const focusChunkLabels = [...new Set(focusChunks.map((chunk) => chunk.label).filter(Boolean))]
+  const hoveredTraceChunkIndexes = new Set(
+    hoveredTraceLabel
+      ? focusChunks.filter((chunk) => chunk.label === hoveredTraceLabel).map((chunk) => chunk.index)
+      : [],
+  )
+  const focusCategoryLabel = resp?.kind === 'json'
+    ? 'JSON object members'
+    : resp?.kind === 'code'
+      ? 'Syntax nodes'
+      : 'Text chunks'
+  const exactFocusSummary = pendingRange
+    ? `${focusCategoryLabel}: ${focusChunkLabels.length ? focusChunkLabels.join(', ') : 'resolving'}`
+    : 'Whole file'
+
+  useEffect(() => {
+    setHoveredTraceLabel(null)
+  }, [file.id, pendingRange?.start, pendingRange?.end, insightTab])
 
   // The node a question targets: the selected chunk, or the whole file (root) when
   // nothing is selected. At granularity 1 the only chunk IS the root, so selecting
@@ -359,9 +402,8 @@ export default function CodeViewer({
     const traceContext = {
       project: projectId ? 'Active project' : 'Demo',
       primaryFile: file.relPath,
-      exactFocus: pendingRange && selected != null && chunks[selected] ? selectionLabel(chunks[selected]) : 'Whole file',
+      exactFocus: exactFocusSummary,
       structuralTarget: nodes[targetNodeId]?.label || editNode?.label || 'Whole file',
-      supportingUnits: Math.max(0, chunks.length - 1),
       attachedFile: ctxFileId ? files.find((candidate) => candidate.id === ctxFileId)?.relPath || ctxFileId : null,
       investigation: refsPeek
         ? {
@@ -443,13 +485,6 @@ export default function CodeViewer({
     runAsk({ question: lastQuestion, intent: 'deepen', focus, userBubble: { role: 'user', text, deepen: true } })
   }
 
-  // Toggle "Suggest edits" mode. The Edits drawer is NOT opened/closed here — it
-  // opens on its own once an edit is actually requested (see runSuggest).
-  const toggleEditMode = () => {
-    if (!editKey) return
-    setEditMode((on) => !on)
-  }
-
   // In edit mode, a submitted message is an instruction: the LLM revises the
   // edit target (selected chunk, or the whole file) and the result lands in the
   // Edits drawer. The conversation is carried along for context.
@@ -479,7 +514,7 @@ export default function CodeViewer({
           }
           return c
         })
-        setChatLog((log) => [...log, { role: 'assistant', text: `Updated ${editNode.label === 'Whole file' ? 'the file' : editNode.label} in the editor →`, edits: true }])
+        setChatLog((log) => [...log, { role: 'assistant', text: `Updated ${editNode.label === 'Whole file' ? 'the file' : editNode.label} in the editor.`, edits: true }])
         setInsightTab('drafts')
       } else {
         setChatLog((log) => [...log, { role: 'assistant', text: 'That didn\'t call for a code change, so I left it as is.', edits: true }])
@@ -517,7 +552,7 @@ export default function CodeViewer({
     // the newly opened code and let the user reveal Insight explicitly.
     setInsightTab('understand')
     setInsightOpen(!demo && window.innerWidth >= 768)
-    setShowChunks(false)
+    setInsightOpen(false)
     setFabPulse(false); clearTimeout(fabPulseTimer.current)
     setChatBusy(false); setSuggestBusy(false) // don't carry an in-flight indicator across files
     setChatInput(''); setChatError(null); setCtxFileId(null)
@@ -751,24 +786,18 @@ export default function CodeViewer({
     let start = a == null ? b : a
     let end = b == null ? a : b
     if (end < start) { const tmp = start; start = end; end = tmp }
-    sel.removeAllRanges() // drop the native blue selection; the chunk band replaces it
+    sel.removeAllRanges() // replace the native blue selection with the exact app highlight
     setManualMode(false)
     setSelected(null)
     setLoading(true)
     setPendingRange({ start, end })
-    // With the chat open, a fresh highlight re-shows the chunk bands even if you'd
-    // toggled the Highlights switch off. With it closed, nudge the FAB instead.
-    if (chatOpen) setShowChunks(true)
-    else pulseFab()
+    if (!chatOpen) pulseFab()
   }
 
-  // Clicking the selection label in the chat header pulses the selected chunk's lines
-  // (and scrolls them into view) so you can see exactly what you're chatting about.
-  const bulgeSelection = () => {
-    const c = selected != null ? chunks[selected] : null
-    if (!c) return
-    const startLn = lineOf(c.start)
-    const endLn = lineOf(Math.max(c.start, c.end - 1))
+  const bulgeRange = (range) => {
+    if (!range) return
+    const startLn = lineOf(range.start)
+    const endLn = lineOf(Math.max(range.start, range.end - 1))
     const container = scrollRef.current
     const top = lineEls.current[startLn]
     if (container && top) {
@@ -783,6 +812,10 @@ export default function CodeViewer({
       setTimeout(() => ln.classList.remove('bulging'), 650)
     }
   }
+  // The toolbar describes the user's exact drag selection; the chat describes
+  // the structural target resolved around it. Each label now reveals its own range.
+  const bulgeExactFocus = () => bulgeRange(pendingRange)
+  const bulgeSelection = () => bulgeRange(selected != null ? chunks[selected] : null)
 
   // Scroll a file offset into view and flash its line.
   const jumpToOffset = (off) => {
@@ -835,36 +868,11 @@ export default function CodeViewer({
           <div className="vt-file-row">
             <span className="vt-path">{file.relPath}</span>
           </div>
-          <div className="gran-row">
-            <button
-              type="button"
-              className={`chunk-switch${showChunks ? ' active' : ''}`}
-              onClick={() => setShowChunks((s) => !s)}
-              role="switch"
-              aria-checked={showChunks}
-              title={showChunks ? 'Hide chunk highlights' : 'Show chunk highlights'}
-            >
-              <span className="chunk-switch-label">Highlights</span>
-              <span className="chunk-switch-track" aria-hidden="true">
-                <span className="chunk-switch-knob" />
-              </span>
-            </button>
-            {!demo && (
-              <button
-                type="button"
-                className={`insight-toggle file-chat-toggle${chatOpen ? ' active' : ''}`}
-                onClick={() => (chatOpen ? closeChat() : openChat())}
-                aria-expanded={chatOpen}
-                title={chatOpen ? 'Close file chat' : 'Ask about this file'}
-              >
-                <span aria-hidden="true">✦</span>
-                Ask file
-              </button>
-            )}
+          {demo && <div className="gran-row">
             <button
               type="button"
               className="gran-help"
-              onClick={() => (demo ? onOpenInfo?.() : setHelpOpen(true))}
+              onClick={() => onOpenInfo?.()}
               title="How chunking works"
               aria-label="How chunking works"
             >
@@ -875,20 +883,13 @@ export default function CodeViewer({
                 <line x1="12" y1="17" x2="12.01" y2="17" />
               </svg>
             </button>
-          </div>
+          </div>}
         </div>
         {!demo && (
           <div className="scope-ledger" aria-label="Active context">
-            <span className="scope-ledger-label">Scope</span>
-            <button type="button" onClick={bulgeSelection} title="Reveal the scoped code">
-              <i className="scope-dot exact" />
-              {pendingRange && selected != null && chunks[selected] ? selectionLabel(chunks[selected]) : 'Whole file'}
+            <button type="button" onClick={bulgeExactFocus} title="Reveal the highlighted lines">
+              {pendingRange ? highlightLabel(pendingRange) : 'Whole file'}
             </button>
-            <span title={file.relPath}><i className="scope-dot file" />{file.relPath}</span>
-            <span><i className="scope-dot support" />{Math.max(0, chunks.length - 1)} supporting units</span>
-            <span className={`scope-readiness${loading ? ' resolving' : ''}`}>
-              <i />{loading ? 'Resolving context…' : viewerError ? 'Needs attention' : 'Ready'}
-            </span>
           </div>
         )}
         {/* The manual chunking sliders live only on the demo page now — shown in a
@@ -910,7 +911,6 @@ export default function CodeViewer({
                 onChange={(e) => {
                   enterManual()
                   onChunkSize(Number(e.target.value))
-                  setShowChunks(true)
                   setSelected(null)
                 }}
               />
@@ -966,22 +966,27 @@ export default function CodeViewer({
             {lines.map((line, k) => {
               if (k < firstLine || k > lastLine) return null
               // Segments always carry data-cs (so drag-to-highlight maps to char
-              // offsets), but a band is painted only when chunk highlights are on
-              // OR the segment is the selected chunk — so the default view is clean
-              // while your highlighted target still shows.
+              // offsets). Structural bands are limited to the demo; the project
+              // viewer paints only the user's exact selection.
               return (
                 <div key={k} className="code-line" data-ln={k} ref={(el) => { if (el) lineEls.current[k] = el }}>
                   {annotatedLines.has(k) && <span className="ln-dot" title="Has edits" />}
-                  <span className="ln">{k + 1}</span>
+                  <span className="ln" style={{ color: lineNumberColor(k) }}>{k + 1}</span>
                   <span className="lc">
                     {(pendingRange
                       ? segmentsFor(k).flatMap((s) => splitSegByHighlight(s, pendingRange.start, pendingRange.end))
                       : segmentsFor(k)
                     ).map((s, j) => {
                       const isSel = showChunks && s.ci === selected
-                      // The user's highlight wins the background; else a chunk band
-                      // (only while bands are shown).
-                      const bg = s.hl ? USER_HL : (showChunks && s.ci !== -1 ? (isSel ? bandSelectedFor(s.ci) : bandFor(s.ci)) : undefined)
+                      // A Trace hover previews its structural chunk in raspberry.
+                      // It wins only inside that chunk, so any exact-selection
+                      // green outside the hovered chunk remains visible.
+                      const isTraceHover = hoveredTraceChunkIndexes.has(s.ci)
+                      const bg = isTraceHover
+                        ? TRACE_HOVER_HL
+                        : s.hl
+                          ? USER_HL
+                          : (showChunks && s.ci !== -1 ? (isSel ? bandSelectedFor(s.ci) : bandFor(s.ci)) : undefined)
                       return (
                         <span
                           key={j}
@@ -1007,7 +1012,6 @@ export default function CodeViewer({
               tabs={[
                 { id: 'understand', label: 'Understand' },
                 { id: 'trace', label: 'Trace' },
-                { id: 'drafts', label: `Drafts${editHistory.length ? ` · ${editHistory.length}` : ''}` },
               ]}
               activeTab={insightTab}
               onTabChange={setInsightTab}
@@ -1143,33 +1147,16 @@ export default function CodeViewer({
                     : 'Whole file'}
                 </button>
               </span>
-              <button className="chat-close" onClick={closeChat} aria-label="Close chat">×</button>
             </div>
             {editKey && (
               <div className="chat-context">
-                <button
-                  type="button"
-                  className={`chat-suggest sm${editMode ? ' active' : ''}`}
-                  onClick={toggleEditMode}
-                  role="switch"
-                  aria-checked={editMode}
-                  title={editMode
-                    ? 'Turn off edit mode — back to Q&A'
-                    : (selChunk ? 'Edit this chunk by chatting' : 'Edit the whole file by chatting')}
-                >
-                  <span className="chat-suggest-label">Suggest edits</span>
-                  <span className="chat-suggest-track" aria-hidden="true">
-                    <span className="chat-suggest-knob" />
-                  </span>
-                </button>
-                <span className="chat-ctx-sep" aria-hidden="true">•</span>
                 <span className="chat-ctx-count">Chunks: {chunks.length}</span>
               </div>
             )}
             <div className="chat-body" ref={chatScrollRef}>
               {chatLog.length === 0 && !chatBusy && !suggestBusy && (
                 <div className="chat-placeholder insight-empty-copy">
-                  <strong>Ask from evidence, not guesswork</strong>
+                  <strong>Ask from evidence</strong>
                   <span>
                     The current file and {pendingRange ? 'your exact selection' : 'its whole-file structure'} are in scope.
                     {ctxFileId ? ' One supporting file is attached.' : ' Attach one supporting file when a comparison needs it.'}
@@ -1262,57 +1249,69 @@ export default function CodeViewer({
             </form>
           </div>
         )}
-        <button
+        {!folderChatOpen && <button
           ref={chatFabRef}
           className={`chat-fab${chatOpen ? ' open' : ''}${fabPulse ? ' pulsing' : ''}`}
           onClick={() => (chatOpen ? closeChat() : openChat())}
           title={chatOpen ? 'Close chat' : 'Ask about this file'}
           aria-label={chatOpen ? 'Close chat' : 'Ask about this file'}
         >
-          {chatOpen ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" />
-            </svg>
-          ) : (
-            // chat bubble with a file (document) glyph inside
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 4.5h16a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5h-9.5l-3.5 3v-3h-3a1.5 1.5 0 0 1-1.5-1.5V6a1.5 1.5 0 0 1 1.5-1.5z" />
-              <path d="M9.8 7.2h2.9l1.4 1.4V12.8h-4.3z" />
-              <path d="M12.7 7.2v1.4h1.4" />
-            </svg>
-          )}
-        </button>
+          <span>Ask file</span>
+        </button>}
 
         {!demo && insightOpen && insightTab === 'trace' && (
           <aside className="trace-panel" aria-label="Context trace">
             <div className="trace-scroll">
               <section className="context-map">
-                <div className="trace-kicker">Context map</div>
-                <h3>What the answer can see</h3>
-                <p>Scope is explicit and follows the evidence you selected.</p>
-                <div className="context-map-path">
-                  <div><i className="scope-dot project" /><span><small>Project</small>{projectId ? 'Active project' : 'Demo'}</span></div>
-                  <div><i className="scope-dot file" /><span><small>Primary file</small>{file.relPath}</span></div>
-                  <div><i className="scope-dot exact" /><span><small>Exact focus</small>{pendingRange && selected != null && chunks[selected] ? selectionLabel(chunks[selected]) : 'Whole file'}</span></div>
-                  <div><i className="scope-dot structural" /><span><small>Structural target</small>{nodes[targetNodeId]?.label || editNode?.label || 'Whole file'}</span></div>
-                  <div><i className="scope-dot support" /><span><small>Supporting context</small>{Math.max(0, chunks.length - 1)} structural units</span></div>
-                  {ctxFileId && (
-                    <div><i className="scope-dot attached" /><span><small>Attached file</small>{files.find((candidate) => candidate.id === ctxFileId)?.relPath || ctxFileId}</span></div>
-                  )}
+                <div className="context-map-head">
+                  <h3>What the answer can see:</h3>
+                  <button
+                    type="button"
+                    className="gran-help"
+                    onClick={() => setHelpOpen(true)}
+                    title="How chunking works"
+                    aria-label="How chunking works"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="9.5" />
+                      <path d="M9.1 9.2a3 3 0 0 1 5.8 1c0 2-3 3-3 3" />
+                      <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                  </button>
                 </div>
-                <div className="context-disclosure">
-                  {pendingRange && pendingRange.end - pendingRange.start <= 200
-                    ? 'The exact highlighted excerpt is supplied with the structural target.'
-                    : pendingRange
-                      ? 'The structural region is supplied; the exact excerpt is too large to quote into the request.'
-                      : 'The whole-file root is the primary target.'}
+                <div className="context-map-path">
+                  {pendingRange && (
+                    <div className="context-focus-row">
+                      <span>
+                        {focusCategoryLabel !== 'Syntax nodes' && <small>{focusCategoryLabel}</small>}
+                        {focusChunkLabels.length ? (
+                          <ul className="context-focus-list">
+                            {focusChunkLabels.map((label) => (
+                              <li
+                                key={label}
+                                className={hoveredTraceLabel === label ? 'trace-hover' : ''}
+                                onMouseEnter={() => setHoveredTraceLabel(label)}
+                                onMouseLeave={() => setHoveredTraceLabel(null)}
+                                onFocus={() => setHoveredTraceLabel(label)}
+                                onBlur={() => setHoveredTraceLabel(null)}
+                                tabIndex={0}
+                              >
+                                {label}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : 'Resolving chunks…'}
+                      </span>
+                    </div>
+                  )}
+                  {ctxFileId && (
+                    <div><span><small>Attached file</small>{files.find((candidate) => candidate.id === ctxFileId)?.relPath || ctxFileId}</span></div>
+                  )}
                 </div>
               </section>
 
               <section className="investigation-trail" ref={investigationRef}>
-                <div className="trace-kicker">Investigation trail</div>
                 <h3>{refsPeek ? <>References to <code key={`${refsPeek.name}-${traceAttention}`} className="trace-attention">{refsPeek.name}</code></> : 'No symbol search yet'}</h3>
                 {!refsPeek && <p>Click a code-formatted symbol in an answer to trace where it is defined and used across the project.</p>}
                 {refsPeek?.loading && <div className="trace-loading"><span className="empty-spinner" />Searching indexed files…</div>}
@@ -1359,7 +1358,7 @@ export default function CodeViewer({
                 className="chunk-help-demo"
                 onClick={() => { setHelpOpen(false); onOpenDemo?.() }}
               >
-                <span>View a demo of how chunking works →</span>
+                <span>View a demo of how chunking works</span>
               </button>
             )}
             <button className="chunk-help-caching" onClick={() => onOpenCaching?.()}>

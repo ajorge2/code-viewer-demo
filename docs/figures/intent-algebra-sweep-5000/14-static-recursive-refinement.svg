@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="820" viewBox="0 0 1400 820" role="img" aria-labelledby="title desc">
+<title id="title">Recursive refinement after structural transfer fails</title>
+<desc id="desc">Stable non-singleton meaning groups are named; residuals and one-example children remain outside promotion</desc>
+<rect width="1400" height="820" fill="#ffffff"/>
+<style>text{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.title{font-size:31px;font-weight:700;fill:#172033}.subtitle{font-size:17px;fill:#667085}.axis{font-size:15px;fill:#667085}.label{font-size:18px;fill:#172033}.value{font-size:18px;font-weight:700}.note{font-size:14px;fill:#667085}</style>
+<text x="70.0" y="65.0" text-anchor="start" class="title">Recursive refinement after structural transfer fails</text>
+<text x="70.0" y="98.0" text-anchor="start" class="subtitle">Stable non-singleton meaning groups are named; residuals and one-example children remain outside promotion</text>
+<rect x="480.0" y="135.0" width="440.0" height="90.0" fill="#eef2ff" rx="12.0" stroke="#2563eb" stroke-width="1"/>
+<text x="700.0" y="173.0" text-anchor="middle" class="label" style="font-weight:700;font-size:21px">String processing algorithms</text>
+<text x="700.0" y="202.0" text-anchor="middle" class="note">7 semantic members · structural transfer failed</text>
+<line x1="700.0" y1="225.0" x2="700.0" y2="290.0" stroke="#2563eb" stroke-width="3"/>
+<rect x="15.0" y="290.0" width="330.0" height="150.0" fill="#f7f9fc" rx="12.0" stroke="#138a72" stroke-width="2"/>
+<text x="180.0" y="330.0" text-anchor="middle" class="label" style="font-weight:700;font-size:18px">Text normalization</text>
+<text x="180.0" y="382.0" text-anchor="middle" class="label" style="fill:#138a72;font-weight:700;font-size:34px">2 + 8</text>
+<text x="180.0" y="412.0" text-anchor="middle" class="note">initial + audited expansion</text>
+<text x="180.0" y="462.0" text-anchor="middle" class="label" style="fill:#138a72;font-weight:700;font-size:14px">accepted child</text>
+<rect x="535.0" y="290.0" width="330.0" height="150.0" fill="#f7f9fc" rx="12.0" stroke="#d97706" stroke-width="2"/>
+<text x="700.0" y="330.0" text-anchor="middle" class="label" style="font-weight:700;font-size:18px">Text filter pipelines</text>
+<text x="700.0" y="382.0" text-anchor="middle" class="label" style="fill:#d97706;font-weight:700;font-size:34px">1 + 0</text>
+<text x="700.0" y="412.0" text-anchor="middle" class="note">initial + audited expansion</text>
+<text x="700.0" y="462.0" text-anchor="middle" class="label" style="fill:#d97706;font-weight:700;font-size:14px">insufficient child</text>
+<rect x="945.0" y="290.0" width="330.0" height="150.0" fill="#f7f9fc" rx="12.0" stroke="#70798c" stroke-width="2"/>
+<text x="1110.0" y="330.0" text-anchor="middle" class="label" style="font-weight:700;font-size:18px">Residual meanings</text>
+<text x="1110.0" y="382.0" text-anchor="middle" class="label" style="fill:#70798c;font-weight:700;font-size:34px">2 + 0</text>
+<text x="1110.0" y="412.0" text-anchor="middle" class="note">initial + audited expansion</text>
+<text x="1110.0" y="462.0" text-anchor="middle" class="label" style="fill:#70798c;font-weight:700;font-size:14px">unassigned</text>
+<rect x="70.0" y="545.0" width="1260.0" height="150.0" fill="#fff7ed" rx="12.0" stroke="#d97706" stroke-width="1"/>
+<text x="95.0" y="585.0" text-anchor="start" class="label" style="fill:#d97706;font-weight:700;font-size:20px">Current decision</text>
+<text x="95.0" y="622.0" text-anchor="start" class="label" style="font-size:16px">Text normalization is coherent and reaches 10 audited files after the approved larger retrieval run.</text>
+<text x="95.0" y="653.0" text-anchor="start" class="label" style="font-size:16px">Text filter pipelines retains one member; palindrome search and format validation remain residuals. No child receives a structural rule.</text>
+<text x="95.0" y="681.0" text-anchor="start" class="note">Support alone is insufficient: the 10-file normalization child still fails leave-one-positive-out structural transfer.</text>
+</svg>

@@ -1,0 +1,731 @@
+{
+  "schema_version": 1,
+  "decision_date": "2026-10-01",
+  "policy": {
+    "semantic_clusters_are": "traceable macro-concept annotations and candidate composite groupings",
+    "semantic_clusters_are_not": "accepted structural primitives",
+    "promotion_requires": [
+      "an identifiable shared meaning entailed by the member diffs",
+      "traceability through child cluster IDs and sample IDs",
+      "at least 100 patch-distinct commit diffs",
+      "at least 50 independent repository families after provenance enrichment",
+      "at least 1.2x held-out MDL compression for composites"
+    ],
+    "automatic_parent_clusters": "candidate generation only; incoherent parents are rejected rather than relabeled"
+  },
+  "pilot_68": [
+    {
+      "cluster_id": "EMBED_CONCEPT_0002",
+      "interpretation": "Python packaging",
+      "decision": "retain_provisional",
+      "reason": "Four setup.py changes share recognizable package metadata and dependency behavior."
+    },
+    {
+      "cluster_id": "EMBED_CONCEPT_0003",
+      "interpretation": "API endpoint wiring",
+      "decision": "retain_provisional",
+      "reason": "The URL and authentication examples share endpoint configuration, but the label must remain broader than authentication alone."
+    },
+    {
+      "cluster_id": "EMBED_CONCEPT_0004",
+      "interpretation": "Interface layout",
+      "decision": "retain_provisional",
+      "reason": "The member diffs consistently change sizing or spacing relationships."
+    },
+    {
+      "cluster_id": "EMBED_CONCEPT_0005",
+      "interpretation": "GitHub integration",
+      "decision": "domain_annotation_only",
+      "reason": "The topic recurs, but the edits do not entail one shared action or intent."
+    },
+    {
+      "cluster_id": "EMBED_CONCEPT_0006",
+      "interpretation": "Component presentation",
+      "decision": "quarantine",
+      "reason": "The sample is too small and internally broad to promote."
+    },
+    {
+      "cluster_id": "EMBED_CONCEPT_0001",
+      "interpretation": null,
+      "decision": "reject_split",
+      "reason": "Task, prepare, and config changes are a lexical/tooling mixture without a common entailed meaning."
+    }
+  ],
+  "sweep_336": {
+    "leaf_clusters": [
+      {
+        "cluster_id": "EMBED_CONCEPT_0003",
+        "support": 11,
+        "interpretation": "Python package metadata and dependencies",
+        "decision": "retain_provisional"
+      },
+      {
+        "cluster_id": "EMBED_CONCEPT_0004",
+        "support": 9,
+        "interpretation": "Build-task automation",
+        "decision": "retain_provisional"
+      },
+      {
+        "cluster_id": "EMBED_CONCEPT_0008",
+        "support": 4,
+        "interpretation": "AJAX interaction handling",
+        "decision": "retain_provisional"
+      },
+      {
+        "cluster_id": "EMBED_CONCEPT_0010",
+        "support": 3,
+        "interpretation": "Interface layout",
+        "decision": "retain_provisional"
+      },
+      {
+        "cluster_id": "EMBED_CONCEPT_0014",
+        "support": 2,
+        "interpretation": "Search-index metadata",
+        "decision": "retain_provisional"
+      },
+      {
+        "cluster_id": "EMBED_CONCEPT_0012",
+        "support": 3,
+        "interpretation": "Python URL routing",
+        "decision": "quarantine",
+        "reason": "The apparent repository breadth is inflated by CommitPackFT provenance aliases and cannot establish independent support."
+      },
+      {
+        "cluster_id": "EMBED_CONCEPT_0001",
+        "support": 16,
+        "interpretation": "JavaScript configuration",
+        "decision": "reject_split",
+        "reason": "High support but mixed lint, test, dependency, and application configuration intents."
+      },
+      {
+        "cluster_id": "EMBED_CONCEPT_0002",
+        "support": 13,
+        "interpretation": "Console and message behavior",
+        "decision": "reject_split",
+        "reason": "Logging, output, comments, page notices, and unrelated first-version code are not one intent."
+      }
+    ],
+    "parent_clusters": [
+      {
+        "cluster_id": "MACRO_L1_0002",
+        "support": 13,
+        "contains": [
+          "EMBED_CONCEPT_0003",
+          "EMBED_CONCEPT_0030"
+        ],
+        "interpretation": "Python build and packaging",
+        "decision": "retain_provisional"
+      },
+      {
+        "cluster_id": "MACRO_L1_0003",
+        "support": 6,
+        "contains": [
+          "EMBED_CONCEPT_0008",
+          "EMBED_CONCEPT_0025"
+        ],
+        "interpretation": "Client-side request handling",
+        "decision": "quarantine",
+        "reason": "The shared behavior is plausible but not yet precise enough across AJAX callbacks and search submission."
+      },
+      {
+        "cluster_id": "MACRO_L1_0001",
+        "support": 58,
+        "interpretation": null,
+        "decision": "reject_split",
+        "reason": "Configuration, logging, build tasks, caching, GitHub, and tests were merged by generic similarity rather than one meaning."
+      },
+      {
+        "cluster_id": "MACRO_L1_0004",
+        "support": 5,
+        "interpretation": null,
+        "decision": "reject_split",
+        "reason": "Layout styling and product UI behavior do not form one entailed intent."
+      },
+      {
+        "cluster_id": "MACRO_L2_0001",
+        "support": 73,
+        "interpretation": null,
+        "decision": "reject_split",
+        "reason": "The second-level merge compounds already heterogeneous children."
+      },
+      {
+        "cluster_id": "MACRO_L3_0001",
+        "support": 75,
+        "interpretation": null,
+        "decision": "reject_split",
+        "reason": "The third-level merge is broader still and fails semantic identifiability."
+      }
+    ]
+  },
+  "sweep_1278": {
+    "stability_summary": {
+      "prior_cluster_count": 39,
+      "stable_expansion": 14,
+      "membership_stable_label_shift": 6,
+      "partial_split": 13,
+      "split": 2,
+      "dissolved": 4
+    },
+    "leaf_clusters": [
+      {
+        "cluster_id": "EMBED_CONCEPT_0002",
+        "support": 42,
+        "interpretation": "Python package metadata and distribution",
+        "decision": "retain_provisional",
+        "reason": "All 42 changes modify setup.py packaging metadata, dependencies, package data, entry points, classifiers, or PyPI descriptions."
+      },
+      {
+        "cluster_id": "EMBED_CONCEPT_0003",
+        "support": 30,
+        "interpretation": "JavaScript build-task automation",
+        "decision": "retain_provisional",
+        "reason": "Twenty-nine of the nine earlier members remain grouped and the larger cluster consistently concerns Grunt, Gulp, watch, build, lint, or test tasks."
+      },
+      {
+        "cluster_id": "EMBED_CONCEPT_0013",
+        "support": 7,
+        "interpretation": "JavaScript test-runner configuration",
+        "decision": "retain_provisional"
+      },
+      {
+        "cluster_id": "EMBED_CONCEPT_0015",
+        "support": 6,
+        "interpretation": "Redux state and reducer wiring",
+        "decision": "retain_provisional"
+      },
+      {
+        "cluster_id": "EMBED_CONCEPT_0016",
+        "support": 6,
+        "interpretation": "Django URL routing",
+        "decision": "retain_provisional"
+      },
+      {
+        "cluster_id": "EMBED_CONCEPT_0027",
+        "support": 4,
+        "interpretation": "Authentication endpoint configuration",
+        "decision": "retain_provisional"
+      },
+      {
+        "cluster_id": "EMBED_CONCEPT_0069",
+        "support": 3,
+        "interpretation": "HTTP and asset cache behavior",
+        "decision": "quarantine",
+        "reason": "The cache domain is recognizable but three changes are insufficient and span different cache layers."
+      },
+      {
+        "cluster_id": "EMBED_CONCEPT_0001",
+        "support": 76,
+        "interpretation": null,
+        "decision": "reject_split",
+        "reason": "The largest leaf still conflates lint, Jest, webpack, dependency, and application configuration."
+      },
+      {
+        "cluster_id": "EMBED_CONCEPT_0004",
+        "support": 18,
+        "interpretation": "Runtime environment configuration",
+        "decision": "quarantine",
+        "reason": "Port and environment setup dominate, but logging, authentication, database, title, and deployment fixes broaden the cluster."
+      },
+      {
+        "cluster_id": "EMBED_CONCEPT_0006",
+        "support": 16,
+        "interpretation": null,
+        "decision": "reject_split",
+        "reason": "The earlier interface-layout interpretation retained only one of three members together and the larger group mixes styling, serialization, assets, and UI behavior."
+      },
+      {
+        "cluster_id": "EMBED_CONCEPT_0007",
+        "support": 10,
+        "interpretation": "Git and GitHub integration",
+        "decision": "domain_annotation_only",
+        "reason": "Membership is stable, but repository links, git wrappers, directory handling, webhooks, and tests do not entail one action."
+      }
+    ],
+    "parent_clusters": [
+      {
+        "cluster_id": "CURATED_MACRO_PYTHON_PACKAGING_001",
+        "support": 44,
+        "contains": [
+          "EMBED_CONCEPT_0002",
+          "EMBED_CONCEPT_0126"
+        ],
+        "interpretation": "Python packaging and distribution",
+        "decision": "retain_curated_provisional",
+        "reason": "The generated 47-change parent included an unrelated certificate/Python-version child; removing that child leaves a coherent packaging parent with complete provenance."
+      },
+      {
+        "cluster_id": "MACRO_L1_0011",
+        "support": 6,
+        "contains": [
+          "EMBED_CONCEPT_0027",
+          "EMBED_CONCEPT_0096"
+        ],
+        "interpretation": "Authentication endpoint access",
+        "decision": "retain_provisional"
+      },
+      {
+        "cluster_id": "MACRO_L2_0003",
+        "support": 14,
+        "interpretation": "Web endpoint wiring",
+        "decision": "quarantine",
+        "reason": "Django routing and authentication access are related but should remain distinct until a shared structural composite is demonstrated."
+      },
+      {
+        "cluster_id": "MACRO_L1_0001",
+        "support": 286,
+        "interpretation": null,
+        "decision": "reject_split",
+        "reason": "The parent merges unrelated configuration, task automation, routing, UI, Git, logging, and environment concepts."
+      },
+      {
+        "cluster_id": "MACRO_L2_0001",
+        "support": 352,
+        "interpretation": null,
+        "decision": "reject_split",
+        "reason": "The second recursive level compounds heterogeneous children."
+      },
+      {
+        "cluster_id": "MACRO_L3_0001",
+        "support": 370,
+        "interpretation": null,
+        "decision": "reject_split",
+        "reason": "The third recursive level is not semantically identifiable."
+      }
+    ],
+    "structural_expansion": {
+      "base_count": 32,
+      "ted_similarity_threshold": 0.75,
+      "expansion_pool_changes": 1933,
+      "complex_changes_over_three_components": 655,
+      "maximum_observed_component_count": 32,
+      "raw_coedit_candidate_count": 150,
+      "coedit_candidate_count": 87,
+      "highest_commit_support": 199,
+      "candidates_passing_100_commit_cutoff": 6,
+      "constraint_retrieval_micro_precision": 0.22768991810223102,
+      "constraint_retrieval_micro_recall": 1.0,
+      "support_counts_validated": false,
+      "raw_within_component_candidate_count": 67,
+      "within_component_candidate_count": 45,
+      "within_component_cross_anchor_intersections": 13,
+      "within_component_candidates_passing_100_commit_cutoff": 2,
+      "within_component_maximum_context_nodes": 23,
+      "within_component_candidates_at_least_10_nodes": 28,
+      "registered_count": 0,
+      "decision": "reject_constraint_support_counts_and_compile_paired_rules",
+      "reason": "Complexity is no longer capped by the queue boundary, but the provisional constraint retriever has only 22.8% micro precision against known queue hosts, invalidating its six deduplicated apparent high-support counts. Exact-host within-component expansion reduced 67 raw candidates to 45 unique contexts, including 13 multi-base intersections and contexts up to 23 nodes; the only two above 100 commits are punctuation insertions. No candidate can be registered before paired-rule retrieval, repository independence, semantic grounding, and MDL."
+    },
+    "semantic_first_alignment": {
+      "semantic_category_count": 169,
+      "structural_candidate_count": 77,
+      "minimum_recurrent_overlap": 2,
+      "categories_with_recurrent_structural_overlap": 9,
+      "strong_provisional_rule_count": 0,
+      "strong_rule_minimum_semantic_coverage": 0.5,
+      "strong_rule_minimum_category_precision": 0.5,
+      "decision": "prioritize_semantic_categories_and_remine_structure_within_each_category",
+      "reason": "Post-hoc alignment of globally mined structural candidates is insufficient. The Python packaging category obtains 61.9% coverage from a keyword-argument base but only 31.7% category precision, while the broad configuration category obtains 84.2% coverage from six OR clauses but only 16.8% precision. Recursive composition should therefore search category-conditioned structural context that improves held-out coverage, precision, and MDL; semantic categories remain primary when structural groupings overlap."
+    },
+    "downward_semantic_refinement": {
+      "root_count": 169,
+      "node_count": 199,
+      "accepted_split_count": 9,
+      "maximum_observed_depth": 2,
+      "minimum_parent_size": 6,
+      "minimum_child_size": 3,
+      "maximum_soft_sibling_memberships": 2,
+      "quality_gates": {
+        "minimum_parent_coverage": 0.6,
+        "minimum_cohesion_gain": 0.03,
+        "minimum_silhouette": 0.1,
+        "minimum_subsample_stability_ari": 0.55,
+        "minimum_noun_label_distinctness": 0.3
+      },
+      "decision": "retain_as_recursive_candidate_harness",
+      "reason": "The stricter three-example child floor produced nine traceable downward splits, including Grunt versus Gulp and packaging subfamilies, while 21 eligible nodes stopped because no candidate split passed every quality gate. Labels and structural rules remain provisional pending LLM grounding, repository-independent support, and held-out validation."
+    },
+    "centroid_meaning_grounding": {
+      "eligible_node_count": 30,
+      "hypotheses_per_node": 3,
+      "trim_fraction": 0.1,
+      "bootstrap_repeats": 200,
+      "confidence_counts": {
+        "high": 15,
+        "medium": 6,
+        "low": 4,
+        "abstain": 5
+      },
+      "grounded_parent_child_pairs": 9,
+      "pairs_with_positive_specificity_gain": 9,
+      "confidence_status": "heuristic in-sample evidence; not a calibrated probability",
+      "decision": "retain_for_larger_semantic_sweep",
+      "reason": "Competing LLM-generated noun meanings are selected using trimmed-centroid alignment and fit across every member rather than model self-confidence. The method preserves ambiguity: the 42-change packaging parent remains low confidence because two meanings nearly tie, while a geometrically strong six-change URL node abstains because its examples do not entail one shared meaning."
+    }
+  },
+  "sweep_3130": {
+    "sampled_diff_count": 10000,
+    "retained_change_count": 3130,
+    "language_counts": {
+      "python": 1533,
+      "javascript": 1597
+    },
+    "semantic_cluster_count": 456,
+    "clustered_change_count": 1883,
+    "singleton_change_count": 1247,
+    "prior_cluster_stability": {
+      "stable_expansion": 69,
+      "membership_stable_label_shift": 19,
+      "partial_split": 65,
+      "split": 9,
+      "dissolved": 7
+    },
+    "downward_semantic_refinement": {
+      "root_count": 456,
+      "node_count": 545,
+      "accepted_split_count": 27,
+      "maximum_observed_depth": 3,
+      "hierarchy_validation": "passed"
+    },
+    "centroid_meaning_grounding": {
+      "eligible_node_count": 77,
+      "confidence_counts": {
+        "high": 34,
+        "medium": 15,
+        "low": 15,
+        "abstain": 13
+      },
+      "grounded_parent_child_pairs": 23,
+      "pairs_with_positive_specificity_gain": 21,
+      "hierarchy_gate_demotions": 1,
+      "confidence_status": "heuristic in-sample evidence; not a calibrated probability"
+    },
+    "category_conditioned_structural_induction": {
+      "semantic_target_count": 49,
+      "rule_form": "OR of structurally constrained AND clauses",
+      "held_out_folds": 3,
+      "ablations": {
+        "name_invariant_ast_only": {
+          "weak_provisional": 2,
+          "insufficient": 47
+        },
+        "edited_subtree_code_anchors": {
+          "weak_provisional": 4,
+          "insufficient": 45
+        },
+        "bounded_context_anchors_with_required_structure": {
+          "weak_provisional": 12,
+          "insufficient": 37
+        },
+        "typed_ast_context_frames": {
+          "weak_provisional": 9,
+          "insufficient": 40
+        }
+      },
+      "best_precision_recall_rules_before_mdl": [
+        {
+          "meaning": "Trove taxonomy metadata",
+          "precision": 1.0,
+          "recall": 0.875
+        },
+        {
+          "meaning": "Python package setup configuration",
+          "precision": 0.736264,
+          "recall": 0.77907
+        }
+      ],
+      "rules_passing_1_2x_mdl_proxy": 2,
+      "best_mdl_proxy_ratio": 1.946707,
+      "best_mdl_proxy_meaning": "Trove taxonomy metadata",
+      "registered_count": 0,
+      "decision": "retain_weak_rules_for_paired_matcher_refinement_but_register_none",
+      "reason": "Typed AST context frames materially improve traceability over name-invariant shapes and allow two rules to compress held-out category labels by at least 1.2x. Neither meets all precision, support, repository-independence, and final edit-script MDL gates, so registration remains empty."
+    },
+    "paired_semgrep_evaluation": {
+      "python_pair_count": 1533,
+      "rules": [
+        {
+          "meaning": "Python package setup configuration",
+          "initial_cluster_reference_prefilter_precision": 0.702703,
+          "initial_cluster_reference_prefilter_recall": 0.906977,
+          "initial_cluster_reference_verified_precision": 0.753086,
+          "initial_cluster_reference_verified_recall": 0.709302,
+          "matched_cluster_members": 61,
+          "out_of_cluster_matches": 20,
+          "missed_cluster_members": 25
+        },
+        {
+          "meaning": "Trove taxonomy metadata",
+          "prefilter_precision": 0.085366,
+          "prefilter_recall": 0.875,
+          "verified_precision": 1.0,
+          "verified_recall": 0.75,
+          "true_positives": 6,
+          "false_positives": 0,
+          "false_negatives": 2
+        }
+      ],
+      "registered_count": 0,
+      "decision": "retain_executable_rules_for_refinement",
+      "reason": "Paired Semgrep prefilters plus GumTree edit verification materially improve traceability and remove false source-context matches, most dramatically reducing the Trove prefilter from 82 after-side matches to six verified true positives. The rules remain below independent-repository support and final edit-script MDL gates."
+    },
+    "semantic_structural_feedback_loop": {
+      "meaning": "Python package setup configuration",
+      "original_cluster_support": 86,
+      "executable_out_of_cluster_matches": 20,
+      "llm_entailing_matches": 20,
+      "provisional_expansions": 15,
+      "review_candidates": 5,
+      "rejected_candidates": 0,
+      "expanded_reference_support": 101,
+      "expanded_rule_precision": 0.901099,
+      "expanded_rule_recall": 0.811881,
+      "expanded_rule_f1": 0.854167,
+      "expanded_rule_mdl_proxy_ratio": 2.003126,
+      "expanded_rule_status": "strong_provisional",
+      "paired_reference_precision": 0.938272,
+      "paired_reference_recall": 0.752475,
+      "registered_count": 0,
+      "decision": "retain_feedback_loop_and_expand_to_more_categories",
+      "reason": "The 20 apparent false positives were all code-grounded package setup changes, demonstrating that discovery-cluster membership was incomplete rather than that the matcher was uniformly wrong. Combining executable structural evidence, LLM entailment, and member-vector fit added 15 conservative members and materially improved held-out rule quality. The category's OR branches are atomic, so composite MDL is not applicable; registration remains blocked on external provenance, held-out semantic validation, and source-level mutation/reparse verification."
+    },
+    "observed_provenance_support": {
+      "category_count": 49,
+      "categories_passing_both_observed_support_proxies": 1,
+      "meaning": "Python package setup configuration",
+      "patch_distinct_change_count": 101,
+      "observed_repository_name_count": 184,
+      "observed_provenance_component_count": 101,
+      "multi_repository_row_count": 25,
+      "maximum_repository_names_on_one_row": 23,
+      "passes_100_change_proxy": true,
+      "passes_50_component_proxy": true,
+      "final_independence_validated": false,
+      "decision": "retain_as_support_proxy_pending_external_enrichment",
+      "reason": "Counting each CommitPackFT row once and unioning rows that share repository names prevents known alias inflation. The resulting 101 components clear the numeric proxy, but disjoint-name forks, renamed mirrors, cherry-picks, and commit-wide scope remain invisible in the bucket."
+    },
+    "structural_constituent_mdl": {
+      "evaluated_multi_atom_clause_count": 81,
+      "clauses_passing_1_2x": 1,
+      "categories_with_passing_clause": 1,
+      "passing_meaning": "Grunt and Gulp workflow infrastructure",
+      "passing_clause_support": 25,
+      "passing_compression_ratio": 1.504363,
+      "passing_category_support": 67,
+      "python_package_setup_status": "not_applicable_atomic_rule",
+      "trove_taxonomy_status": "not_applicable_atomic_rule",
+      "registered_count": 0,
+      "decision": "retain_proxy_and_require_full_edit_tree_mdl_for_composites",
+      "reason": "Classification-label compression is not composite-pattern compression. The separate constituent code grants no MDL credit to single-atom rules and finds only one multi-atom clause above 1.2x; that clause remains below support cutoffs and the proxy does not yet encode complete GumTree edit trees."
+    },
+    "role_aware_metamorphic_probes": {
+      "positive_local_name_probe_count": 589,
+      "positive_pass_count": 589,
+      "local_name_invariance_rate": 1.0,
+      "negative_anchor_probe_count": 515,
+      "negative_pass_count": 515,
+      "anchor_mutation_rejection_rate": 1.0,
+      "python_package_setup_passes": true,
+      "trove_taxonomy_passes": true,
+      "source_reparse_validated": false,
+      "decision": "retain_role_aware_policy_and_add_source_level_probes",
+      "reason": "Randomizing local labels while preserving semantic anchors keeps every persisted-AST clause matched, while mutating the anchors themselves breaks every tested clause. The distinction is empirically supported but still needs complete source mutation and GumTree/Semgrep reparsing."
+    },
+    "broad_component_category_layer": {
+      "reliable_leaf_meaning_count": 49,
+      "raw_multi_leaf_group_count": 12,
+      "coherent_component_count": 11,
+      "assigned_leaf_count": 41,
+      "unassigned_leaf_count": 8,
+      "leaves_with_secondary_parent": 1,
+      "maximum_parents_per_leaf": 2,
+      "component_names": [
+        "Build and development tooling",
+        "Package distribution configuration",
+        "Routing",
+        "User interface",
+        "Web server integration",
+        "Browser testing infrastructure",
+        "Authentication",
+        "Automated testing",
+        "User data management",
+        "Game application",
+        "Network communication interfaces"
+      ],
+      "universal_coverage_validated": false,
+      "decision": "retain_as_candidate_component_layer_and_test_on_static_code",
+      "reason": "The parent layer turns narrow traceable change meanings into broader component responsibilities without forcing every meaning into a closed taxonomy. Eight leaves abstain and one cross-cutting Webpack/server meaning receives two parents. General usefulness must now be measured against static components from held-out repositories."
+    },
+    "repository_disjoint_static_component_transfer": {
+      "file_count": 80,
+      "recorded_name_disjoint_repository_count": 80,
+      "python_count": 40,
+      "javascript_count": 40,
+      "strong_match_count": 47,
+      "plausible_match_count": 8,
+      "covered_count": 55,
+      "coverage_rate": 0.6875,
+      "abstention_count": 25,
+      "abstention_rate": 0.3125,
+      "existing_categories_used": 11,
+      "embedding_recall_at_3": 0.854545,
+      "recurring_gap_category_count": 5,
+      "recurring_gap_categories": [
+        "Content indexing",
+        "Database schema migrations",
+        "Hardware input integration",
+        "String processing algorithms",
+        "System monitoring"
+      ],
+      "human_calibrated": false,
+      "decision": "retain_open_vocabulary_layer_and_feed_recurring_gaps_back_into_discovery",
+      "reason": "All 11 induced parents transfer to at least one static file, while 25 explicit abstentions expose responsibilities the vocabulary does not yet cover. Five omissions recur across independent held-out files and should seed the next code-grounded clustering loop. The 68.75% rate is exploratory LLM-adjudicated coverage, not precision."
+    },
+    "static_gap_feedback_loop": {
+      "retrieval_pool_files": 500,
+      "recorded_name_disjoint_repository_count": 500,
+      "recurring_seed_gap_count": 5,
+      "retrieved_candidate_count": 57,
+      "accepted_expansion_count": 10,
+      "provisional_minimum_total_support": 5,
+      "categories": [
+        {
+          "name": "String processing algorithms",
+          "initial_support": 2,
+          "accepted_expansions": 5,
+          "total_support": 7,
+          "status": "expanded_candidate"
+        },
+        {
+          "name": "Content indexing",
+          "initial_support": 2,
+          "accepted_expansions": 2,
+          "total_support": 4,
+          "status": "insufficient_support"
+        },
+        {
+          "name": "Database schema migrations",
+          "initial_support": 2,
+          "accepted_expansions": 2,
+          "total_support": 4,
+          "status": "insufficient_support"
+        },
+        {
+          "name": "Hardware input integration",
+          "initial_support": 2,
+          "accepted_expansions": 1,
+          "total_support": 3,
+          "status": "insufficient_support"
+        },
+        {
+          "name": "System monitoring",
+          "initial_support": 2,
+          "accepted_expansions": 0,
+          "total_support": 2,
+          "status": "insufficient_support"
+        }
+      ],
+      "registered_count": 0,
+      "decision": "retain_string_processing_for_structural_induction_and_continue_evidence_collection_for_other_gaps",
+      "reason": "Only 10 of 57 high-similarity retrievals materially implement the proposed responsibility. The audit expands string processing to seven independent files while correctly leaving four attractive labels below even the small pilot support floor. Final promotion still requires structural traceability, human calibration, and the proposal's full support cutoffs."
+    },
+    "static_string_processing_structural_validation": {
+      "semantic_support": 7,
+      "negative_pool_files": 493,
+      "representation": "cross-language normalized semantic-role AST features",
+      "rule_form": "OR of one-to-three-atom AND clauses",
+      "in_sample_precision": 0.75,
+      "in_sample_recall": 0.428571,
+      "in_sample_f1": 0.545455,
+      "leave_one_positive_out_folds": 7,
+      "held_out_true_positive": 0,
+      "held_out_false_negative": 7,
+      "repeated_false_positive": 9,
+      "held_out_precision": 0.0,
+      "held_out_recall": 0.0,
+      "held_out_f1": 0.0,
+      "registered_count": 0,
+      "decision": "retain_as_semantic_only_umbrella_and_recursively_split_before_retrying_structure",
+      "reason": "The category supports human-readable retrieval but the learned AST clauses cover only three of seven examples in-sample and recover no held-out positive. Broad semantic component categories must not be conflated with precise structural primitives; transformation and analysis/parsing children are the next defensible split hypotheses."
+    },
+    "recursive_static_semantic_refinement": {
+      "parent": "String processing algorithms",
+      "parent_member_count": 7,
+      "selected_distance_threshold": 0.44,
+      "core_coverage": 0.714286,
+      "silhouette": 0.184057,
+      "subsample_stability_ari": 0.897792,
+      "residual_member_count": 2,
+      "residual_meanings": [
+        "Longest palindromic substring search",
+        "String-format validation predicate factory"
+      ],
+      "accepted_child": {
+        "name": "Text normalization",
+        "initial_support": 2,
+        "specificity_gain": 0.14271,
+        "audited_retrieval_count": 40,
+        "accepted_expansions": 8,
+        "total_support": 10,
+        "status": "expanded_child_candidate"
+      },
+      "rejected_child": {
+        "name": "Text filter pipelines",
+        "support_after_semantic_exclusion": 1,
+        "status": "insufficient_support"
+      },
+      "larger_external_expansion_run": "explicitly_authorized_and_completed",
+      "registered_count": 0,
+      "decision": "retain_text_normalization_as_ten_file_semantic_child_and_validate_structure",
+      "reason": "Residual-aware recursion finds one meaning-specific child with positive fit gain. The explicitly approved 2,000-file search adds eight code-entailing examples, clearing the pilot evidence floor while preserving residual meanings outside the child. Structural promotion still requires held-out transfer."
+    },
+    "text_normalization_structural_validation": {
+      "semantic_support": 10,
+      "negative_pool_files": 1990,
+      "in_sample_precision": 0.875,
+      "in_sample_recall": 0.7,
+      "in_sample_f1": 0.777778,
+      "leave_one_positive_out_folds": 10,
+      "held_out_true_positive": 2,
+      "held_out_false_negative": 8,
+      "repeated_false_positive": 5,
+      "held_out_precision": 0.285714,
+      "held_out_recall": 0.2,
+      "held_out_f1": 0.235294,
+      "registered_count": 0,
+      "decision": "retain_as_semantic_only_child_and_recurse_again",
+      "reason": "The narrower child fits much better in-sample but recovers only two of 10 held-out positives. Ten examples implement normalization through materially different code structures, so support alone does not justify a structural primitive."
+    },
+    "text_normalization_recursive_refinement": {
+      "parent_member_count": 10,
+      "selected_distance_threshold": 0.39,
+      "core_coverage": 0.7,
+      "silhouette": 0.37012,
+      "subsample_stability_ari": 0.781056,
+      "accepted_child": {
+        "name": "Filename-safe title sanitization",
+        "support": 2,
+        "specificity_gain": 0.2687,
+        "provenance_warning": "matching alias.js paths and nearly identical meanings may reflect copied code"
+      },
+      "rejected_children": [
+        {
+          "name": "Case normalization",
+          "support": 3,
+          "specificity_gain": -0.051687,
+          "reason": "fails child-specificity gain"
+        },
+        {
+          "name": "Tag capitalization",
+          "support": 1,
+          "reason": "insufficient support after semantic exclusion"
+        }
+      ],
+      "residual_member_count": 3,
+      "registered_count": 0,
+      "decision": "withhold_all_second_level_children",
+      "reason": "The only definition-improving multi-member child consists of two near-duplicate alias implementations with unresolved provenance. The larger case group is less specific than its parent, the tag group falls to one member, and residual meanings remain heterogeneous."
+    },
+    "decision": "continue_human_calibration_and_provenance_audit_without_structural_promotion",
+    "reason": "Recursive semantic discovery produces useful human categories and explicit residuals, while repeated held-out structural tests prevent broad or copied-code groupings from becoming primitives. The next evidence should be human labels and repository lineage, not weaker structural thresholds."
+  }
+}

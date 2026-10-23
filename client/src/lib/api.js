@@ -1,5 +1,28 @@
 // Thin client for the Express API.
 
+const MEANING_SESSION_KEY = 'codearchitect:meaning-session'
+let fallbackMeaningSessionId = null
+
+function newMeaningSessionId() {
+  return globalThis.crypto?.randomUUID?.().replaceAll('-', '')
+    || `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`
+}
+
+function meaningSessionHeaders(extra = {}) {
+  let id
+  try {
+    id = sessionStorage.getItem(MEANING_SESSION_KEY)
+    if (!id) {
+      id = newMeaningSessionId()
+      sessionStorage.setItem(MEANING_SESSION_KEY, id)
+    }
+  } catch {
+    fallbackMeaningSessionId ||= newMeaningSessionId()
+    id = fallbackMeaningSessionId
+  }
+  return { ...extra, 'X-CodeArchitect-Session': id }
+}
+
 export async function fetchHealth() {
   const res = await fetch('/api/health')
   if (!res.ok) throw new Error('Server unreachable')
@@ -40,15 +63,21 @@ export async function activateProject(id) {
 }
 
 export async function removeProject(id) {
-  const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' })
+  const res = await fetch(`/api/projects/${id}`, {
+    method: 'DELETE',
+    headers: meaningSessionHeaders(),
+  })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.error || 'Failed to remove project')
   return data // { activeId, projects }
 }
 
-// Wipe the server's tree cache (disk + in-memory). Returns { ok, removed }.
+// Clear this tab's focused context while retaining durable parse/basic caches.
 export async function clearTreeCache() {
-  const res = await fetch('/api/tree-cache', { method: 'DELETE' })
+  const res = await fetch('/api/tree-cache', {
+    method: 'DELETE',
+    headers: meaningSessionHeaders(),
+  })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.error || 'Failed to clear tree cache')
   return data
@@ -65,8 +94,8 @@ export async function fetchReferences(name, fromFileId) {
   return data
 }
 
-// Set a project's bare-window size (chars). Resets that project's meaning cache and
-// re-warms it server-side. Returns { ok, bareWindow, dropped, projects }.
+// Set a project's bare-window size (chars). Invalidates that project's basic and
+// focused meanings; eager re-warming happens only when enabled server-side.
 export async function setProjectBareWindow(id, chars) {
   const res = await fetch(`/api/projects/${id}/bare-window`, {
     method: 'PUT',
@@ -98,7 +127,7 @@ export async function askQuestion(fileId, nodeId, question, opts = {}) {
   const { depth = 0, intent = 'infer', transcript = [], contextFileId = null, focus = '', highlight = '', traceContext = null } = opts
   const res = await fetch(`/api/files/${fileId}/ask`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: meaningSessionHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ nodeId, question, depth, intent, transcript, contextFileId, focus, highlight, traceContext }),
   })
   const data = await res.json().catch(() => ({}))
@@ -112,7 +141,7 @@ export async function suggestEdits(fileId, nodeId, opts = {}) {
   const { instruction = '', transcript = [], baseCode = '', contextFileId = null } = opts
   const res = await fetch(`/api/files/${fileId}/suggest-edits`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: meaningSessionHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ nodeId, instruction, transcript, baseCode, contextFileId }),
   })
   const data = await res.json().catch(() => ({}))
@@ -125,7 +154,7 @@ export async function suggestEdits(fileId, nodeId, opts = {}) {
 export async function askFolder(dirPath, question, transcript = [], contextFileId = null) {
   const res = await fetch('/api/folders/ask', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: meaningSessionHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ dirPath, question, transcript, contextFileId }),
   })
   const data = await res.json().catch(() => ({}))
@@ -150,6 +179,7 @@ export async function fetchChunks(id, value, depthSpread = 0) {
 export async function fetchChunksAround(id, start, end) {
   const res = await fetch(
     `/api/files/${id}/chunks?rangeStart=${start}&rangeEnd=${end}`,
+    { headers: meaningSessionHeaders() },
   )
   if (!res.ok) throw new Error('Failed to chunk file')
   return res.json() // { kind, chunks, nodes, targetNodeId, ... }

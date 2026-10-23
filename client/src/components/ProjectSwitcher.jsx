@@ -1,4 +1,5 @@
 import { Fragment, forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { readFolderUpload, readDirectoryHandle, readDroppedEntries } from '../lib/uploadFolder.js'
 import { humanizeError } from '../lib/humanizeError.js'
 
@@ -8,12 +9,11 @@ const WIN_MIN = 8000
 const WIN_MAX = 128000
 const WIN_STEP = 8000
 
-// Top-bar control: shows the active project and a dropdown to switch between
-// registered projects or add a new one by picking a folder from your machine
-// (read in the browser and uploaded — works locally and in hosted deploys). Clicking
-// the tab you're already on opens a per-project "context detail" slider instead.
-const ProjectSwitcher = forwardRef(function ProjectSwitcher({ projects, activeId, onSwitch, onUpload, onRemove, onBareWindow, welcome, onExitWelcome }, forwardedRef) {
-  const [open, setOpen] = useState(false)         // the management menu (switch/add/remove)
+// Top-bar control: shows open projects as tabs and provides a compact folder picker
+// for adding another one (read in the browser and uploaded — works locally and in
+// hosted deploys). Clicking the active tab opens its context-detail slider instead.
+const ProjectSwitcher = forwardRef(function ProjectSwitcher({ projects, activeId, onSwitch, onUpload, onRemove, onBareWindow, onClearContext, welcome, onExitWelcome, sandbox = false }, forwardedRef) {
+  const [open, setOpen] = useState(false)         // the add-folder menu
   const [settingsOpen, setSettingsOpen] = useState(false) // the active project's window-size slider
   const [winLocal, setWinLocal] = useState(WIN_MIN) // live slider value while dragging
   const [error, setError] = useState('')
@@ -22,6 +22,7 @@ const ProjectSwitcher = forwardRef(function ProjectSwitcher({ projects, activeId
   const [phase, setPhase] = useState('')
   const [dragOver, setDragOver] = useState(false) // a folder is being dragged over the dropzone
   const [pendingUpload, setPendingUpload] = useState(null)
+  const [contextSlot, setContextSlot] = useState(null)
   // Fixed left-to-right order of the open folder tabs. Tabs keep their slot for
   // life — selecting one only brings it forward (z-index), it never moves. New
   // projects append to the right; removed ones drop out.
@@ -33,6 +34,10 @@ const ProjectSwitcher = forwardRef(function ProjectSwitcher({ projects, activeId
   const tabEls = useRef({})       // id -> tab DOM node, for midpoint hit-testing
   const dragRef = useRef(null)    // { id, startX, boundary } while a drag is in progress
   const suppressClick = useRef(false) // swallow the click that ends a real drag
+
+  useEffect(() => {
+    setContextSlot(document.getElementById('topbar-context-slot'))
+  }, [activeId])
 
   // Reconcile the order with the live project list: drop removed projects and
   // append newly-added ones. Existing entries keep their position.
@@ -70,15 +75,15 @@ const ProjectSwitcher = forwardRef(function ProjectSwitcher({ projects, activeId
   // of 4 open projects — you can't add a 5th until one is removed.
   const MAX_PROJECTS = 4
   const canAdd = stackTabs.length < MAX_PROJECTS
-  // Always rendered (even at the cap) so the management menu stays reachable now that
-  // the active-tab click is taken over by the window-size slider; adding is disabled
-  // at the cap. The caret rotates when its menu is open.
+  // Always rendered so the folder picker stays reachable. Adding is disabled at the
+  // cap until the user closes a project from its tab in the main view.
   const chooser = (
     <button
-      className="proj-tab proj-chooser"
+      className={`proj-tab proj-chooser${sandbox ? ' sandbox-locked' : ''}`}
+      disabled={sandbox}
       onClick={() => { setOpen((o) => !o); setSettingsOpen(false) }}
-      title="Choose project"
-      aria-label="Choose project"
+      title={sandbox ? 'Adding folders is disabled in this sandbox' : 'Open folder'}
+      aria-label={sandbox ? 'Adding folders is disabled in this sandbox' : 'Open folder'}
       aria-expanded={open}
     >
       <svg className={`proj-caret${open ? ' open' : ''}`} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -86,7 +91,6 @@ const ProjectSwitcher = forwardRef(function ProjectSwitcher({ projects, activeId
         <line x1="12" y1="5" x2="12" y2="19" />
         <line x1="5" y1="12" x2="19" y2="12" />
       </svg>
-      <span className="proj-chooser-label">{projects.length ? 'Add' : 'Open project'}</span>
     </button>
   )
 
@@ -98,7 +102,7 @@ const ProjectSwitcher = forwardRef(function ProjectSwitcher({ projects, activeId
       aria-expanded={settingsOpen}
       title="Project context settings"
     >
-      <span aria-hidden="true">◎</span>
+      <span className="proj-context-icon" aria-hidden="true">◎</span>
       <span>Context</span>
     </button>
   )
@@ -171,7 +175,9 @@ const ProjectSwitcher = forwardRef(function ProjectSwitcher({ projects, activeId
   useEffect(() => {
     if (!open && !settingsOpen) return
     const onDoc = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setSettingsOpen(false) }
+      if (ref.current?.contains(e.target) || e.target.closest?.('#topbar-context-slot')) return
+      setOpen(false)
+      setSettingsOpen(false)
     }
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
@@ -258,6 +264,7 @@ const ProjectSwitcher = forwardRef(function ProjectSwitcher({ projects, activeId
   // the exposed method preserves the original user gesture required by browsers.
   useImperativeHandle(forwardedRef, () => ({
     openFolder: () => {
+      if (sandbox) return
       setOpen(true)
       setSettingsOpen(false)
       openFolderPick()
@@ -282,42 +289,38 @@ const ProjectSwitcher = forwardRef(function ProjectSwitcher({ projects, activeId
           right after the active tab, taking its own slot. */}
       {stackTabs.map((p, i) => {
         const isActive = p.id === activeId
+        const className = `proj-tab proj-stack-tab${isActive ? ' proj-current has-remove' : ''}${welcome ? ' proj-tab-welcome' : ''}`
+        const projectName = <span className="proj-name">{p.name}</span>
         return (
           <Fragment key={p.id}>
-            <button
-              ref={(el) => { tabEls.current[p.id] = el }}
-              className={`proj-tab proj-stack-tab${isActive ? ' proj-current has-remove' : ''}${draggingId === p.id ? ' dragging' : ''}${welcome ? ' proj-tab-welcome' : ''}`}
-              style={{ zIndex: isActive ? 100 : 2 + i }}
-              onPointerDown={(e) => onTabPointerDown(e, p.id)}
-              onPointerMove={onTabPointerMove}
-              onPointerUp={endDrag}
-              onPointerCancel={endDrag}
-              onClick={() => {
-                // In the welcome view the tab is just a greeting placeholder —
-                // a click only dismisses the welcome state, nothing else.
-                if (welcome) { onExitWelcome?.(); return }
-                if (!isActive) { onSwitch(p.id); return }
-                if (suppressClick.current) { suppressClick.current = false; return }
-                setOpen((value) => !value); setSettingsOpen(false)
-              }}
-              title={p.absPath}
-            >
-              {isActive && (
+            {isActive ? (
+              <div className={className} style={{ zIndex: 100 }} title={p.absPath}>
                 <span
-                  className="proj-current-remove"
-                  role="button"
-                  tabIndex={0}
-                  title="Remove from list"
-                  aria-label={`Remove ${p.name}`}
-                  onClick={(e) => { e.stopPropagation(); onRemove(p.id) }}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onRemove(p.id) } }}
+                  className={`proj-current-remove${sandbox ? ' sandbox-locked' : ''}`}
+                  role={sandbox ? undefined : 'button'}
+                  tabIndex={sandbox ? -1 : 0}
+                  title={sandbox ? 'Removing this project is disabled in the sandbox' : 'Remove from list'}
+                  aria-label={sandbox ? undefined : `Remove ${p.name}`}
+                  aria-hidden={sandbox ? 'true' : undefined}
+                  onClick={sandbox ? undefined : (e) => { e.stopPropagation(); onRemove(p.id) }}
+                  onKeyDown={sandbox ? undefined : (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onRemove(p.id) } }}
                 >
                   ×
                 </span>
-              )}
-              <span className="proj-name">{p.name}</span>
-            </button>
-            {isActive && !welcome && <>{chooser}{settingsTrigger}</>}
+                {projectName}
+              </div>
+            ) : (
+              <button
+                ref={(el) => { tabEls.current[p.id] = el }}
+                className={className}
+                style={{ zIndex: 2 + i }}
+                onClick={() => onSwitch(p.id)}
+                title={p.absPath}
+              >
+                {projectName}
+              </button>
+            )}
+            {isActive && !welcome && chooser}
           </Fragment>
         )
       })}
@@ -334,7 +337,6 @@ const ProjectSwitcher = forwardRef(function ProjectSwitcher({ projects, activeId
         <div className="proj-menu">
           {pendingUpload ? (
             <div className="proj-preflight">
-              <div className="proj-preflight-kicker">Review project</div>
               <h2>{pendingUpload.name}</h2>
               <p>
                 CodeArchitect will index source and documentation files only. Generated
@@ -367,86 +369,56 @@ const ProjectSwitcher = forwardRef(function ProjectSwitcher({ projects, activeId
                 </button>
               </div>
             </div>
-          ) : <>
-          <div className="proj-list">
-            {projects.length === 0 && <div className="proj-empty">No projects yet.</div>}
-            {projects.map((p) => (
-              <div key={p.id} className={`proj-item${p.id === activeId ? ' active' : ''}`}>
-                <button
-                  className="proj-item-main"
-                  onClick={() => { onSwitch(p.id); setOpen(false) }}
-                  title={p.absPath}
-                >
-                  <span className="proj-item-name">{p.name}</span>
-                  <span className="proj-item-meta">
-                    {p.fileCount != null ? `${p.fileCount} files` : '—'}
-                    {p.resident ? '' : ' · idle'}
-                  </span>
-                </button>
-                <button
-                  className="proj-remove"
-                  title="Remove from list"
-                  aria-label={`Remove ${p.name}`}
-                  onClick={() => onRemove(p.id)}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-
-          <div
-            className={`proj-add${dragOver ? ' drag-over' : ''}${!canAdd ? ' disabled' : ''}`}
-            onDragOver={(e) => { if (canAdd && !phase) { e.preventDefault(); setDragOver(true) } }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={(e) => { if (canAdd && !phase) onFolderDrop(e); else e.preventDefault() }}
-          >
-            <input
-              type="file"
-              multiple
-              hidden
-              ref={(el) => {
-                folderInputRef.current = el
-                // webkitdirectory/directory aren't standard React props; set them
-                // on the node so the picker selects a whole folder.
-                if (el) { el.setAttribute('webkitdirectory', ''); el.setAttribute('directory', '') }
-              }}
-              onChange={onFolderChosen}
-            />
-            {canAdd && (
-              <div className="proj-drop-hint">{dragOver ? 'Drop to open this folder' : 'Drag a folder here, or'}</div>
-            )}
-            <button
-              className="proj-pick-btn"
-              type="button"
-              onClick={openFolderPick}
-              disabled={!!phase || !canAdd}
-              title={!canAdd ? `At most ${MAX_PROJECTS} projects — remove one to add another.` : undefined}
+          ) : (
+            <div
+              className={`proj-add${dragOver ? ' drag-over' : ''}${!canAdd ? ' disabled' : ''}`}
+              onDragOver={(e) => { if (canAdd && !phase) { e.preventDefault(); setDragOver(true) } }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => { if (canAdd && !phase) onFolderDrop(e); else e.preventDefault() }}
             >
-              {phase ? (
-                <span className="proj-pick-spinner" aria-hidden="true" />
-              ) : (
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                </svg>
+              <input
+                type="file"
+                multiple
+                hidden
+                ref={(el) => {
+                  folderInputRef.current = el
+                  // webkitdirectory/directory aren't standard React props; set them
+                  // on the node so the picker selects a whole folder.
+                  if (el) { el.setAttribute('webkitdirectory', ''); el.setAttribute('directory', '') }
+                }}
+                onChange={onFolderChosen}
+              />
+              {canAdd && (
+                <div className="proj-drop-hint">{dragOver ? 'Drop to open this folder' : 'Drag a folder here, or'}</div>
               )}
-              {!canAdd ? `Max ${MAX_PROJECTS} projects` : phase === 'reading' ? 'Reading files…' : phase === 'uploading' ? 'Uploading…' : 'Open folder…'}
-            </button>
-          </div>
-          </>}
+              <button
+                className="proj-pick-btn"
+                type="button"
+                onClick={openFolderPick}
+                disabled={!!phase || !canAdd}
+                title={!canAdd ? `At most ${MAX_PROJECTS} projects — remove one to add another.` : undefined}
+              >
+                {phase ? (
+                  <span className="proj-pick-spinner" aria-hidden="true" />
+                ) : null}
+                {!canAdd ? `Max ${MAX_PROJECTS} projects` : phase === 'reading' ? 'Reading files…' : phase === 'uploading' ? 'Uploading…' : 'Open folder…'}
+              </button>
+            </div>
+          )}
           {error && <div className="proj-error">{error}</div>}
         </div>
       )}
 
-      {settingsOpen && (
+      {contextSlot && createPortal(<>
+        {settingsTrigger}
+        {settingsOpen && (
         <div className="proj-menu proj-settings">
           <div className="proj-settings-title">Context detail</div>
           <p className="proj-settings-hint">
             How finely large files are summarized for the chat. Smaller windows mean
             more, finer passes over big files. Changing this re-summarizes this project.
           </p>
-          <label className="slider-wrap">
+            <label className="slider-wrap">
             <span className="slider-label">Window</span>
             <input
               type="range"
@@ -459,10 +431,18 @@ const ProjectSwitcher = forwardRef(function ProjectSwitcher({ projects, activeId
               onPointerUp={commitWin}
               onKeyUp={(e) => { if (e.key.startsWith('Arrow')) commitWin() }}
             />
-            <span className="slider-val">{Math.round(winLocal / 1000)}k</span>
-          </label>
-        </div>
-      )}
+              <span className="slider-val">{Math.round(winLocal / 1000)}k</span>
+            </label>
+            <button
+              type="button"
+              className="proj-settings-clear"
+              onClick={() => { setSettingsOpen(false); onClearContext?.() }}
+            >
+              Clear context cache
+            </button>
+          </div>
+        )}
+      </>, contextSlot)}
     </div>
   )
 })

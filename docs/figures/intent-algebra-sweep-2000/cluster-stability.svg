@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1150" viewBox="0 0 1500 1150">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<style>text{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#172033}.title{font-size:30px;font-weight:700}.sub{font-size:16px;fill:#667085}.label{font-size:14px;font-weight:600}.note{font-size:13px;fill:#667085}.value{font-size:13px;font-weight:700}</style>
+<text x="55" y="52" class="title">Semantic cluster stability under a 4× sample expansion</text>
+<text x="55" y="82" class="sub">Exact member retention from the 336-change sweep into the nested 1,278-change sweep</text>
+<text x="55" y="119" class="note">Earlier cluster</text>
+<text x="565" y="119" class="note">Retained together</text>
+<text x="895" y="119" class="note">Larger-sweep destination</text>
+<text x="55" y="160" class="label">EMBED_CONCEPT_0001  config · jest · options (n=16)</text>
+<rect x="565" y="145" width="260" height="21" rx="4" fill="#edf0f5"/>
+<rect x="565" y="145" width="162.5" height="21" rx="4" fill="#7c3aed"/>
+<text x="835" y="160" class="value">10/16</text>
+<text x="895" y="160" class="label">config · require · webpack</text>
+<text x="1385" y="160" class="note" text-anchor="end">partial split</text>
+<text x="55" y="206" class="label">EMBED_CONCEPT_0002  console · log · message (n=13)</text>
+<rect x="565" y="191" width="260" height="21" rx="4" fill="#edf0f5"/>
+<rect x="565" y="191" width="40.0" height="21" rx="4" fill="#d94f70"/>
+<text x="835" y="206" class="value">2/13</text>
+<text x="895" y="206" class="label">stream · twitch · player</text>
+<text x="1385" y="206" class="note" text-anchor="end">split</text>
+<text x="55" y="252" class="label">EMBED_CONCEPT_0003  requires · readme · pytest (n=11)</text>
+<rect x="565" y="237" width="260" height="21" rx="4" fill="#edf0f5"/>
+<rect x="565" y="237" width="260.0" height="21" rx="4" fill="#138a72"/>
+<text x="835" y="252" class="value">11/11</text>
+<text x="895" y="252" class="label">requires · readme · python</text>
+<text x="1385" y="252" class="note" text-anchor="end">stable expansion</text>
+<text x="55" y="298" class="label">EMBED_CONCEPT_0004  tasks · require · gulpfile (n=9)</text>
+<rect x="565" y="283" width="260" height="21" rx="4" fill="#edf0f5"/>
+<rect x="565" y="283" width="231.1" height="21" rx="4" fill="#d97706"/>
+<text x="835" y="298" class="value">8/9</text>
+<text x="895" y="298" class="label">task · grunt · gruntfile</text>
+<text x="1385" y="298" class="note" text-anchor="end">membership stable label shift</text>
+<text x="55" y="344" class="label">EMBED_CONCEPT_0005  age · proxy · trust (n=7)</text>
+<rect x="565" y="329" width="260" height="21" rx="4" fill="#edf0f5"/>
+<rect x="565" y="329" width="185.7" height="21" rx="4" fill="#7c3aed"/>
+<text x="835" y="344" class="value">5/7</text>
+<text x="895" y="344" class="label">router · path · age</text>
+<text x="1385" y="344" class="note" text-anchor="end">partial split</text>
+<text x="55" y="390" class="label">EMBED_CONCEPT_0006  git · config · github (n=5)</text>
+<rect x="565" y="375" width="260" height="21" rx="4" fill="#edf0f5"/>
+<rect x="565" y="375" width="260.0" height="21" rx="4" fill="#138a72"/>
+<text x="835" y="390" class="value">5/5</text>
+<text x="895" y="390" class="label">git · github · type</text>
+<text x="1385" y="390" class="note" text-anchor="end">stable expansion</text>
+<text x="55" y="436" class="label">EMBED_CONCEPT_0007  process · firefox · debug (n=4)</text>
+<rect x="565" y="421" width="260" height="21" rx="4" fill="#edf0f5"/>
+<rect x="565" y="421" width="130.0" height="21" rx="4" fill="#7c3aed"/>
+<text x="835" y="436" class="value">2/4</text>
+<text x="895" y="436" class="label">process · env · environment</text>
+<text x="1385" y="436" class="note" text-anchor="end">partial split</text>
+<text x="55" y="482" class="label">EMBED_CONCEPT_0008  ajax · setting · success (n=4)</text>
+<rect x="565" y="467" width="260" height="21" rx="4" fill="#edf0f5"/>
+<rect x="565" y="467" width="130.0" height="21" rx="4" fill="#7c3aed"/>
+<text x="835" y="482" class="value">2/4</text>
+<text x="895" y="482" class="label">assets · select · callback</text>
+<text x="1385" y="482" class="note" text-anchor="end">partial split</text>
+<text x="55" y="528" class="label">EMBED_CONCEPT_0009  expect · store · foo (n=4)</text>
+<rect x="565" y="513" width="260" height="21" rx="4" fill="#edf0f5"/>
+<rect x="565" y="513" width="130.0" height="21" rx="4" fill="#7c3aed"/>
+<text x="835" y="528" class="value">2/4</text>
+<text x="895" y="528" class="label">foo · session · storage</text>
+<text x="1385" y="528" class="note" text-anchor="end">partial split</text>
+<text x="55" y="574" class="label">EMBED_CONCEPT_0010  height · width · margin (n=3)</text>
+<rect x="565" y="559" width="260" height="21" rx="4" fill="#edf0f5"/>
+<rect x="565" y="559" width="86.7" height="21" rx="4" fill="#d94f70"/>
+<text x="835" y="574" class="value">1/3</text>
+<text x="895" y="574" class="label">height · width · html</text>
+<text x="1385" y="574" class="note" text-anchor="end">split</text>
+<text x="55" y="620" class="label">EMBED_CONCEPT_0011  route · theme · errors (n=3)</text>
+<rect x="565" y="605" width="260" height="21" rx="4" fill="#edf0f5"/>
+<rect x="565" y="605" width="260.0" height="21" rx="4" fill="#d97706"/>
+<text x="835" y="620" class="value">3/3</text>
+<text x="895" y="620" class="label">router · path · age</text>
+<text x="1385" y="620" class="note" text-anchor="end">membership stable label shift</text>
+<text x="55" y="666" class="label">EMBED_CONCEPT_0012  url · opps · admin (n=3)</text>
+<rect x="565" y="651" width="260" height="21" rx="4" fill="#edf0f5"/>
+<rect x="565" y="651" width="173.3" height="21" rx="4" fill="#7c3aed"/>
+<text x="835" y="666" class="value">2/3</text>
+<text x="895" y="666" class="label">url · django · views</text>
+<text x="1385" y="666" class="note" text-anchor="end">partial split</text>
+<text x="55" y="712" class="label">EMBED_CONCEPT_0013  date · type · mangas (n=3)</text>
+<rect x="565" y="697" width="260" height="21" rx="4" fill="#edf0f5"/>
+<rect x="565" y="697" width="173.3" height="21" rx="4" fill="#7c3aed"/>
+<text x="835" y="712" class="value">2/3</text>
+<text x="895" y="712" class="label">mangas · schema · ask</text>
+<text x="1385" y="712" class="note" text-anchor="end">partial split</text>
+<text x="55" y="758" class="label">EMBED_CONCEPT_0014  attr · char · model (n=2)</text>
+<rect x="565" y="743" width="260" height="21" rx="4" fill="#edf0f5"/>
+<rect x="565" y="743" width="260.0" height="21" rx="4" fill="#138a72"/>
+<text x="835" y="758" class="value">2/2</text>
+<text x="895" y="758" class="label">search · attr · char</text>
+<text x="1385" y="758" class="note" text-anchor="end">stable expansion</text>
+<text x="55" y="804" class="label">EMBED_CONCEPT_0015  vuetify · icons · shared (n=2)</text>
+<rect x="565" y="789" width="260" height="21" rx="4" fill="#edf0f5"/>
+<rect x="565" y="789" width="260.0" height="21" rx="4" fill="#138a72"/>
+<text x="835" y="804" class="value">2/2</text>
+<text x="895" y="804" class="label">vuetify · render · icons</text>
+<text x="1385" y="804" class="note" text-anchor="end">stable expansion</text>
+<text x="55" y="850" class="label">EMBED_CONCEPT_0016  session · time · initial (n=2)</text>
+<rect x="565" y="835" width="260" height="21" rx="4" fill="#edf0f5"/>
+<rect x="565" y="835" width="260.0" height="21" rx="4" fill="#d97706"/>
+<text x="835" y="850" class="value">2/2</text>
+<text x="895" y="850" class="label">reducer · state · reducers</text>
+<text x="1385" y="850" class="note" text-anchor="end">membership stable label shift</text>
+<text x="55" y="896" class="label">EMBED_CONCEPT_0017  context · locales · service (n=2)</text>
+<rect x="565" y="881" width="260" height="21" rx="4" fill="#edf0f5"/>
+<rect x="565" y="881" width="260.0" height="21" rx="4" fill="#138a72"/>
+<text x="835" y="896" class="value">2/2</text>
+<text x="895" y="896" class="label">config · locales · context</text>
+<text x="1385" y="896" class="note" text-anchor="end">stable expansion</text>
+<text x="55" y="942" class="label">EMBED_CONCEPT_0018  migrations · auto · manager (n=2)</text>
+<rect x="565" y="927" width="260" height="21" rx="4" fill="#edf0f5"/>
+<rect x="565" y="927" width="260.0" height="21" rx="4" fill="#138a72"/>
+<text x="835" y="942" class="value">2/2</text>
+<text x="895" y="942" class="label">migrations · auto · manager</text>
+<text x="1385" y="942" class="note" text-anchor="end">stable expansion</text>
+<text x="55" y="988" class="label">EMBED_CONCEPT_0019  concat · dot · pass (n=2)</text>
+<rect x="565" y="973" width="260" height="21" rx="4" fill="#edf0f5"/>
+<rect x="565" y="973" width="130.0" height="21" rx="4" fill="#7c3aed"/>
+<text x="835" y="988" class="value">1/2</text>
+<text x="895" y="988" class="label">dot · concat · connect</text>
+<text x="1385" y="988" class="note" text-anchor="end">partial split</text>
+<text x="55" y="1034" class="label">EMBED_CONCEPT_0020  active · attr · project (n=2)</text>
+<rect x="565" y="1019" width="260" height="21" rx="4" fill="#edf0f5"/>
+<rect x="565" y="1019" width="260.0" height="21" rx="4" fill="#d97706"/>
+<text x="835" y="1034" class="value">2/2</text>
+<text x="895" y="1034" class="label">scroll · event · active</text>
+<text x="1385" y="1034" class="note" text-anchor="end">membership stable label shift</text>
+<text x="55" y="1120" class="note">Green indicates stable membership and label; orange preserves members but shifts label; purple/red indicate splitting.</text>
+</svg>

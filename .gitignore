@@ -10,3 +10,10 @@ benchmark-results/*
 !benchmark-results/context-2026-08-01T18-44-42-448Z.json
 !benchmark-results/context-2026-08-01T18-44-42-448Z.md
 !benchmark-results/README.md
+.data/
+.tools/
+# Added by Braintrust Wizard
+.env.braintrust
+.braintrust.json
+__pycache__/
+*.pyc

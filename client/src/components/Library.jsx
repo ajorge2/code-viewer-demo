@@ -109,6 +109,7 @@ export default function Library({
   noProject = false,
 }) {
   const [filter, setFilter] = useState('')
+  const filterRef = useRef(null)
   // A file is "edited" if any chunk in it (the file root included) has an edit —
   // i.e. any edits key is prefixed with `${fileId}::`.
   const annotatedFiles = useMemo(() => {
@@ -125,22 +126,39 @@ export default function Library({
     }
     return set
   }, [edits, projectId])
-  // Folder navigation history (relative to project root; '' = root). `histIdx`
-  // points at the current entry so the chevrons can step back/forward in depth.
-  const [history, setHistory] = useState([''])
-  const [histIdx, setHistIdx] = useState(0)
-  const cwd = history[histIdx]
+  // Folder navigation is structural rather than browser-style click history.
+  // Back always climbs one directory. Each directory remembers its most recently
+  // visited child, so Forward can retrace the latest deep branch one layer at a
+  // time even when that descendant was originally opened with a single click.
+  const [cwd, setCwdState] = useState('')
+  const [forwardByFolder, setForwardByFolder] = useState({})
 
-  // Navigate to a folder: truncate any forward history, then push + advance.
   const setCwd = (next) => {
     if (next === cwd) return
-    setHistory((h) => [...h.slice(0, histIdx + 1), next])
-    setHistIdx((i) => i + 1)
+
+    if (next) {
+      const parts = next.split('/')
+      setForwardByFolder((current) => {
+        const remembered = { ...current }
+        let parent = ''
+        for (const part of parts) {
+          const child = parent ? `${parent}/${part}` : part
+          remembered[parent] = child
+          parent = child
+        }
+        return remembered
+      })
+    }
+
+    setCwdState(next)
   }
-  const canBack = histIdx > 0
-  const canFwd = histIdx < history.length - 1
-  const goBack = () => canBack && setHistIdx((i) => i - 1)
-  const goFwd = () => canFwd && setHistIdx((i) => i + 1)
+
+  const parentFolder = cwd.includes('/') ? cwd.slice(0, cwd.lastIndexOf('/')) : ''
+  const forwardFolder = forwardByFolder[cwd]
+  const canBack = cwd !== ''
+  const canFwd = Boolean(forwardFolder)
+  const goBack = () => canBack && setCwdState(parentFolder)
+  const goFwd = () => canFwd && setCwdState(forwardFolder)
 
   // Files under the current working folder, with the cwd prefix stripped so the
   // tree renders relative to it.
@@ -221,8 +239,8 @@ export default function Library({
   // not inherit each other's state.
   useEffect(() => {
     projectGenerationRef.current += 1
-    setHistory([''])
-    setHistIdx(0)
+    setCwdState('')
+    setForwardByFolder({})
     setFilter('')
     setChatOpen(false)
     setChatClosing(false)
@@ -232,6 +250,15 @@ export default function Library({
     setChatError(null)
     setCtxFileId(null)
   }, [projectId])
+
+  // Keep file search compact, but let a long query wrap onto one additional
+  // line before the field starts scrolling internally.
+  useEffect(() => {
+    const field = filterRef.current
+    if (!field) return
+    field.style.height = 'auto'
+    field.style.height = `${Math.min(field.scrollHeight, 54)}px`
+  }, [filter])
 
   useEffect(() => {
     onFolderInsightChange?.(chatOpen || chatClosing)
@@ -325,8 +352,7 @@ export default function Library({
   if (noProject) {
     return (
       <aside className="library">
-        <div className="explorer-pane-head">
-          <span>Explorer</span>
+        <div className="explorer-pane-head" aria-label="Explorer">
           <span className="explorer-pane-meta">No project</span>
         </div>
         <div className="lib-empty">
@@ -338,12 +364,12 @@ export default function Library({
 
   return (
     <aside className="library">
-      <div className="explorer-pane-head">
-        <span>Explorer</span>
-        <span className="explorer-pane-meta">{files.length} files</span>
-      </div>
-      <div className="lib-project" title={cwd ? `${rootName}/${cwd}` : projectDir}>
-        <span className="lib-crumbs">
+      <div
+        className="explorer-pane-head"
+        aria-label="Explorer"
+        title={cwd ? `${rootName}/${cwd}` : projectDir}
+      >
+        <span className="lib-crumbs explorer-path">
           {[rootName, ...cwdParts].map((part, i, arr) => (
             <span key={i}>
               {i > 0 && <span className="crumb-sep">/</span>}
@@ -355,9 +381,21 @@ export default function Library({
               </span>
             </span>
           ))}
-          {/* Trailing slash — the folder path is written with one (matches the chat header). */}
           <span className="crumb-sep">/</span>
         </span>
+        <span className="explorer-pane-meta">{files.length} files</span>
+      </div>
+      <div className="lib-project lib-tools" title={cwd ? `${rootName}/${cwd}` : projectDir}>
+        <textarea
+          ref={filterRef}
+          className="filter"
+          rows={1}
+          aria-label="Filter files"
+          placeholder="Filter files…"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }}
+        />
         <div className="lib-nav">
           <button className="chev" onClick={navBack} disabled={!canBack} title="Back" aria-label="Back">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -373,12 +411,6 @@ export default function Library({
           </button>
         </div>
       </div>
-      <input
-        className="filter"
-        placeholder="Filter files…"
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-      />
       <div className="file-list">
         {!loaded && <div className="muted pad">Loading…</div>}
         {loaded && rows.length === 0 && <div className="muted pad">No matches.</div>}
@@ -418,7 +450,6 @@ export default function Library({
         title={`Ask about ${folderLabel}/`}
         aria-label="Ask about this folder"
       >
-        <span aria-hidden="true">✦</span>
         <span>Ask {cwd ? 'folder' : 'project'}</span>
       </button>
 
@@ -440,34 +471,38 @@ export default function Library({
             <span className="chat-head-left">
               {/* Same folder history back/forward as the main UI's path chevrons —
                   navigating re-scopes this chat to the new folder. */}
-              <button className="chev" onClick={goBack} disabled={!canBack} title="Back" aria-label="Back">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="15 18 9 12 15 6" />
-                </svg>
-              </button>
-              <button className="chev" onClick={goFwd} disabled={!canFwd} title="Forward" aria-label="Forward">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              </button>
+              {(canBack || canFwd) && <>
+                <button className="chev" onClick={goBack} disabled={!canBack} title="Back" aria-label="Back">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="15 18 9 12 15 6" />
+                  </svg>
+                </button>
+                <button className="chev" onClick={goFwd} disabled={!canFwd} title="Forward" aria-label="Forward">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </button>
+              </>}
               <span className="chat-title">
                 <span className="chat-title-name">{folderLabel}/</span>
                 <span className="chat-title-dot"> • </span>
                 <span className="chat-sel">{cwd ? 'Folder scope' : 'Project scope'}</span>
               </span>
             </span>
-            <button className="chat-close" onClick={closeChat} aria-label="Close chat">×</button>
           </div>
           <div className="chat-body" ref={chatScrollRef}>
             {chatLog.length === 0 && !chatBusy && (
               <div className="chat-placeholder insight-empty-copy">
-                <strong>{cwd ? 'Ask about this folder' : 'Ask across the project'}</strong>
-                <span>The answer will stay scoped to <code>{folderLabel}/</code>, plus one file you explicitly attach.</span>
+                <strong>Ask from evidence</strong>
+                <span>
+                  The current {cwd ? 'folder and its indexed structure are' : 'project and its indexed structure are'} in scope. Attach one supporting file when a comparison needs it.
+                </span>
                 <div className="insight-prompt-list" aria-label="Example questions">
-                  <button type="button" onClick={() => setChatInput('What is this area responsible for?')}>What is this area responsible for?</button>
-                  <button type="button" onClick={() => setChatInput('Where should I start reading?')}>Where should I start reading?</button>
+                  <button type="button" onClick={() => setChatInput(`Explain the responsibility of this ${cwd ? 'folder' : 'project'}.`)}>Explain this responsibility</button>
+                  <button type="button" onClick={() => setChatInput(`What depends on this ${cwd ? 'folder' : 'project'}?`)}>What depends on this?</button>
+                  <button type="button" onClick={() => setChatInput('What should I inspect next?')}>What should I inspect next?</button>
                 </div>
               </div>
             )}
@@ -509,7 +544,14 @@ export default function Library({
                 </div>
               )
             })}
-            {chatBusy && <div className="chat-msg assistant"><div className="chat-bubble thinking">Thinking…</div></div>}
+            {chatBusy && (
+              <div className="chat-msg assistant">
+                <div className="chat-bubble thinking insight-thinking">
+                  <strong>Building an answer</strong>
+                  <span>Reading the scoped {cwd ? 'folder' : 'project'} and its supporting context…</span>
+                </div>
+              </div>
+            )}
             {chatError && <div className="chat-msg-error">{chatError}</div>}
           </div>
           <form className="chat-input-row" onSubmit={(e) => { e.preventDefault(); submitFolderChat() }}>
@@ -518,7 +560,7 @@ export default function Library({
               ref={chatInputRef}
               className="chat-input"
               rows={1}
-              placeholder="Ask about this folder…"
+              placeholder={cwd ? 'Ask about this folder…' : 'Ask across the project…'}
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={(e) => {

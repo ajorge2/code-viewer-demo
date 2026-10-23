@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="820" viewBox="0 0 1400 820" role="img" aria-labelledby="title desc">
+<title id="title">Atomicity and addition-dominance outcomes</title>
+<desc id="desc">Retain 1–3 components, ≥2 added AST nodes, and removed/added ≤0.25</desc>
+<rect width="1400" height="820" fill="#ffffff"/>
+<style>text{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.title{font-size:31px;font-weight:700;fill:#172033}.subtitle{font-size:17px;fill:#667085}.axis{font-size:15px;fill:#667085}.label{font-size:18px;fill:#172033}.value{font-size:18px;font-weight:700}.note{font-size:14px;fill:#667085}</style>
+<text x="70.0" y="65.0" text-anchor="start" class="title">Atomicity and addition-dominance outcomes</text>
+<text x="70.0" y="98.0" text-anchor="start" class="subtitle">Retain 1–3 components, ≥2 added AST nodes, and removed/added ≤0.25</text>
+<text x="260.0" y="261.0" text-anchor="end" class="label" style="font-weight:700;font-size:20px">Python</text>
+<rect x="285.0" y="220.0" width="308.1" height="72.0" fill="#138a72" rx="0.0"/>
+<text x="439.1" y="265.0" text-anchor="middle" class="label" style="fill:#ffffff;font-weight:700;font-size:16px">1533 (31%)</text>
+<rect x="593.1" y="220.0" width="367.8" height="72.0" fill="#b7791f" rx="0.0"/>
+<text x="777.0" y="265.0" text-anchor="middle" class="label" style="fill:#ffffff;font-weight:700;font-size:16px">1830 (37%)</text>
+<rect x="961.0" y="220.0" width="310.1" height="72.0" fill="#d95d39" rx="0.0"/>
+<text x="1116.0" y="265.0" text-anchor="middle" class="label" style="fill:#ffffff;font-weight:700;font-size:16px">1543 (31%)</text>
+<rect x="1271.1" y="220.0" width="18.9" height="72.0" fill="#70798c" rx="0.0"/>
+<text x="260.0" y="446.0" text-anchor="end" class="label" style="font-weight:700;font-size:20px">JavaScript</text>
+<rect x="285.0" y="405.0" width="321.0" height="72.0" fill="#138a72" rx="0.0"/>
+<text x="445.5" y="450.0" text-anchor="middle" class="label" style="fill:#ffffff;font-weight:700;font-size:16px">1597 (32%)</text>
+<rect x="606.0" y="405.0" width="327.4" height="72.0" fill="#b7791f" rx="0.0"/>
+<text x="769.7" y="450.0" text-anchor="middle" class="label" style="fill:#ffffff;font-weight:700;font-size:16px">1629 (33%)</text>
+<rect x="933.4" y="405.0" width="321.6" height="72.0" fill="#d95d39" rx="0.0"/>
+<text x="1094.2" y="450.0" text-anchor="middle" class="label" style="fill:#ffffff;font-weight:700;font-size:16px">1600 (32%)</text>
+<rect x="1255.0" y="405.0" width="35.0" height="72.0" fill="#70798c" rx="0.0"/>
+<rect x="285.0" y="590.0" width="22.0" height="22.0" fill="#138a72" rx="3.0"/>
+<text x="317.0" y="608.0" text-anchor="start" class="label" style="font-size:16px">Addition-dominant</text>
+<rect x="545.0" y="590.0" width="22.0" height="22.0" fill="#b7791f" rx="3.0"/>
+<text x="577.0" y="608.0" text-anchor="start" class="label" style="font-size:16px">Removal gate rejected</text>
+<rect x="805.0" y="590.0" width="22.0" height="22.0" fill="#d95d39" rx="3.0"/>
+<text x="837.0" y="608.0" text-anchor="start" class="label" style="font-size:16px">&gt;3 components</text>
+<rect x="1065.0" y="590.0" width="22.0" height="22.0" fill="#70798c" rx="3.0"/>
+<text x="1097.0" y="608.0" text-anchor="start" class="label" style="font-size:16px">Parse/tool error</text>
+<rect x="70.0" y="675.0" width="1260.0" height="80.0" fill="#f7f9fc" rx="10.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="95.0" y="710.0" text-anchor="start" class="label" style="font-weight:700">Atomic changes: 6589 / 10000; addition-dominant changes: 3130 / 10000 (31.3%).</text>
+<text x="95.0" y="739.0" text-anchor="start" class="note">The removal gate retains 47.5% of atomic changes. Descriptive pilot estimate only.</text>
+</svg>

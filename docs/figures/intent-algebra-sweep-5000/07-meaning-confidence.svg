@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="820" viewBox="0 0 1400 820" role="img" aria-labelledby="title desc">
+<title id="title">Centroid-aware semantic confidence</title>
+<desc id="desc">Each point is a grounded semantic node; confidence combines member consensus, winner margin, and bootstrap stability</desc>
+<rect width="1400" height="820" fill="#ffffff"/>
+<style>text{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.title{font-size:31px;font-weight:700;fill:#172033}.subtitle{font-size:17px;fill:#667085}.axis{font-size:15px;fill:#667085}.label{font-size:18px;fill:#172033}.value{font-size:18px;font-weight:700}.note{font-size:14px;fill:#667085}</style>
+<text x="70.0" y="65.0" text-anchor="start" class="title">Centroid-aware semantic confidence</text>
+<text x="70.0" y="98.0" text-anchor="start" class="subtitle">Each point is a grounded semantic node; confidence combines member consensus, winner margin, and bootstrap stability</text>
+<line x1="135.0" y1="175.0" x2="135.0" y2="680.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="135.0" y="709.0" text-anchor="middle" class="axis">0%</text>
+<line x1="425.0" y1="175.0" x2="425.0" y2="680.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="425.0" y="709.0" text-anchor="middle" class="axis">25%</text>
+<line x1="715.0" y1="175.0" x2="715.0" y2="680.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="715.0" y="709.0" text-anchor="middle" class="axis">50%</text>
+<line x1="1005.0" y1="175.0" x2="1005.0" y2="680.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="1005.0" y="709.0" text-anchor="middle" class="axis">75%</text>
+<line x1="1295.0" y1="175.0" x2="1295.0" y2="680.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="1295.0" y="709.0" text-anchor="middle" class="axis">100%</text>
+<line x1="135.0" y1="680.0" x2="1295.0" y2="680.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="120.0" y="685.0" text-anchor="end" class="axis">0.00</text>
+<line x1="135.0" y1="607.9" x2="1295.0" y2="607.9" stroke="#d7dde7" stroke-width="1"/>
+<text x="120.0" y="612.9" text-anchor="end" class="axis">0.02</text>
+<line x1="135.0" y1="535.7" x2="1295.0" y2="535.7" stroke="#d7dde7" stroke-width="1"/>
+<text x="120.0" y="540.7" text-anchor="end" class="axis">0.04</text>
+<line x1="135.0" y1="463.6" x2="1295.0" y2="463.6" stroke="#d7dde7" stroke-width="1"/>
+<text x="120.0" y="468.6" text-anchor="end" class="axis">0.06</text>
+<line x1="135.0" y1="391.4" x2="1295.0" y2="391.4" stroke="#d7dde7" stroke-width="1"/>
+<text x="120.0" y="396.4" text-anchor="end" class="axis">0.08</text>
+<line x1="135.0" y1="319.3" x2="1295.0" y2="319.3" stroke="#d7dde7" stroke-width="1"/>
+<text x="120.0" y="324.3" text-anchor="end" class="axis">0.10</text>
+<line x1="135.0" y1="247.1" x2="1295.0" y2="247.1" stroke="#d7dde7" stroke-width="1"/>
+<text x="120.0" y="252.1" text-anchor="end" class="axis">0.12</text>
+<line x1="135.0" y1="175.0" x2="1295.0" y2="175.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="120.0" y="180.0" text-anchor="end" class="axis">0.14</text>
+<line x1="773.0" y1="175.0" x2="773.0" y2="680.0" stroke="#667085" stroke-width="1.5" stroke-dasharray="7 6"/>
+<line x1="1005.0" y1="175.0" x2="1005.0" y2="680.0" stroke="#667085" stroke-width="1.5" stroke-dasharray="7 6"/>
+<line x1="135.0" y1="607.9" x2="1295.0" y2="607.9" stroke="#667085" stroke-width="1.5" stroke-dasharray="7 6"/>
+<circle cx="1244.6" cy="266.9" r="30.8" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1065.7" cy="526.9" r="25.4" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<text x="1053.7" y="553.9" text-anchor="end" class="label" style="fill:#138a72;font-weight:700;font-size:13px">Python package setup configur… · n=86</text>
+<circle cx="1295.0" cy="286.1" r="23.0" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<text x="1283.0" y="273.1" text-anchor="end" class="label" style="fill:#138a72;font-weight:700;font-size:13px">Grunt and Gulp workflow infra… · n=67</text>
+<circle cx="821.5" cy="643.7" r="20.4" fill="#2563eb" stroke="#ffffff" stroke-width="2"/>
+<circle cx="843.9" cy="546.6" r="18.2" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1295.0" cy="258.5" r="16.2" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1295.0" cy="175.0" r="16.2" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1295.0" cy="175.0" r="15.6" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1018.8" cy="511.2" r="15.1" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="521.7" cy="637.4" r="15.1" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="715.0" cy="669.7" r="14.8" fill="#d97706" stroke="#ffffff" stroke-width="2"/>
+<circle cx="831.0" cy="623.1" r="14.8" fill="#2563eb" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1295.0" cy="363.2" r="14.6" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1101.7" cy="464.4" r="14.3" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="521.7" cy="632.8" r="14.3" fill="#d97706" stroke="#ffffff" stroke-width="2"/>
+<circle cx="817.4" cy="611.8" r="14.1" fill="#2563eb" stroke="#ffffff" stroke-width="2"/>
+<circle cx="885.6" cy="591.9" r="14.1" fill="#2563eb" stroke="#ffffff" stroke-width="2"/>
+<circle cx="642.5" cy="652.1" r="13.8" fill="#d97706" stroke="#ffffff" stroke-width="2"/>
+<circle cx="932.5" cy="561.9" r="13.8" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1295.0" cy="507.7" r="13.5" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<text x="1283.0" y="494.7" text-anchor="end" class="label" style="fill:#138a72;font-weight:700;font-size:13px">ESLint analysis configuration · n=15</text>
+<circle cx="1295.0" cy="206.0" r="12.9" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="715.0" cy="665.5" r="12.6" fill="#d97706" stroke="#ffffff" stroke-width="2"/>
+<text x="727.0" y="652.5" text-anchor="start" class="label" style="fill:#d97706;font-weight:700;font-size:13px">Text output presentation · n=12</text>
+<circle cx="1295.0" cy="291.7" r="12.3" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="831.0" cy="676.8" r="12.0" fill="#d97706" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1179.0" cy="548.1" r="12.0" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1179.0" cy="191.1" r="12.0" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1179.0" cy="272.6" r="12.0" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1179.0" cy="528.6" r="12.0" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="947.0" cy="645.5" r="12.0" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<text x="959.0" y="632.5" text-anchor="start" class="label" style="fill:#70798c;font-weight:700;font-size:13px">Conditional value resolution · n=10</text>
+<circle cx="1295.0" cy="175.0" r="11.6" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1295.0" cy="434.9" r="11.6" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1037.2" cy="546.2" r="11.6" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1295.0" cy="452.2" r="11.6" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1005.0" cy="495.8" r="11.2" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1295.0" cy="176.6" r="11.2" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1295.0" cy="331.4" r="11.2" fill="#d97706" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1150.0" cy="563.9" r="11.2" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1295.0" cy="175.0" r="11.2" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="860.0" cy="633.3" r="11.2" fill="#2563eb" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1150.0" cy="446.4" r="11.2" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="860.0" cy="620.9" r="11.2" fill="#2563eb" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1295.0" cy="404.0" r="11.2" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1005.0" cy="637.5" r="11.2" fill="#2563eb" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1150.0" cy="570.6" r="11.2" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1150.0" cy="502.4" r="11.2" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1150.0" cy="522.9" r="11.2" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1005.0" cy="614.1" r="11.2" fill="#2563eb" stroke="#ffffff" stroke-width="2"/>
+<circle cx="632.1" cy="675.9" r="10.8" fill="#d97706" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1295.0" cy="175.0" r="10.8" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1295.0" cy="464.1" r="10.8" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="963.6" cy="639.4" r="10.8" fill="#2563eb" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1295.0" cy="455.0" r="10.8" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="632.1" cy="654.0" r="10.8" fill="#d97706" stroke="#ffffff" stroke-width="2"/>
+<circle cx="797.9" cy="602.2" r="10.8" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1295.0" cy="528.6" r="10.8" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="466.4" cy="648.8" r="10.8" fill="#d97706" stroke="#ffffff" stroke-width="2"/>
+<circle cx="963.6" cy="529.9" r="10.8" fill="#2563eb" stroke="#ffffff" stroke-width="2"/>
+<circle cx="963.6" cy="644.9" r="10.8" fill="#2563eb" stroke="#ffffff" stroke-width="2"/>
+<circle cx="797.9" cy="643.7" r="10.8" fill="#2563eb" stroke="#ffffff" stroke-width="2"/>
+<circle cx="963.6" cy="622.3" r="10.8" fill="#2563eb" stroke="#ffffff" stroke-width="2"/>
+<circle cx="797.9" cy="543.9" r="10.8" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1295.0" cy="586.5" r="10.8" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="715.0" cy="656.4" r="10.4" fill="#d97706" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1101.7" cy="554.6" r="10.4" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="715.0" cy="640.6" r="10.4" fill="#d97706" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1101.7" cy="474.8" r="10.4" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="521.7" cy="601.8" r="10.4" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="715.0" cy="677.5" r="10.4" fill="#d97706" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1101.7" cy="570.1" r="10.4" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1295.0" cy="381.4" r="10.4" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1101.7" cy="466.2" r="10.4" fill="#138a72" stroke="#ffffff" stroke-width="2"/>
+<circle cx="715.0" cy="632.1" r="10.4" fill="#d97706" stroke="#ffffff" stroke-width="2"/>
+<circle cx="908.3" cy="534.9" r="10.4" fill="#2563eb" stroke="#ffffff" stroke-width="2"/>
+<circle cx="715.0" cy="581.3" r="10.4" fill="#d97706" stroke="#ffffff" stroke-width="2"/>
+<circle cx="1101.7" cy="242.4" r="10.4" fill="#70798c" stroke="#ffffff" stroke-width="2"/>
+<circle cx="908.3" cy="630.8" r="10.4" fill="#2563eb" stroke="#ffffff" stroke-width="2"/>
+<circle cx="715.0" cy="607.3" r="10.4" fill="#d97706" stroke="#ffffff" stroke-width="2"/>
+<text x="715.0" y="752.0" text-anchor="middle" class="axis">Member vote share for the selected meaning</text>
+<text x="135.0" y="143.0" text-anchor="start" class="axis">Winner margin over the runner-up</text>
+<circle cx="720.0" cy="128.0" r="7.0" fill="#138a72" stroke="#ffffff" stroke-width="1.5"/>
+<text x="735.0" y="134.0" text-anchor="start" class="label" style="font-size:14px">High (34)</text>
+<circle cx="865.0" cy="128.0" r="7.0" fill="#2563eb" stroke="#ffffff" stroke-width="1.5"/>
+<text x="880.0" y="134.0" text-anchor="start" class="label" style="font-size:14px">Medium (15)</text>
+<circle cx="1010.0" cy="128.0" r="7.0" fill="#d97706" stroke="#ffffff" stroke-width="1.5"/>
+<text x="1025.0" y="134.0" text-anchor="start" class="label" style="font-size:14px">Low (15)</text>
+<circle cx="1155.0" cy="128.0" r="7.0" fill="#70798c" stroke="#ffffff" stroke-width="1.5"/>
+<text x="1170.0" y="134.0" text-anchor="start" class="label" style="font-size:14px">Abstain (13)</text>
+<text x="70.0" y="798.0" text-anchor="start" class="note">Circle area increases with support. Abstention can override a geometrically strong winner when sampled meanings contradict one another; scores are heuristic, not calibrated probabilities.</text>
+</svg>

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="800" viewBox="0 0 1400 800" role="img" aria-labelledby="title desc">
+<title id="title">One-sided difference closure of current terms</title>
+<desc id="desc">Observed parent pairs from discovered leaves and the 80-file static holdout</desc>
+<rect width="1400" height="800" fill="#ffffff"/>
+<style>text{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.title{font-size:31px;font-weight:700;fill:#172033}.subtitle{font-size:17px;fill:#667085}.axis{font-size:15px;fill:#667085}.label{font-size:18px;fill:#172033}.value{font-size:18px;font-weight:700}.note{font-size:14px;fill:#667085}</style>
+<text x="70.0" y="65.0" text-anchor="start" class="title">One-sided difference closure of current terms</text>
+<text x="70.0" y="98.0" text-anchor="start" class="subtitle">Observed parent pairs from discovered leaves and the 80-file static holdout</text>
+<text x="70.0" y="190.0" text-anchor="start" class="label" style="font-size:17px">Disjoint</text>
+<rect x="330.0" y="165.0" width="820.0" height="42.0" fill="#f2f4f7" rx="7.0"/>
+<rect x="330.0" y="165.0" width="820.0" height="42.0" fill="#2563eb" rx="7.0"/>
+<text x="1180.0" y="194.0" text-anchor="start" class="label" style="fill:#2563eb;font-weight:700;font-size:20px">46</text>
+<text x="70.0" y="280.0" text-anchor="start" class="label" style="font-size:17px">Partial overlap passes</text>
+<rect x="330.0" y="255.0" width="820.0" height="42.0" fill="#f2f4f7" rx="7.0"/>
+<rect x="330.0" y="255.0" width="107.0" height="42.0" fill="#138a72" rx="7.0"/>
+<text x="1180.0" y="284.0" text-anchor="start" class="label" style="fill:#138a72;font-weight:700;font-size:20px">6</text>
+<text x="70.0" y="370.0" text-anchor="start" class="label" style="font-size:17px">Partial overlap fails</text>
+<rect x="330.0" y="345.0" width="820.0" height="42.0" fill="#f2f4f7" rx="7.0"/>
+<rect x="330.0" y="345.0" width="53.5" height="42.0" fill="#d95d39" rx="7.0"/>
+<text x="1180.0" y="374.0" text-anchor="start" class="label" style="fill:#d95d39;font-weight:700;font-size:20px">3</text>
+<text x="70.0" y="460.0" text-anchor="start" class="label" style="font-size:17px">Alias warnings</text>
+<rect x="330.0" y="435.0" width="820.0" height="42.0" fill="#f2f4f7" rx="7.0"/>
+<text x="1180.0" y="464.0" text-anchor="start" class="label" style="fill:#d97706;font-weight:700;font-size:20px">0</text>
+<rect x="70.0" y="545.0" width="1260.0" height="165.0" fill="#fff5f3" rx="12.0" stroke="#d95d39" stroke-width="1"/>
+<text x="95.0" y="585.0" text-anchor="start" class="label" style="fill:#d95d39;font-weight:700;font-size:20px">Overlaps requiring revision</text>
+<text x="105.0" y="620.0" text-anchor="start" class="label" style="font-size:16px">• Authentication × Routing</text>
+<text x="105.0" y="647.0" text-anchor="start" class="label" style="font-size:16px">• User interface × Game application</text>
+<text x="105.0" y="674.0" text-anchor="start" class="label" style="font-size:16px">• Web server integration × Routing</text>
+<text x="95.0" y="690.0" text-anchor="start" class="note">Subset edges pass through the silent empty-set term; equal extensions remain alias warnings.</text>
+</svg>

@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="820" viewBox="0 0 1400 820" role="img" aria-labelledby="title desc">
+<title id="title">AST component-count distribution</title>
+<desc id="desc">Deterministic pilot sample; all 200 sampled changes, including ineligible changes and parse errors</desc>
+<rect width="1400" height="820" fill="#ffffff"/>
+<style>text{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.title{font-size:31px;font-weight:700;fill:#172033}.subtitle{font-size:17px;fill:#667085}.axis{font-size:15px;fill:#667085}.label{font-size:18px;fill:#172033}.value{font-size:18px;font-weight:700}.note{font-size:14px;fill:#667085}</style>
+<text x="70.0" y="65.0" text-anchor="start" class="title">AST component-count distribution</text>
+<text x="70.0" y="98.0" text-anchor="start" class="subtitle">Deterministic pilot sample; all 200 sampled changes, including ineligible changes and parse errors</text>
+<line x1="115.0" y1="665.0" x2="1320.0" y2="665.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="670.0" text-anchor="end" class="axis">0</text>
+<line x1="115.0" y1="542.5" x2="1320.0" y2="542.5" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="547.5" text-anchor="end" class="axis">10</text>
+<line x1="115.0" y1="420.0" x2="1320.0" y2="420.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="425.0" text-anchor="end" class="axis">20</text>
+<line x1="115.0" y1="297.5" x2="1320.0" y2="297.5" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="302.5" text-anchor="end" class="axis">30</text>
+<line x1="115.0" y1="175.0" x2="1320.0" y2="175.0" stroke="#d7dde7" stroke-width="1"/>
+<text x="100.0" y="180.0" text-anchor="end" class="axis">40</text>
+<text x="115.0" y="157.0" text-anchor="start" class="axis">Number of sampled changes</text>
+<rect x="140.3" y="199.5" width="45.0" height="465.5" fill="#2563eb" rx="4.0"/>
+<text x="162.8" y="189.5" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">38</text>
+<rect x="195.3" y="199.5" width="45.0" height="465.5" fill="#d97706" rx="4.0"/>
+<text x="217.8" y="189.5" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">38</text>
+<text x="190.3" y="697.0" text-anchor="middle" class="axis">1</text>
+<rect x="290.9" y="395.5" width="45.0" height="269.5" fill="#2563eb" rx="4.0"/>
+<text x="313.4" y="385.5" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">22</text>
+<rect x="345.9" y="432.2" width="45.0" height="232.8" fill="#d97706" rx="4.0"/>
+<text x="368.4" y="422.2" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">19</text>
+<text x="340.9" y="697.0" text-anchor="middle" class="axis">2</text>
+<rect x="441.6" y="554.8" width="45.0" height="110.2" fill="#2563eb" rx="4.0"/>
+<text x="464.1" y="544.8" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">9</text>
+<rect x="496.6" y="505.8" width="45.0" height="159.2" fill="#d97706" rx="4.0"/>
+<text x="519.1" y="495.8" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">13</text>
+<text x="491.6" y="697.0" text-anchor="middle" class="axis">3</text>
+<rect x="592.2" y="567.0" width="45.0" height="98.0" fill="#2563eb" rx="4.0"/>
+<text x="614.7" y="557.0" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">8</text>
+<rect x="647.2" y="640.5" width="45.0" height="24.5" fill="#d97706" rx="4.0"/>
+<text x="669.7" y="630.5" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">2</text>
+<text x="642.2" y="697.0" text-anchor="middle" class="axis">4</text>
+<rect x="742.8" y="616.0" width="45.0" height="49.0" fill="#2563eb" rx="4.0"/>
+<text x="765.3" y="606.0" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">4</text>
+<rect x="797.8" y="603.8" width="45.0" height="61.2" fill="#d97706" rx="4.0"/>
+<text x="820.3" y="593.8" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">5</text>
+<text x="792.8" y="697.0" text-anchor="middle" class="axis">5</text>
+<rect x="893.4" y="554.8" width="45.0" height="110.2" fill="#2563eb" rx="4.0"/>
+<text x="915.9" y="544.8" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">9</text>
+<rect x="948.4" y="530.2" width="45.0" height="134.8" fill="#d97706" rx="4.0"/>
+<text x="970.9" y="520.2" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">11</text>
+<text x="943.4" y="697.0" text-anchor="middle" class="axis">6–10</text>
+<rect x="1044.1" y="542.5" width="45.0" height="122.5" fill="#2563eb" rx="4.0"/>
+<text x="1066.6" y="532.5" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">10</text>
+<rect x="1099.1" y="579.2" width="45.0" height="85.8" fill="#d97706" rx="4.0"/>
+<text x="1121.6" y="569.2" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">7</text>
+<text x="1094.1" y="697.0" text-anchor="middle" class="axis">11+</text>
+<rect x="1194.7" y="665.0" width="45.0" height="0.0" fill="#2563eb" rx="4.0"/>
+<rect x="1249.7" y="603.8" width="45.0" height="61.2" fill="#d97706" rx="4.0"/>
+<text x="1272.2" y="593.8" text-anchor="middle" class="label" style="font-weight:700;font-size:15px">5</text>
+<text x="1244.7" y="697.0" text-anchor="middle" class="axis">Error</text>
+<line x1="566.9" y1="175.0" x2="566.9" y2="715.0" stroke="#d95d39" stroke-width="2" stroke-dasharray="8 7"/>
+<text x="556.9" y="161.0" text-anchor="end" class="label" style="fill:#d95d39;font-weight:700;font-size:15px">≤3-component inclusion boundary</text>
+<rect x="965.0" y="125.0" width="20.0" height="20.0" fill="#2563eb" rx="3.0"/>
+<text x="995.0" y="142.0" text-anchor="start" class="label" style="font-size:15px">Python</text>
+<rect x="1085.0" y="125.0" width="20.0" height="20.0" fill="#d97706" rx="3.0"/>
+<text x="1115.0" y="142.0" text-anchor="start" class="label" style="font-size:15px">JavaScript</text>
+<text x="717.5" y="737.0" text-anchor="middle" class="axis">Connected AST edit components per observed file</text>
+<text x="70.0" y="785.0" text-anchor="start" class="note">Counts above 5 are grouped to keep the long tail readable; errors have no component count.</text>
+</svg>

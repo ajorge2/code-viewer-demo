@@ -1,0 +1,116 @@
+{
+  "version": "0.1.0",
+  "status": "Pre-registered pilot defaults; tune on repository-disjoint validation data only",
+  "claim_extraction": {
+    "verb_sign_min_confidence": 0.8,
+    "semantic_object_min_confidence": 0.65,
+    "on_low_object_confidence": "leave_unresolved",
+    "on_unclear_verb_sign": "neutral_metadata"
+  },
+  "code_alignment": {
+    "code_label_unit": "one_ast_subtree_from_one_diff_side",
+    "accepted_outputs": "retain_up_to_cap_from_independently_supported_meaning_subtree_pairs",
+    "when_claim_maps_to_multiple_subtrees_or_sides": "emit_multiple_linked_datapoints",
+    "min_meaning_subtree_confidence": 0.75,
+    "max_datapoints_per_claim": 3,
+    "cap_selection": "highest_confidence_with_diff_side_coverage_then_smallest_subtree",
+    "on_failed_alignment": "leave_unresolved",
+    "single_edit_candidate_extent": "edited_node_through_file_root",
+    "multi_edit_subset_lcas": "all_unique_proper_subset_lcas_capped_at_64_per_side",
+    "multi_edit_subset_lca_attempt_cap": 4096,
+    "multi_edit_candidate_extent": "direct_edits_overall_lca_subset_lcas_and_intermediate_paths",
+    "candidate_deduplication": "canonical_ast_node_identity",
+    "candidate_order_semantics": "none_deterministic_enumeration_for_audit_and_batching_only"
+  },
+  "semantic_embedding": {
+    "model": "text-embedding-3-large",
+    "dimensions": 1024,
+    "distance": "cosine",
+    "l2_normalize": true
+  },
+  "semantic_clustering": {
+    "algorithm": "hdbscan",
+    "min_cluster_size_formula": "min(50, max(8, ceil(0.01 * embedding_view_size)))",
+    "min_samples_formula": "max(2, ceil(min_cluster_size / 3))",
+    "cluster_selection_method": "eom",
+    "max_recursion_depth": 5,
+    "min_parent_size_formula": "2 * min_cluster_size",
+    "max_child_parent_share": 0.9,
+    "min_cohesion_gain": 0.03,
+    "min_silhouette": 0.1,
+    "subsample_fraction": 0.8,
+    "stability_repeats": 20,
+    "min_stability_ari": 0.7,
+    "max_soft_sibling_memberships": 2,
+    "stop_conditions": [
+      "maximum recursion depth reached",
+      "embedding view is too small to form two non-trivial children",
+      "no proper-subset child candidate reaches minimum size",
+      "no candidate split passes cohesion, silhouette, and stability gates",
+      "every child candidate is skipped by semantic-confidence or structural-validity gates",
+      "a membership set repeats, which would create a cycle"
+    ]
+  },
+  "semantic_confidence": {
+    "candidate_meanings_per_cluster": 3,
+    "bootstrap_repeats": 200,
+    "accepted_levels": [
+      "medium",
+      "high"
+    ],
+    "high": {
+      "min_member_vote_share": 0.75,
+      "min_bootstrap_winner_stability": 0.9,
+      "min_winner_margin": 0.02,
+      "min_mean_member_fit": 0.6
+    },
+    "medium": {
+      "min_member_vote_share": 0.6,
+      "min_bootstrap_winner_stability": 0.75,
+      "min_winner_margin": 0.0,
+      "min_mean_member_fit": 0.55
+    },
+    "on_low_or_abstain": "skip_cluster_and_continue"
+  },
+  "structural_rule_induction": {
+    "representation": "bounded_ast_regex",
+    "sample_draws": 10,
+    "sample_size_formula": "min(10, max(6, ceil(sqrt(cluster_size))))",
+    "sample_strategy": "repository_stratified_central_boundary_and_random_members",
+    "candidate_rules_per_sample": 3,
+    "proposal_methods": [
+      "tree_anti_unification",
+      "grammar_constrained_llm"
+    ],
+    "max_required_ast_atoms_per_clause": 12,
+    "max_metavariables_per_clause": 4,
+    "max_optional_groups_per_clause": 2,
+    "max_internal_alternations_per_clause": 1,
+    "max_pattern_tree_depth": 5,
+    "max_descendant_gap_depth": 3,
+    "max_or_clauses_per_term": 3,
+    "min_incremental_coverage_per_clause": 0.1,
+    "min_matchset_jaccard_across_draws": 0.8,
+    "residual_policy": "remove_covered_positives_then_induce_next_or_clause",
+    "negative_evaluation": "execute_compiled_matcher_across_out_of_cluster_corpus",
+    "index_policy": "fingerprints_may_prefilter_but_never_determine_final_match"
+  },
+  "structural_validation": {
+    "min_semantic_member_coverage": 0.6,
+    "min_rule_precision": 0.9,
+    "min_independent_repository_families": 50,
+    "min_patch_distinct_commits": 100,
+    "min_mdl_compression_ratio": 1.2,
+    "identifier_permutation_match_rate": 1.0,
+    "min_unrelated_mutation_rejection_rate": 0.95,
+    "bootstrap_repeats": 1000,
+    "bootstrap_unit": "repository_family"
+  },
+  "evaluation": {
+    "discovery_fraction": 0.7,
+    "validation_fraction": 0.15,
+    "test_fraction": 0.15,
+    "split_unit": "repository_family",
+    "test_policy": "single final evaluation after hyperparameters are frozen"
+  }
+}

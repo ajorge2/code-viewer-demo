@@ -57,9 +57,9 @@ function makeFileId(relPath) {
 
 // Scan a directory into a fresh files Map, honoring the ingest caps and
 // recording what was skipped/truncated (no silent caps).
-async function scanInto(absPath) {
+async function scanInto(absPath, scanOptions = {}) {
   const files = new Map();
-  const rels = await walkProject(absPath);
+  const rels = await walkProject(absPath, scanOptions);
   const truncatedByCount = rels.length >= MAX_FILES;
   let skipped = 0;
   let totalBytes = 0;
@@ -173,7 +173,7 @@ function projectMeta(p) {
 }
 
 // Register a project by path (and make it active). Idempotent per absolute path.
-export async function registerProject(inputPath) {
+export async function registerProject(inputPath, scanOptions = {}) {
   const absPath = path.resolve(inputPath);
   const stat = await fs.stat(absPath).catch(() => null);
   if (!stat || !stat.isDirectory()) {
@@ -183,7 +183,16 @@ export async function registerProject(inputPath) {
   }
   const id = makeProjectId(absPath);
   if (!projects.has(id)) {
-    projects.set(id, { id, absPath, name: path.basename(absPath) || absPath, files: null, scan: null, lastUsed: 0, bareWindow: DEFAULT_BARE_WINDOW });
+    projects.set(id, {
+      id,
+      absPath,
+      name: path.basename(absPath) || absPath,
+      files: null,
+      scan: null,
+      scanOptions,
+      lastUsed: 0,
+      bareWindow: DEFAULT_BARE_WINDOW,
+    });
     enforceRegistryCap();
   }
   return activateProject(id);
@@ -222,7 +231,7 @@ export async function activateProject(id) {
       e.status = 410;
       throw e;
     }
-    const { files, scan } = await scanInto(p.absPath);
+    const { files, scan } = await scanInto(p.absPath, p.scanOptions);
     p.files = files;
     p.scan = scan;
   }
@@ -375,7 +384,7 @@ export function getProjectFiles(id) {
 }
 
 // Backward-compatible startup loader: register + activate the initial dir.
-export async function loadProject(projectDir) {
-  await registerProject(projectDir);
+export async function loadProject(projectDir, scanOptions = {}) {
+  await registerProject(projectDir, scanOptions);
   return getScanStats();
 }
