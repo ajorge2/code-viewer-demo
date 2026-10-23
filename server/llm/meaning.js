@@ -15,7 +15,7 @@
 // answer is a separate call that uses the contextualized meaning as context.
 import 'dotenv/config';
 import crypto from 'crypto';
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 import {
   fileNodes, semanticParentId, semanticPath,
   childrenIndex, semanticChildren, maxSemanticDepth, minimalFrontier,
@@ -23,17 +23,16 @@ import {
 import { getProjectTree, folderChainTo, folderChainToDir } from '../ingest/projectTree.js';
 import { assignCoverage } from '../ingest/frontier.js';
 import { cacheGet, cacheSet } from './cache.js';
+import { measureTelemetry, recordModelCall } from '../benchmark/telemetry.js';
 
-// bare → Haiku (many cheap summaries, incl. the whole-project eager pass).
+// bare → GPT-5 mini (many cheap summaries, incl. the whole-project eager pass).
 // folds / classify / answer keep the smarter default. All env-overridable.
-const BARE_MODEL = process.env.BARE_MODEL || 'claude-haiku-4-5';
-const MEANING_MODEL = process.env.MEANING_MODEL || 'claude-opus-4-8';
-const ANSWER_MODEL = process.env.ANSWER_MODEL || 'claude-opus-4-8';
+const BARE_MODEL = process.env.BARE_MODEL || 'gpt-5-mini';
+const MEANING_MODEL = process.env.MEANING_MODEL || 'gpt-5.1';
+const ANSWER_MODEL = process.env.ANSWER_MODEL || 'gpt-5.1';
 
-// The `effort` parameter is Opus-4.5+/Sonnet-4.6 only — it 400s on Haiku 4.5.
-// Spread this so bare calls (Haiku) omit it while Opus calls keep it.
-const supportsEffort = (m) => m.includes('opus') || m === 'claude-sonnet-4-6';
-const effortCfg = (m, level) => (supportsEffort(m) ? { output_config: { effort: level } } : {});
+const supportsEffort = (m) => m.startsWith('gpt-5');
+const effortCfg = (m, level) => (supportsEffort(m) ? { reasoning_effort: level } : {});
 
 // Fixed char cap for the code snippets shown to the answer/edit/folder models (clip()).
 const MAX_SNIPPET = 48000;
@@ -62,10 +61,18 @@ function clip(s) {
 const CONCURRENCY = 8;
 let activeSlots = 0;
 const slotQueue = [];
-async function withSlot(fn) {
-  if (activeSlots >= CONCURRENCY) await new Promise((r) => slotQueue.push(r));
+async function withSlot(fn, { phase = 'unknown', model = 'unknown' } = {}) {
+  if (activeSlots >= CONCURRENCY) {
+    await measureTelemetry('model_slot_wait', () => new Promise((r) => slotQueue.push(r)));
+  }
   activeSlots += 1;
-  try { return await fn(); } finally { activeSlots -= 1; slotQueue.shift()?.(); }
+  recordModelCall(phase, model);
+  try {
+    return await measureTelemetry(`model.${phase}`, fn);
+  } finally {
+    activeSlots -= 1;
+    slotQueue.shift()?.();
+  }
 }
 
 // Persistent memo (see cache.js). Key namespaces:
@@ -77,14 +84,50 @@ async function withSlot(fn) {
 //   dir  → `c:dir:<folderHash>`  a folder's own contextual meaning.
 const fileHashOf = (content) => crypto.createHash('sha1').update(content).digest('hex').slice(0, 16);
 
-let _client = null;
-function client() {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    const e = new Error('ANTHROPIC_API_KEY is not set (add it to .env).');
+const systemText = (system) => (Array.isArray(system)
+  ? system.map((part) => (typeof part === 'string' ? part : part?.text || '')).join('\n')
+  : system || '');
+
+const messageText = (content) => (Array.isArray(content)
+  ? content.map((part) => (typeof part === 'string' ? part : part?.text || '')).join('')
+  : content || '');
+
+async function createOpenAIMessage({ model, max_tokens: maxTokens, system, messages, reasoning_effort: reasoningEffort }) {
+  const apiMessages = [];
+  const instructions = systemText(system).trim();
+  if (instructions) apiMessages.push({ role: 'system', content: instructions });
+  apiMessages.push(...messages.map(({ role, content }) => ({ role, content: messageText(content) })));
+
+  const body = {
+    model,
+    messages: apiMessages,
+    max_completion_tokens: maxTokens,
+    ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
+  };
+  const completion = await openAI().chat.completions.create(body);
+  const content = completion?.choices?.[0]?.message?.content;
+  if (typeof content !== 'string') {
+    const e = new Error('OpenAI returned no text response.');
     e.status = 503;
     throw e;
   }
-  if (!_client) _client = new Anthropic(); // reads ANTHROPIC_API_KEY from env
+  return { content: [{ type: 'text', text: content }] };
+}
+
+let _openAI = null;
+function openAI() {
+  if (!_openAI) _openAI = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  return _openAI;
+}
+
+let _client = null;
+function client() {
+  if (!process.env.OPENAI_API_KEY) {
+    const e = new Error('OPENAI_API_KEY is not set (add it to .env).');
+    e.status = 503;
+    throw e;
+  }
+  if (!_client) _client = { messages: { create: createOpenAIMessage } };
   return _client;
 }
 
@@ -114,6 +157,18 @@ const VOICE =
   + '- Lead with the answer. The first sentence is the thing they asked for — the '
   + 'verdict, the what, the why. Supporting detail comes after. Cut preamble, cut '
   + 'restating the question.\n'
+  + '- Default to the product level. Explain the capability, user-visible behavior, '
+  + 'workflow, constraint, or failure mode this code creates before explaining its '
+  + 'mechanics. A person should understand why this code exists without first knowing '
+  + 'the framework or data structures.\n'
+  + '- Translate implementation into human consequences: say what changes for the '
+  + 'person using the product, what the system guarantees, and what would break or feel '
+  + 'different without it. Do not invent behavior that the code does not support.\n'
+  + '- Use function names, state variables, AST terms, cache keys, and control flow as '
+  + 'supporting evidence, not as the headline. Introduce technical detail only when it '
+  + 'clarifies the product behavior or the reader explicitly asks for implementation '
+  + 'detail. For an explicitly technical question, answer it directly, then connect it '
+  + 'back to the product effect.\n'
   + '- Explain it the way you would say it out loud to a friend who codes. Plain words: '
   + '"use" not "leverage", "handle" not "navigate", "solid" not "robust", "builds" not '
   + '"fosters", "full" not "comprehensive". If you would not say a word out loud, do not '
@@ -143,7 +198,8 @@ const VOICE =
   + 'bulleted lists or bolded keywords (a short inline `code` reference is fine).';
 
 const ANSWER_SYSTEM =
-  'You help someone understand a specific unit of source code. Use the supplied '
+  'You help someone understand a product by explaining a specific unit of its source '
+  + 'code. Use the supplied '
   + 'contextual meaning, any sub-part breakdown, and the code itself. Treat all of that '
   + 'as your OWN understanding — it is internal scaffolding the reader never sees, so '
   + 'never refer to it. Do not mention "the summary", "the contextual meaning", "the '
@@ -172,11 +228,11 @@ async function classifyIntent(transcript, message) {
   const convo = transcript.map((t) => `${t.role}: ${t.text}`).join('\n');
   const msg = await withSlot(() => client().messages.create({
     model: MEANING_MODEL,
-    max_tokens: 8,
-    ...effortCfg(MEANING_MODEL, 'low'),
+    max_tokens: 16,
+    ...effortCfg(MEANING_MODEL, 'none'),
     system: [{ type: 'text', text: CLASSIFY_SYSTEM, cache_control: { type: 'ephemeral' } }],
     messages: [{ role: 'user', content: `Conversation:\n${convo}\n\nNewest message: "${message}"\n\nOne word: deepen or new.` }],
-  }));
+  }), { phase: 'classify', model: MEANING_MODEL });
   return textOf(msg).toLowerCase().includes('deepen') ? 'deepen' : 'new';
 }
 
@@ -192,7 +248,8 @@ async function mapLimit(items, limit, fn) {
 
 // In-flight dedup: concurrent requests for the same key share one computation
 // (and one model call), so parallel sibling drills can't each kick off the same
-// shared-ancestor ctx. Keyed identically to the persistent cache.
+// shared-ancestor ctx. Basic work is shared globally; focused work includes the
+// browser-session id in its pending key so users never share contextual folds.
 const barePending = new Map();
 const ctxPending = new Map();
 
@@ -209,7 +266,7 @@ async function computeBare(key, label, body, meta) {
       ...effortCfg(BARE_MODEL, 'low'),
       system: [{ type: 'text', text: meta.system, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: body }],
-    })));
+    }), { phase: 'bare_summary', model: BARE_MODEL }));
     cacheSet(key, out, { fileHash: meta.fileHash, kind: meta.kind });
     return out;
   })();
@@ -259,7 +316,7 @@ async function foldWindows(headline, parts) {
     ...effortCfg(BARE_MODEL, 'low'),
     system: [{ type: 'text', text: BARE_COMBINE_SYSTEM, cache_control: { type: 'ephemeral' } }],
     messages: [{ role: 'user', content: `Summaries of consecutive parts of ${headline}, in order:\n${listing}\n\nGive one unified 1-3 sentence summary of the whole.` }],
-  }));
+  }), { phase: 'bare_combine', model: BARE_MODEL });
   return textOf(msg);
 }
 
@@ -307,7 +364,7 @@ async function foldMeaning(node, bare, outer) {
         + 'Explain what this unit is, keeping its own isolated meaning as the core and '
         + 'using the surrounding scope only to lightly situate it.',
     }],
-  }));
+  }), { phase: 'context_fold', model: MEANING_MODEL });
   return textOf(msg);
 }
 
@@ -317,7 +374,7 @@ async function foldMeaning(node, bare, outer) {
 // of the tree is the most granular view, exactly as intended.
 const DRILL_CAP = 24; // bound fan-out; surfaced as `truncated` (no silent caps)
 
-async function drillDetail(nodes, idx, nodeId, depth, text, ctxNS, rootContext, windowChars) {
+async function drillDetail(nodes, idx, nodeId, depth, text, ctxNS, rootContext, windowChars, sessionId) {
   let frontier = [nodeId];
   let reached = 0;
   for (let level = 1; level <= depth; level++) {
@@ -336,7 +393,7 @@ async function drillDetail(nodes, idx, nodeId, depth, text, ctxNS, rootContext, 
     if (semanticChildren(nodes, idx, cid).length === 0) {
       return `- ${node.label} (code):\n\`\`\`\n${text.slice(node.start, node.end).slice(0, 600)}\n\`\`\``;
     }
-    return `- ${node.label}: ${await contextualizedMeaning(nodes, cid, text, ctxNS, rootContext, windowChars)}`;
+    return `- ${node.label}: ${await contextualizedMeaning(nodes, cid, text, ctxNS, rootContext, windowChars, sessionId)}`;
   });
   return { detail: parts.join('\n'), units: pick.length, truncated, reached };
 }
@@ -370,14 +427,14 @@ function bareFolder(node, childBares) {
 // (re-runs are hits); slot-bounded; no key → no-op.
 export async function warmProjectBares(files, windowChars = DEFAULT_BARE_WINDOW) {
   const tree = getProjectTree();
-  if (!tree || !process.env.ANTHROPIC_API_KEY) return;
+  if (!tree || !process.env.OPENAI_API_KEY) return;
   const contentByPath = new Map(files.map((f) => [f.relPath.replace(/\\/g, '/'), f.content]));
   const warm = async (node) => {
     if (node.kind === 'file') return bareFile(node, contentByPath.get(node.path) ?? '', windowChars);
     const childBares = await Promise.all(node.children.map(warm));
     return bareFolder(node, childBares);
   };
-  await warm(tree.root);
+  await measureTelemetry('warm_project_bares', () => warm(tree.root));
 }
 
 // The cache-invalidation set for a project: every fileHash (`f`) under which any of
@@ -398,47 +455,48 @@ export function projectCacheHashes(files, tree = getProjectTree()) {
 
 // Fold a folder chain root → last, returning the last folder's ctx. Uses the
 // eager folder bares; degrades to partial/null if not yet warm. Per-dir cached.
-async function chainContext(chain) {
+async function chainContext(chain, sessionId) {
   let ctx = null;
   for (const node of chain) {
     const ctxKey = `c:dir:${node.hash}`;
-    const cachedCtx = cacheGet(ctxKey);
+    const cachedCtx = cacheGet(ctxKey, { sessionId });
     if (cachedCtx !== undefined) { ctx = cachedCtx; continue; }
     const bare = cacheGet(node.bareKey);
     if (bare === undefined) break; // not warmed yet → use what we have so far
     ctx = ctx === null ? bare : await foldMeaning(node, bare, ctx);
-    cacheSet(ctxKey, ctx, { fileHash: node.hash, kind: 'dirctx' });
+    cacheSet(ctxKey, ctx, { fileHash: node.hash, kind: 'dirctx', sessionId });
   }
   return ctx;
 }
 
 // Part 2 — folder context for a FILE: the chain root → the file's directory.
-const folderContext = (relPath) => chainContext(folderChainTo(relPath));
+const folderContext = (relPath, sessionId) => chainContext(folderChainTo(relPath), sessionId);
 
 // `ctxNS` namespaces a node's contextual meaning by its FULL upward context (the
 // folder chain + file content), and `rootContext` is the folder ctx folded in at
 // the file root. So in-file folds proceed as before, and the topmost in-file node
 // continues up into the folders instead of stopping.
-async function contextualizedMeaning(nodes, id, text, ctxNS, rootContext, windowChars) {
+async function contextualizedMeaning(nodes, id, text, ctxNS, rootContext, windowChars, sessionId) {
   const key = `c:${ctxNS}:${id}`;
-  const hit = cacheGet(key);
+  const hit = cacheGet(key, { sessionId });
   if (hit !== undefined) return hit;
-  if (ctxPending.has(key)) return ctxPending.get(key);
+  const pendingKey = `${sessionId}:${key}`;
+  if (ctxPending.has(pendingKey)) return ctxPending.get(pendingKey);
   const p = (async () => {
     const parentId = semanticParentId(nodes, id);
     const [bare, outer] = await Promise.all([
       bareMeaning(nodes, id, text, ctxNS, windowChars),
-      parentId ? contextualizedMeaning(nodes, parentId, text, ctxNS, rootContext, windowChars) : null,
+      parentId ? contextualizedMeaning(nodes, parentId, text, ctxNS, rootContext, windowChars, sessionId) : null,
     ]);
     let out;
     if (parentId) out = await foldMeaning(nodes[id], bare, outer);
     else if (rootContext) out = await foldMeaning(nodes[id], bare, rootContext); // file root → folder
     else out = bare;
-    cacheSet(key, out, { fileHash: ctxNS, kind: 'ctx' });
+    cacheSet(key, out, { fileHash: ctxNS, kind: 'ctx', sessionId });
     return out;
   })();
-  ctxPending.set(key, p);
-  try { return await p; } finally { ctxPending.delete(key); }
+  ctxPending.set(pendingKey, p);
+  try { return await p; } finally { ctxPending.delete(pendingKey); }
 }
 
 // ── Highlight-driven "frontier peers" context ───────────────────────────────
@@ -447,7 +505,27 @@ async function contextualizedMeaning(nodes, id, text, ctxNS, rootContext, window
 // are the boxes the user has actually ASKED about (recorded below). The
 // distribution itself is the context. Marks are per-file, in-memory for the
 // session, keyed by ctxNS so a file edit (new ctxNS) self-invalidates them.
-const fileMarks = new Map(); // ctxNS -> Set<nodeId>
+const fileMarks = new Map(); // sessionId -> { files: Map<ctxNS, Set<nodeId>>, touchedAt }
+const MARK_SESSION_TTL_MS = 6 * 60 * 60 * 1000;
+const MAX_MARK_SESSIONS = 100;
+
+// Keep benchmark trials independent: a previous question must not refine the next
+// trial's frontier. Guarded so normal application code cannot clear live sessions.
+export function resetMeaningSessionForBenchmark() {
+  if (process.env.CODEARCHITECT_BENCHMARK !== '1') {
+    throw new Error('Benchmark session reset requires CODEARCHITECT_BENCHMARK=1.');
+  }
+  fileMarks.clear();
+  barePending.clear();
+  ctxPending.clear();
+}
+
+// End one browser session's focus history. Durable basic summaries are owned by
+// cache.js and are intentionally unaffected.
+export function clearMeaningSession(sessionId) {
+  if (!sessionId) return;
+  fileMarks.delete(sessionId);
+}
 
 // ctxNS = hash(folderChain · fileContent): a file's FULL upward context. Factored
 // out so the marks store, ask(), suggestEdits() and the /frontier endpoint agree.
@@ -459,12 +537,30 @@ export function ctxNSForFile(file, tree) {
   return fileHashOf(`${folderChainHash}:${fileHashOf(file.content)}`);
 }
 
-const recordMark = (ctxNS, nodeId) => {
-  let s = fileMarks.get(ctxNS);
-  if (!s) { s = new Set(); fileMarks.set(ctxNS, s); }
+const marksForSession = (sessionId, create = false) => {
+  const now = Date.now();
+  for (const [id, state] of fileMarks) {
+    if (now - state.touchedAt > MARK_SESSION_TTL_MS) fileMarks.delete(id);
+  }
+  if (fileMarks.size > MAX_MARK_SESSIONS) {
+    const oldest = [...fileMarks.entries()].sort((a, b) => a[1].touchedAt - b[1].touchedAt);
+    for (let i = 0; i < oldest.length - MAX_MARK_SESSIONS; i++) fileMarks.delete(oldest[i][0]);
+  }
+  let state = fileMarks.get(sessionId);
+  if (!state && create) {
+    state = { files: new Map(), touchedAt: now };
+    fileMarks.set(sessionId, state);
+  }
+  if (state) state.touchedAt = now;
+  return state?.files;
+};
+const recordMark = (sessionId, ctxNS, nodeId) => {
+  const marks = marksForSession(sessionId, true);
+  let s = marks.get(ctxNS);
+  if (!s) { s = new Set(); marks.set(ctxNS, s); }
   s.add(nodeId);
 };
-const getMarks = (ctxNS) => fileMarks.get(ctxNS) || new Set();
+const getMarks = (sessionId, ctxNS) => marksForSession(sessionId)?.get(ctxNS) || new Set();
 const rootIdOf = (nodes) => Object.keys(nodes).find((id) => nodes[id].parent == null);
 const frontierSig = (ids) => crypto.createHash('sha1').update(ids.join('|')).digest('hex').slice(0, 16);
 
@@ -497,7 +593,7 @@ async function foldPeers(node, selfBare, peerBares, rootContext) {
         + 'Explain what this unit is, keeping its own isolated meaning as the core and '
         + 'using the other regions only to place it within the file.',
     }],
-  }));
+  }), { phase: 'frontier_fold', model: MEANING_MODEL });
   return textOf(msg);
 }
 
@@ -506,13 +602,14 @@ async function foldPeers(node, selfBare, peerBares, rootContext) {
 // question). Cached by (ctxNS, askedId, frontier signature): a new mark changes the
 // signature and recomputes ONE foldPeers call — the peer bares stay cached
 // (content-addressed), so a fresh mark is cheap on a warm file.
-async function frontierPeersMeaning(nodes, idx, askedId, ctxNS, text, rootContext, { record = false } = {}, windowChars) {
-  if (record) recordMark(ctxNS, askedId);
-  const frontierIds = minimalFrontier(nodes, idx, rootIdOf(nodes), getMarks(ctxNS));
+async function frontierPeersMeaning(nodes, idx, askedId, ctxNS, text, rootContext, { record = false } = {}, windowChars, sessionId) {
+  if (record) recordMark(sessionId, ctxNS, askedId);
+  const frontierIds = minimalFrontier(nodes, idx, rootIdOf(nodes), getMarks(sessionId, ctxNS));
   const key = `cp:${ctxNS}:${askedId}:${frontierSig(frontierIds)}`;
-  const hit = cacheGet(key);
+  const hit = cacheGet(key, { sessionId });
   if (hit !== undefined) return hit;
-  if (ctxPending.has(key)) return ctxPending.get(key);
+  const pendingKey = `${sessionId}:${key}`;
+  if (ctxPending.has(pendingKey)) return ctxPending.get(pendingKey);
   const p = (async () => {
     const peerIds = frontierIds.filter((id) => id !== askedId);
     const [selfBare, peerBares] = await Promise.all([
@@ -520,21 +617,21 @@ async function frontierPeersMeaning(nodes, idx, askedId, ctxNS, text, rootContex
       mapLimit(peerIds, CONCURRENCY, (id) => bareMeaning(nodes, id, text, ctxNS, windowChars)),
     ]);
     const out = await foldPeers(nodes[askedId], selfBare, peerBares, rootContext);
-    cacheSet(key, out, { fileHash: ctxNS, kind: 'ctxpeers' });
+    cacheSet(key, out, { fileHash: ctxNS, kind: 'ctxpeers', sessionId });
     return out;
   })();
-  ctxPending.set(key, p);
-  try { return await p; } finally { ctxPending.delete(key); }
+  ctxPending.set(pendingKey, p);
+  try { return await p; } finally { ctxPending.delete(pendingKey); }
 }
 
 // Debug / demo: the current marks + derived minimal frontier for a file (no LLM).
-export async function fileFrontier(file) {
+export async function fileFrontier(file, sessionId) {
   const { nodes } = await fileNodes(file);
   const idx = childrenIndex(nodes);
   const ctxNS = ctxNSForFile(file);
-  const frontierIds = minimalFrontier(nodes, idx, rootIdOf(nodes), getMarks(ctxNS));
+  const frontierIds = minimalFrontier(nodes, idx, rootIdOf(nodes), getMarks(sessionId, ctxNS));
   return {
-    marks: [...getMarks(ctxNS)].filter((id) => nodes[id]).map((id) => ({ nodeId: id, label: nodes[id].label })),
+    marks: [...getMarks(sessionId, ctxNS)].filter((id) => nodes[id]).map((id) => ({ nodeId: id, label: nodes[id].label })),
     frontier: frontierIds.map((id) => ({ nodeId: id, start: nodes[id].start, end: nodes[id].end, label: nodes[id].label })),
   };
 }
@@ -585,12 +682,12 @@ function highlightMarks(nodes, idx, rootId, rawStart, rawEnd) {
 // with the band the highlight lands in as `targetNodeId`. This is the SAME partition ctx
 // is built from — surfaced so the viewer can band-highlight the whole distribution and
 // count it, instead of showing the lone tightest box. Refines as more questions are asked.
-export async function frontierChunks(file, around = null) {
+export async function frontierChunks(file, around = null, sessionId) {
   const { kind, nodes } = await fileNodes(file);
   const idx = childrenIndex(nodes);
   const rootId = rootIdOf(nodes);
   const ctxNS = ctxNSForFile(file);
-  const marks = new Set(getMarks(ctxNS));
+  const marks = new Set(getMarks(sessionId, ctxNS));
   if (around) for (const m of highlightMarks(nodes, idx, rootId, around.start, around.end)) marks.add(m);
   const frontierIds = minimalFrontier(nodes, idx, rootId, marks);
   // Coverage fills the glue between boxes (same as granularity-mode chunks) so the bands
@@ -622,7 +719,7 @@ export async function frontierChunks(file, around = null) {
 //              or 'infer' (typed message → classify deepen vs. new).
 //   transcript recent [{role,text}] turns, for classification + answer context.
 // Returns { answer, meaning, path, depth, atBottom, maxDepth }.
-export async function ask({ file, nodeId, question, depth = 0, intent = 'infer', transcript = [], contextFile = null, bareWindow = DEFAULT_BARE_WINDOW, focus = '', highlight = '', traceContext = null }) {
+export async function ask({ file, nodeId, question, depth = 0, intent = 'infer', transcript = [], contextFile = null, bareWindow = DEFAULT_BARE_WINDOW, focus = '', highlight = '', traceContext = null, sessionId }) {
   const { nodes } = await fileNodes(file);
   if (!nodes[nodeId]) {
     const e = new Error('Unknown nodeId for this file (it may be stale — re-chunk and retry).');
@@ -638,7 +735,10 @@ export async function ask({ file, nodeId, question, depth = 0, intent = 'infer',
   // eager folder bares, passed as low-weight background. ctxNS keys this file's
   // marks + peer-ctx by its FULL upward context (folders + file content).
   const ctxNS = ctxNSForFile(file);
-  const rootContext = await folderContext(file.relPath); // null if no tree / not warm
+  const rootContext = await measureTelemetry(
+    'folder_context',
+    () => folderContext(file.relPath, sessionId),
+  ); // null if no tree / not warm
 
   // Effective depth: explicit button ratchets down; a typed message deepens only
   // if it reads as dissatisfaction, else snaps back to true (0).
@@ -650,11 +750,14 @@ export async function ask({ file, nodeId, question, depth = 0, intent = 'infer',
     effDepth = cls === 'deepen' ? Math.min(depth + 1, maxDepth) : 0;
   }
 
-  const meaning = await frontierPeersMeaning(nodes, idx, nodeId, ctxNS, text, rootContext, { record: true }, bareWindow);
+  const meaning = await measureTelemetry(
+    'context_preparation',
+    () => frontierPeersMeaning(nodes, idx, nodeId, ctxNS, text, rootContext, { record: true }, bareWindow, sessionId),
+  );
   const path = semanticPath(nodes, nodeId);
   const snippet = clip(text.slice(node.start, node.end));
   const drill = effDepth >= 1
-    ? await drillDetail(nodes, idx, nodeId, effDepth, text, ctxNS, rootContext, bareWindow)
+    ? await drillDetail(nodes, idx, nodeId, effDepth, text, ctxNS, rootContext, bareWindow, sessionId)
     : { detail: '', truncated: false };
 
   // A short literal selection (the exact chars highlighted, not the resolved box) →
@@ -690,7 +793,7 @@ export async function ask({ file, nodeId, question, depth = 0, intent = 'infer',
           : '')
         + `Question: ${question}`,
     }],
-  }));
+  }), { phase: 'answer', model: ANSWER_MODEL });
 
   return { answer: textOf(msg), meaning, path, depth: effDepth, atBottom: effDepth >= maxDepth, maxDepth };
 }
@@ -716,7 +819,7 @@ function stripFences(s) {
 // Propose an edited version of a chunk's code, driven by the Q&A conversation.
 // Returns { code, original, path } — `code` is the full revised unit, ready to
 // drop straight into the editor.
-export async function suggestEdits({ file, nodeId, instruction = '', transcript = [], baseCode = '', contextFile = null, bareWindow = DEFAULT_BARE_WINDOW }) {
+export async function suggestEdits({ file, nodeId, instruction = '', transcript = [], baseCode = '', contextFile = null, bareWindow = DEFAULT_BARE_WINDOW, sessionId }) {
   const { nodes } = await fileNodes(file);
   if (!nodes[nodeId]) {
     const e = new Error('Unknown nodeId for this file (it may be stale — re-chunk and retry).');
@@ -730,8 +833,8 @@ export async function suggestEdits({ file, nodeId, instruction = '', transcript 
   // Read-only on marks — suggesting an edit isn't a question, so it doesn't add one.
   const idx = childrenIndex(nodes);
   const ctxNS = ctxNSForFile(file);
-  const rootContext = await folderContext(file.relPath);
-  const meaning = await frontierPeersMeaning(nodes, idx, nodeId, ctxNS, text, rootContext, { record: false }, bareWindow);
+  const rootContext = await folderContext(file.relPath, sessionId);
+  const meaning = await frontierPeersMeaning(nodes, idx, nodeId, ctxNS, text, rootContext, { record: false }, bareWindow, sessionId);
   const path = semanticPath(nodes, nodeId);
   // Revise the current draft if one was supplied (iterative edits build on what's
   // already in the editor), otherwise the original source of this unit.
@@ -758,13 +861,15 @@ export async function suggestEdits({ file, nodeId, instruction = '', transcript 
           : '')
         + 'Return the full revised code for this unit, and nothing else.',
     }],
-  }));
+  }), { phase: 'edit', model: ANSWER_MODEL });
 
   return { code: stripFences(textOf(msg)), original: code, path };
 }
 
 const FOLDER_ANSWER_SYSTEM =
-  'You answer questions about a directory in a codebase. Use the supplied contextual '
+  'You answer questions about what part of a product a codebase directory supports. '
+  + 'Start with the responsibility or experience this area enables, then use its files '
+  + 'to explain how it does that. Use the supplied contextual '
   + 'summary of the folder and the one-line summaries of its direct contents. Treat '
   + 'these as your OWN understanding — they are internal scaffolding the reader never '
   + 'sees, so never refer to them. Do not mention "the summary", "the provided '
@@ -775,14 +880,14 @@ const FOLDER_ANSWER_SYSTEM =
 
 // Answer a question about a FOLDER (the current directory in the file browser).
 // dirPath '' = project root. Returns { answer, summary, path }.
-export async function askFolder({ dirPath = '', question, transcript = [], contextFile = null }) {
+export async function askFolder({ dirPath = '', question, transcript = [], contextFile = null, sessionId }) {
   const tree = getProjectTree();
   if (!tree) { const e = new Error('No project is loaded yet.'); e.status = 503; throw e; }
   const path = dirPath.replace(/\\/g, '/').replace(/\/$/, '');
   const node = tree.nodes.get(path);
   if (!node || node.kind !== 'dir') { const e = new Error(`Unknown folder: ${path || '(root)'}`); e.status = 404; throw e; }
 
-  const summary = await chainContext(folderChainToDir(path)); // ctx of this folder
+  const summary = await chainContext(folderChainToDir(path), sessionId); // ctx of this folder
   const contents = node.children
     .map((c) => `- ${c.name}${c.kind === 'dir' ? '/' : ''}: ${cacheGet(c.bareKey) ?? '(summary pending)'}`)
     .join('\n');
@@ -805,7 +910,7 @@ export async function askFolder({ dirPath = '', question, transcript = [], conte
           : '')
         + `Question: ${question}`,
     }],
-  }));
+  }), { phase: 'folder_answer', model: ANSWER_MODEL });
 
   return { answer: textOf(msg), summary, path };
 }

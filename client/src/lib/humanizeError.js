@@ -2,7 +2,7 @@ export function humanizeError(error, fallback = 'Something went wrong') {
   const message = typeof error === 'string' ? error : error?.message
   if (!message) return fallback
 
-  if (/ANTHROPIC_API_KEY/i.test(message)) {
+  if (/OPENAI_API_KEY/i.test(message)) {
     return 'AI answers are not configured for this environment yet. Add the server API key, then try again.'
   }
   if (/server unreachable|failed to fetch|networkerror|network request failed/i.test(message)) {

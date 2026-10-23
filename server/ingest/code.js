@@ -4,6 +4,10 @@
 // exact region a chunk occupies.
 import fs from 'fs/promises';
 import path from 'path';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+
+const execFileAsync = promisify(execFile);
 
 // Directories we never descend into.
 export const SKIP_DIRS = new Set([
@@ -47,8 +51,55 @@ export function isSourceFile(filename) {
   return languageFor(filename) !== null;
 }
 
+// A local Git project should expose the same file set that can be committed and
+// pushed, not every source-looking file on disk. This keeps ignored local data
+// (for example .env files and experiment output) out of the editor and chat.
+// Returns null outside a Git worktree so ordinary folders retain the recursive
+// scanner fallback.
+async function gitTrackedPaths(dir) {
+  let rootOutput;
+  try {
+    ({ stdout: rootOutput } = await execFileAsync(
+      'git', ['-C', dir, 'rev-parse', '--show-toplevel'], { encoding: 'utf8', maxBuffer: 20_000_000 },
+    ));
+  } catch {
+    return null;
+  }
+  // realpath avoids treating macOS's /var and /private/var aliases as different
+  // trees when deciding whether the selected folder lives inside this repo.
+  const root = await fs.realpath(rootOutput.trim());
+  const projectRoot = await fs.realpath(dir);
+  const relativeProject = path.relative(root, projectRoot);
+  if (relativeProject.startsWith('..') || path.isAbsolute(relativeProject)) return null;
+
+  const { stdout } = await execFileAsync(
+    'git', ['-C', root, 'ls-files', '--cached', '-z'], { encoding: 'utf8', maxBuffer: 20_000_000 },
+  );
+  return stdout.split('\0').filter(Boolean).flatMap((trackedPath) => {
+    const relative = path.relative(projectRoot, path.resolve(root, trackedPath));
+    if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) return [];
+    return [relative];
+  });
+}
+
+function keepSourcePath(relPath, { excludeRootDirs = [], excludeRootFiles = [] } = {}) {
+  const segments = relPath.split(path.sep);
+  if (excludeRootDirs.includes(segments[0])) return false;
+  if (segments.length === 1 && excludeRootFiles.includes(segments[0])) return false;
+  return !segments.some((segment) => SKIP_DIRS.has(segment))
+    && isSourceFile(segments[segments.length - 1]);
+}
+
 // Recursively collect source-file paths under `dir` (relative paths returned).
-export async function walkProject(dir) {
+export async function walkProject(dir, options = {}) {
+  const tracked = await gitTrackedPaths(dir);
+  if (tracked) {
+    return tracked
+      .filter((relPath) => keepSourcePath(relPath, options))
+      .sort((a, b) => a.localeCompare(b))
+      .slice(0, MAX_FILES);
+  }
+
   const found = [];
   async function recur(abs, rel) {
     if (found.length >= MAX_FILES) return;
@@ -69,7 +120,7 @@ export async function walkProject(dir) {
       if (entry.isDirectory()) {
         if (SKIP_DIRS.has(entry.name)) continue;
         await recur(childAbs, childRel);
-      } else if (entry.isFile() && isSourceFile(entry.name)) {
+      } else if (entry.isFile() && keepSourcePath(childRel, options)) {
         found.push(childRel);
       }
     }

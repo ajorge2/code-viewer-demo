@@ -21,7 +21,7 @@ function loadChunkSizes(projectId) {
   }
 }
 
-function ProjectOverview({ project, files, scan, edits, onOpenFile }) {
+function ProjectOverview({ project, files, scan, onOpenFile }) {
   const languages = useMemo(() => {
     const counts = new Map()
     for (const file of files) {
@@ -40,36 +40,42 @@ function ProjectOverview({ project, files, scan, edits, onOpenFile }) {
     return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
   }, [files])
 
-  const editedFiles = new Set(Object.entries(edits).flatMap(([key, value]) => {
-    const parts = key.split('::')
-    if (parts.length >= 3) return parts[0] === project?.id ? [parts[1]] : []
-    return value?.projectId === project?.id ? [parts[0]] : []
-  })).size
+  const starterFile = useMemo(() => {
+    const preferred = ['client/src/App.jsx', 'src/App.jsx', 'README.md', 'package.json']
+    for (const relPath of preferred) {
+      const match = files.find((file) => file.relPath === relPath)
+      if (match) return match
+    }
+    return files.find((file) => {
+      const segments = file.relPath.split('/')
+      return !segments.some((segment) => segment.startsWith('.')) &&
+        !/(secret|credential|token|\.env|config\.local)/i.test(file.relPath)
+    }) || null
+  }, [files])
+
   const coverageLimited = scan?.truncatedByCount || scan?.truncatedByBytes || scan?.truncatedByClient
 
   return (
     <div className="project-overview-shell">
       <section className="project-overview">
-        <div className="overview-kicker">Project overview</div>
-        <h2>{project?.name || 'Active project'}</h2>
-        <p className="overview-lede">Start with the shape of the system, then follow evidence into a file. Nothing here changes your source.</p>
+        <div className="overview-heading-row">
+          <h2>{project?.name || 'Active project'}</h2>
+        </div>
 
         <div className="overview-metrics">
-          <div><strong>{files.length}</strong><span>indexed files</span></div>
-          <div><strong>{languages.length}</strong><span>file types</span></div>
-          <div><strong>{editedFiles}</strong><span>drafted files</span></div>
+          <div><span>Files</span><strong>{files.length}</strong></div>
+          <div><span>Languages</span><strong>{languages.length}</strong></div>
         </div>
 
         {coverageLimited && (
           <div className="coverage-card warning">
-            <strong>Coverage limit reached</strong>
-            <span>The overview reflects the indexed subset. Review the status bar before drawing project-wide conclusions.</span>
+            <span><strong>Coverage limit reached</strong>The overview reflects the indexed subset.</span>
           </div>
         )}
 
         <div className="overview-grid">
           <section>
-            <h3>Languages</h3>
+            <div className="overview-section-head"><h3>Languages</h3><span>indexed files</span></div>
             <div className="overview-bars">
               {languages.slice(0, 6).map(([name, count]) => (
                 <div key={name} className="overview-bar-row">
@@ -81,26 +87,27 @@ function ProjectOverview({ project, files, scan, edits, onOpenFile }) {
             </div>
           </section>
           <section>
-            <h3>Largest areas</h3>
+            <div className="overview-section-head"><h3>Largest areas</h3><span>by file count</span></div>
             <div className="overview-folder-list">
               {topFolders.map(([name, count]) => <div key={name}><span>{name}/</span><span>{count} files</span></div>)}
             </div>
           </section>
         </div>
 
-        {files[0] && <button className="overview-primary" onClick={() => onOpenFile(files[0].id)}>Open the first file</button>}
+        {starterFile && (
+          <button className="overview-primary" onClick={() => onOpenFile(starterFile.id)}>
+            Open {starterFile.relPath.split('/').pop()}
+          </button>
+        )}
       </section>
 
       <aside className="overview-insight">
-        <div className="insight-rail-label"><span>Insight</span><span>Project scope</span></div>
         <div className="overview-insight-body">
-          <div className="overview-scope-icon">◎</div>
-          <h3>Choose evidence to investigate</h3>
-          <p>Select a file to ask about exact code, or use <strong>Ask project</strong> in Explorer for a repository-wide question.</p>
-          <div className="scope-mini-ledger">
-            <span><i className="scope-dot project" /> Scope · entire project</span>
-            <span><i className="scope-dot support" /> Context · indexed files</span>
-            <span><i className="scope-dot safe" /> Actions · drafts only</span>
+          <div className="overview-insight-intro">
+            <div>
+              <h3>Choose evidence</h3>
+              <p>Select a file for exact code, or ask at project scope from Explorer.</p>
+            </div>
           </div>
         </div>
       </aside>
@@ -111,8 +118,6 @@ function ProjectOverview({ project, files, scan, edits, onOpenFile }) {
 function EmptyWorkspace({ onOpenProject }) {
   return (
     <div className="empty-workspace">
-      <div className="empty-workspace-mark" aria-hidden="true">⌁</div>
-      <div className="overview-kicker">Context workbench</div>
       <h2>Understand a codebase without losing your place.</h2>
       <p>Open a folder to map its structure, inspect exact code, ask scoped questions, and keep proposed changes safely in drafts.</p>
       <button className="overview-primary" onClick={onOpenProject}>Open a project folder</button>
@@ -121,7 +126,6 @@ function EmptyWorkspace({ onOpenProject }) {
         <span><b>2</b> Review coverage</span>
         <span><b>3</b> Explore safely</span>
       </div>
-      <small>Read-only exploration · generated folders and binaries are skipped</small>
     </div>
   )
 }
@@ -187,7 +191,7 @@ export default function App() {
     try {
       await clearTreeCache()
       setConfirmClear(false)
-      setSystemNotice('Context cache cleared. Structure and base summaries were kept.')
+      setSystemNotice('Context cache cleared.')
     } catch (error) {
       setSystemNotice(humanizeError(error, 'The context cache could not be cleared.'))
     } finally {
@@ -207,7 +211,7 @@ export default function App() {
       const r = await setProjectBareWindow(activeProjectId, pendingWindow)
       if (r.projects) setProjects(r.projects)
       setPendingWindow(null)
-      setSystemNotice('Context detail updated. Project summaries are warming in the background.')
+      setSystemNotice('Context detail updated; summaries are rebuilding.')
     } catch (error) {
       setSystemNotice(humanizeError(error, 'Context detail could not be changed.'))
     } finally {
@@ -305,6 +309,11 @@ export default function App() {
     const parts = key.split('::')
     return parts.length >= 3 ? parts[0] === activeProjectId : value?.projectId === activeProjectId
   }).length
+  const coverageLimited = !!(scan?.truncatedByCount || scan?.truncatedByBytes || scan?.truncatedByClient)
+  const statusText = projectLoading
+    ? 'Indexing project'
+    : systemNotice || (view === 'help' ? 'Chunking demo' : '')
+  const showStatusbar = !!(statusText || draftCount > 0 || (selectedFile && coverageLimited))
 
   const selectFile = (id) => {
     setSelectedId(id)
@@ -460,14 +469,14 @@ export default function App() {
       const r = await removeProject(id)
       setProjects(r.projects)
       await loadActiveFiles()
-      setSystemNotice(`Removed ${removedName} from the workspace. Source files were not changed.`)
+      setSystemNotice(`Removed ${removedName} from the workspace.`)
     } catch (error) {
       setSystemNotice(humanizeError(error, 'The project could not be removed.'))
     }
   }
 
   return (
-    <div className="app">
+    <div className="app" style={{ '--statusbar-size': showStatusbar ? '26px' : '0px' }}>
       <header className="topbar workspace-topbar">
         <div className="brand">
           <span className="logo" aria-hidden="true">
@@ -502,26 +511,20 @@ export default function App() {
             onUpload={handleUploadProject}
             onRemove={handleRemoveProject}
             onBareWindow={handleBareWindow}
+            onClearContext={() => setConfirmClear(true)}
             welcome={false}
+            sandbox
           />
         )}
         <div className="topbar-right">
           {view === 'main' ? (
             <>
               {activeProject && (
-                <button className="reload-btn text-btn" title="Clear derived answer context" onClick={() => setConfirmClear(true)}>
-                  Clear context cache
-                </button>
+                <span id="topbar-context-slot" className="topbar-context-slot" />
               )}
             </>
           ) : (
             <button className="reload-btn text-btn" title="Back to the app" aria-label="Back to the app" onClick={() => setView('main')}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                   stroke="currentColor" strokeWidth="1.5"
-                   strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                <polyline points="9 22 9 12 15 12 15 22" />
-              </svg>
               Back to workspace
             </button>
           )}
@@ -565,7 +568,6 @@ export default function App() {
             </div>
           ) : startupError ? (
             <div className="workspace-error-state">
-              <span aria-hidden="true">!</span>
               <h2>Workspace unavailable</h2>
               <p>{startupError}</p>
               <button className="overview-primary" onClick={retryWorkspace}>Try again</button>
@@ -592,12 +594,11 @@ export default function App() {
               onOpenReference={openReference}
             />
           ) : activeProject && files.length > 0 ? (
-            <ProjectOverview project={activeProject} files={files} scan={scan} edits={edits} onOpenFile={selectFile} />
+            <ProjectOverview project={activeProject} files={files} scan={scan} onOpenFile={selectFile} />
           ) : !activeProject ? (
             <EmptyWorkspace onOpenProject={() => projectSwitcherRef.current?.openFolder()} />
           ) : (
             <div className="workspace-error-state quiet">
-              <span aria-hidden="true">∅</span>
               <h2>No supported source files found</h2>
               <p>This folder may contain only generated, binary, locked, or unsupported files.</p>
               <button className="overview-primary" onClick={() => projectSwitcherRef.current?.openFolder()}>Choose another folder</button>
@@ -631,16 +632,15 @@ export default function App() {
         </div>
       )}
 
-      <footer className="workspace-statusbar" aria-live="polite">
-        <span className={`status-primary${projectLoading ? ' busy' : ''}`}>
-          <i />{projectLoading ? 'Indexing project' : systemNotice || (view === 'help' ? 'Chunking demo' : activeProject ? 'Ready to explore' : 'Open a project to begin')}
-        </span>
-        {view === 'main' && activeProject && <span>{activeProject.name}</span>}
-        {view === 'main' && activeProject && <span>{files.length} indexed</span>}
-        {view === 'main' && scan?.skipped > 0 && <span className="status-warning">{scan.skipped} skipped</span>}
-        {view === 'main' && (scan?.truncatedByCount || scan?.truncatedByBytes || scan?.truncatedByClient) && <span className="status-warning">Coverage limited</span>}
-        {view === 'main' && <span>{draftCount} {draftCount === 1 ? 'draft' : 'drafts'} · source unchanged</span>}
-      </footer>
+      {showStatusbar && (
+        <footer className="workspace-statusbar" aria-live="polite">
+          {statusText && <span className={projectLoading ? 'status-primary busy' : 'status-primary'}>{statusText}</span>}
+          {view === 'main' && selectedFile && coverageLimited && (
+            <span className="status-warning">Coverage limited{scan?.skipped > 0 ? ` · ${scan.skipped} skipped` : ''}</span>
+          )}
+          {view === 'main' && draftCount > 0 && <span>{draftCount} {draftCount === 1 ? 'draft' : 'drafts'}</span>}
+        </footer>
+      )}
 
       {view === 'help' && demoIntroOpen && (
         <div className={`modal-overlay ${demoIntroDismissable ? 'dim' : 'glass'}`} onClick={demoIntroDismissable ? () => setDemoIntroOpen(false) : undefined}>
@@ -652,15 +652,14 @@ export default function App() {
             {demoIntroPage === 0 && (
               <>
                 <h2 className="demo-intro-title">How chunking works</h2>
-                <p className="chunk-help-text">Two sliders control how this file splits into chunks:</p>
+                <p className="chunk-help-text">Use these controls to adjust how the file is divided:</p>
                 <ul className="demo-intro-list">
-                  <li><b>Granularity</b> — how deep the splits can go.</li>
-                  <li><b>Depth spread</b> — when bigger chunks split first, how far apart their depths can land.</li>
+                  <li><b>Granularity.</b> Sets the maximum split depth.</li>
+                  <li><b>Depth spread.</b> Sets the allowed depth difference when larger chunks split first.</li>
                 </ul>
                 <p className="chunk-help-text">
-                  Both just move a cut through the same fixed tree, so every chunk is a real
-                  node with exactly one chunking path — cached results stay valid no matter
-                  how you move the sliders.
+                  Both controls adjust boundaries within the same fixed syntax tree. Each chunk
+                  maps to a single path, so cached results remain valid as settings change.
                   <button
                     className="caching-q"
                     onClick={() => setCachingOpen(true)}
@@ -675,8 +674,7 @@ export default function App() {
               <>
                 <h2 className="demo-intro-title">Chunking around a highlight</h2>
                 <p className="chunk-help-text">
-                  Highlight code and the system picks your chunk for you — the <b>tightest</b> piece
-                  that still wraps your whole selection. There's always exactly one.
+                  CodeArchitect maps your selection to the smallest chunk that fully contains it.
                 </p>
               </>
             )}
@@ -685,22 +683,21 @@ export default function App() {
               <>
                 <h2 className="demo-intro-title">Finding the right context</h2>
                 <p className="chunk-help-text">
-                  To answer, the system reads your chunk against the <b>fewest chunks that still
-                  reach everything you've highlighted</b> — fine where you've looked, broad
-                  elsewhere. It's the same two dials, set by your highlights for the richest context.
+                  CodeArchitect uses the smallest set of chunks that covers your selection, with
+                  more detail near the highlighted code.
                 </p>
               </>
             )}
 
             <div className="demo-intro-nav">
               {demoIntroPage > 0 && (
-                <button className="demo-intro-back" onClick={() => setDemoIntroPage((p) => p - 1)}>← Back</button>
+                <button className="demo-intro-back" onClick={() => setDemoIntroPage((p) => p - 1)}>Back</button>
               )}
               <span className="demo-intro-dots" aria-hidden="true">
                 {[0, 1, 2].map((i) => <span key={i} className={`demo-intro-dot${i === demoIntroPage ? ' on' : ''}`} />)}
               </span>
               {demoIntroPage < 2 ? (
-                <button className="chunk-help-demo" onClick={() => setDemoIntroPage((p) => p + 1)}><span>Next →</span></button>
+                <button className="chunk-help-demo" onClick={() => setDemoIntroPage((p) => p + 1)}><span>Next</span></button>
               ) : (
                 <button className="chunk-help-demo" onClick={() => setDemoIntroOpen(false)}><span>Got it</span></button>
               )}
@@ -723,9 +720,9 @@ export default function App() {
           >
             <h2 id="clear-cache-title" className="modal-title">Clear the cache?</h2>
             <p className="modal-body">
-              This resets the finer, in-context read of each chunk in this project — the
-              part answers are built from. It rebuilds the next time you ask. The structure
-              and base summaries stay, so it's quick — totally safe.
+              This will clear the detailed context generated for this project. It will be
+              rebuilt automatically the next time you ask a question. Project structure
+              and base summaries will not be affected.
             </p>
             <div className="modal-actions">
               <button
@@ -774,7 +771,7 @@ export default function App() {
                 Cancel
               </button>
               <button
-                className="modal-btn danger"
+                className="modal-btn primary"
                 onClick={confirmBareWindow}
                 disabled={applyingWindow}
               >
@@ -792,23 +789,21 @@ export default function App() {
           <div className="chunk-help demo-intro" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
             <button className="chunk-help-x" onClick={() => setCachingOpen(false)} aria-label="Close">×</button>
             <h2 className="demo-intro-title">How caching works</h2>
-            <p className="chunk-help-text">Answers run on two different kinds of summary:</p>
+            <p className="chunk-help-text">CodeArchitect uses two cached summary layers:</p>
             <ul className="demo-intro-list">
               <li>
-                <b>Gists</b> <i>— cheap, done up front.</i> Every piece of code gets a quick
-                standalone summary, computed once for the whole project on a fast model and
-                reused anywhere that exact code appears.
+                <b>Gists.</b> Short summaries generated once for each code segment and reused
+                wherever the same code appears.
               </li>
               <li>
-                <b>In context</b> <i>— heavier, on demand.</i> When you ask, a piece's gist is
-                folded together — on a stronger model — with the gists of the pieces your
-                highlights pull in around it. This is what the answer is actually built from.
+                <b>Context summaries.</b> Detailed summaries generated when you ask a question.
+                They combine relevant gists with the surrounding code selected by your highlights.
               </li>
             </ul>
             <p className="chunk-help-text">
-              Both are saved by the exact code they describe. So the cheap gists are computed
-              once across the whole project, and the heavier in-context reads are only redone
-              when your highlights change what's nearby.
+              Cache entries are tied to the source code and active context. Gists are regenerated
+              when code changes. Context summaries are regenerated when the relevant code or
+              highlights change.
             </p>
           </div>
         </div>,

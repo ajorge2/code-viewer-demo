@@ -12,6 +12,8 @@
     "build": "npm install --prefix client --include=dev && npm --prefix client run build",
     "start": "node --import braintrust/hook.mjs server/index.js",
     "test": "node --test",
+    "benchmark:context": "node scripts/benchmark-context.js",
+    "benchmark:context:dry": "node scripts/benchmark-context.js --dry-run",
     "intent:pilot": "node experiments/intent-algebra/run-pilot.js",
     "intent:pilot:additive": "node experiments/intent-algebra/run-pilot.js --output .data/intent-pilot-additive --addition-dominant --min-added-nodes 2 --max-removal-ratio 0.25",
     "intent:mine": ".tools/submine-venv/bin/python experiments/intent-algebra/mine-graphs.py",
@@ -77,11 +79,11 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.100.1",
     "braintrust": "3.29.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",
+    "openai": "^7.43.0",
     "tree-sitter-wasms": "^0.1.13",
     "web-tree-sitter": "^0.22.6"
   },

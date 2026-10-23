@@ -6,7 +6,11 @@ client/dist
 *.log
 .tree-cache/
 .meaning-cache/
+benchmark-results/
 .data/
 .tools/
+# Added by Braintrust Wizard
+.env.braintrust
+.braintrust.json
 __pycache__/
 *.pyc
