@@ -104,7 +104,7 @@ async function createOpenAIMessage({ model, max_tokens: maxTokens, system, messa
     max_completion_tokens: maxTokens,
     ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
   };
-  const completion = await openAI().chat.completions.create(body);
+  const completion = await openAI().chat.completions.create({ ...body, store: false });
   const content = completion?.choices?.[0]?.message?.content;
   if (typeof content !== 'string') {
     const e = new Error('OpenAI returned no text response.');

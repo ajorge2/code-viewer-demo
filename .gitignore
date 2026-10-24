@@ -17,3 +17,9 @@ benchmark-results/*
 .braintrust.json
 __pycache__/
 *.pyc
+
+*.pem
+*.key
+
+.pytest_cache/
+node_modules/

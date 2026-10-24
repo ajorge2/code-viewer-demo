@@ -242,10 +242,10 @@ export default function App() {
   // text + the slider config and location at edit time, so the edit-history
   // carousel can jump back to that exact chunk/config. Persisted to localStorage.
   const [edits, setEdits] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('cv:edits')) || {} } catch { return {} }
+    try { return JSON.parse(sessionStorage.getItem('cv:edits')) || {} } catch { return {} }
   })
   useEffect(() => {
-    try { localStorage.setItem('cv:edits', JSON.stringify(edits)) } catch { /* ignore */ }
+    try { sessionStorage.setItem('cv:edits', JSON.stringify(edits)) } catch { /* ignore */ }
   }, [edits])
 
   // Draft keys predating project namespaces cannot identify their owner. Assign
@@ -516,7 +516,7 @@ export default function App() {
             sandbox
           />
         )}
-        <div className="topbar-right">
+        <div className="topbar-right"><a href="/privacy" target="_blank" rel="noreferrer" style={{fontSize: 11, color: "inherit"}}>Questions use OpenAI · Privacy</a>
           {view === 'main' ? (
             <>
               {activeProject && (

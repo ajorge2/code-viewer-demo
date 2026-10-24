@@ -1059,3 +1059,7 @@ chunking need no key; chat / edits / folder summaries do.
 [CodeArchitect MCP](https://site--codearchitect--74wvcb9qzxr6.code.run/mcp/codearchitect/) · [SQLHarness MCP](https://site--codearchitect--74wvcb9qzxr6.code.run/mcp/sqlharness/)
 
 The dedicated pages provide hosted examples, remote client configuration, and versioned local-install packages. These MCP routes make no model calls and require no model credentials. Public tools have no personal-data upload or root-selection capability. See [the deployment and privacy contract](docs/mcp-publishing.md).
+
+## Privacy and license scope
+
+See [PRIVACY.md](PRIVACY.md) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Public web uploads/path selection are blocked server-side; use the local MCP for private projects.

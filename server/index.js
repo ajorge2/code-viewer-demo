@@ -8,7 +8,10 @@ import cors from 'cors';
 import { createPublicRouter } from '../mcp/public.js';
 import { initLogger } from 'braintrust';
 
-initLogger({ projectName: process.env.BRAINTRUST_PROJECT_NAME || 'CodeArchitect' });
+// Content tracing is an explicit local opt-in, never a public-demo default.
+if (process.env.ENABLE_CONTENT_TRACING === 'true' && !process.env.PORT) {
+  initLogger({ projectName: process.env.BRAINTRUST_PROJECT_NAME || 'CodeArchitect' });
+}
 
 import {
   loadProject, listFiles, getFile, fileCount, getScanStats,
@@ -87,7 +90,8 @@ const PORT = process.env.PORT || 8799;
 
 // The codebase to inspect. Defaults to this tool's own repo (zero-config,
 // self-demoing); override with PROJECT_DIR=/path/to/your/project.
-const PROJECT_DIR = path.resolve(process.env.PROJECT_DIR || path.join(__dirname, '..'));
+const PUBLIC_DEMO = Boolean(process.env.PORT) || process.env.NODE_ENV === 'production';
+const PROJECT_DIR = path.resolve(PUBLIC_DEMO ? path.join(__dirname, '..') : (process.env.PROJECT_DIR || path.join(__dirname, '..')));
 const SELF_DEMO_DIR = path.resolve(path.join(__dirname, '..'));
 const INITIAL_SCAN_OPTIONS = PROJECT_DIR === SELF_DEMO_DIR
   ? {
@@ -97,22 +101,39 @@ const INITIAL_SCAN_OPTIONS = PROJECT_DIR === SELF_DEMO_DIR
   : {};
 
 const app = express();
+app.get('/privacy', (_req, res) => res.type('text/plain').sendFile(path.join(__dirname, '..', 'PRIVACY.md')));
 // Isolated sample-only MCP routes run before legacy upload and model middleware.
 app.use('/mcp', createPublicRouter());
 let startupState = { initializing: true, error: null };
-app.use(cors());
+app.use('/api', (req, res, next) => {
+  res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff' });
+  const origin = req.get('origin');
+  if (origin) {
+    let valid = false;
+    try { valid = new URL(origin).host === req.get('host'); } catch {}
+    if (!valid) return res.status(403).json({ error: 'Use the same-origin application.' });
+  }
+  // The legacy registry is process-wide, so public uploads/path selection cannot
+  // be made private by a UI toggle or a caller-selected session identifier.
+  if (PUBLIC_DEMO && req.method !== 'GET' && req.path.startsWith('/projects')) {
+    return res.status(403).json({ error: 'The public demo uses bundled source only. Use the local MCP for your own project.' });
+  }
+  if (PUBLIC_DEMO && req.path === '/tree-cache') return res.status(403).json({ error: 'Shared demo cache is read-only.' });
+  next();
+});
 // Folder uploads (browser-picked projects) post all file contents in one body, so
 // allow a generous limit; per-file and total caps are enforced during ingest.
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: PUBLIC_DEMO ? '64kb' : '50mb' }));
 
 app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
     initializing: startupState.initializing,
     startupError: startupState.error,
-    projectDir: activeProjectDir(),
+    projectDir: PUBLIC_DEMO ? 'Bundled public source' : activeProjectDir(),
     files: fileCount(),
     scan: getScanStats(),
+    publicDemo: PUBLIC_DEMO,
   });
 });
 
@@ -128,7 +149,7 @@ app.get('/api/sample', (req, res) => {
 // silently under-report.
 app.get('/api/files', (req, res) => {
   res.json({
-    projectDir: activeProjectDir(),
+    projectDir: PUBLIC_DEMO ? 'Bundled public source' : activeProjectDir(),
     projectId: activeProjectId(),
     files: listFiles(),
     scan: getScanStats(),
@@ -453,7 +474,7 @@ if (fs.existsSync(clientDist)) {
   });
 }
 
-app.listen(PORT, async () => {
+app.listen(PORT, PUBLIC_DEMO ? '0.0.0.0' : '127.0.0.1', async () => {
   console.log(`\n  Code Viewer API  →  http://localhost:${PORT}`);
   console.log(`  Project: ${PROJECT_DIR}`);
   console.log('  Scanning source files …');

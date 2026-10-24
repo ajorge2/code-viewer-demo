@@ -13,7 +13,7 @@ test('public page, real sample MCP, download and request boundaries',async()=>{
   const page=await fetch(base+'/mcp/codearchitect/');assert.equal(page.status,200);assert.match(await page.text(),/Understand the code/);
   assert.equal((await fetch(base+'/mcp/sqlharness/')).status,200);
   assert.equal((await fetch(base+'/mcp/install/codearchitect-mcp-0.2.0.tgz')).status,200);
-  assert.equal((await fetch(base+'/mcp/install/sqlharness_mcp-0.2.0-py3-none-any.whl')).status,200);
+  assert.equal((await fetch(base+'/mcp/install/sqlharness_mcp-0.2.1-py3-none-any.whl')).status,200);
   const client=new Client({name:'release-test',version:'1'});
   await client.connect(new StreamableHTTPClientTransport(new URL(base+'/mcp/codearchitect/server')));
   try{
