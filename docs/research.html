@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CodeArchitect research and evidence: learning human-readable software concepts, grounding them in AST patterns, and evaluating them on unseen repositories.">
+  <title>CodeArchitect — Category research</title>
+  <style>
+    :root{--ink:#151715;--muted:#5f655f;--paper:#fbfbf8;--line:#c9cec9;--green:#145c45;--red:#8c302a;--amber:#815819}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{width:min(980px,calc(100% - 36px));margin:auto;padding:30px 0 84px}nav{display:flex;justify-content:space-between;gap:24px;align-items:baseline;padding:0 0 18px;border-bottom:2px solid var(--ink);margin-bottom:62px}nav strong{font:700 14px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace}nav div{display:flex;gap:20px;flex-wrap:wrap}a{color:var(--green);text-underline-offset:3px}.button{padding:0;color:var(--ink);text-decoration:underline;font-weight:650;font-size:14px;background:none}.button.primary{color:var(--ink)}header{max-width:850px}.eyebrow{color:var(--muted);font:600 12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.035em}h1{max-width:780px;margin:14px 0 18px;font-size:clamp(38px,6vw,60px);line-height:1.04;letter-spacing:-.04em}.lede{max-width:800px;color:#3f4540;font-size:19px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin:44px 0 68px;border-top:2px solid var(--ink);border-bottom:1px solid var(--line)}.card{padding:22px 0;background:transparent;border:0}.grid .card{padding:19px 20px 20px 0;border-right:1px solid var(--line)}.grid .card+ .card{padding-left:20px}.grid .card:last-child{border-right:0}.metric{font-size:32px;line-height:1;font-weight:760;letter-spacing:-.03em;margin:9px 0}.label{color:var(--muted);font-size:13px}section{margin:66px 0}h2{margin:0 0 18px;padding-top:12px;border-top:1px solid var(--ink);font-size:25px;line-height:1.25;letter-spacing:-.02em}section>.card{border-left:3px solid var(--line);padding:1px 0 1px 22px}table{width:100%;border-collapse:collapse;border-top:2px solid var(--ink);border-bottom:1px solid var(--ink)}th,td{text-align:left;padding:13px 12px;border-bottom:1px solid var(--line);vertical-align:top}th{font:600 11px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted);letter-spacing:.035em}.pass{color:var(--green);font-weight:750}.fail{color:var(--red);font-weight:750}.decision{border-left:4px solid var(--red);padding:22px 24px!important;background:#f7f2f0}.decision h2{border:0;padding-top:0}.artifacts{border-top:2px solid var(--ink)}.artifact{display:grid;grid-template-columns:210px 1fr;gap:20px;padding:14px 0;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink);font-weight:650}.artifact span{display:block;color:var(--muted);font-size:13px;font-weight:400}.note{color:var(--muted);border-top:1px solid var(--line);padding-top:18px}@media(max-width:760px){main{width:min(100% - 28px,980px)}nav{align-items:flex-start;flex-direction:column;margin-bottom:44px}.grid{grid-template-columns:1fr}.grid .card,.grid .card+ .card{padding:16px 0;border-right:0;border-bottom:1px solid var(--line)}.artifact{grid-template-columns:1fr;gap:3px}table{display:block;overflow-x:auto}th:nth-child(3),td:nth-child(3){display:none}}
+  </style>
+  <link rel="stylesheet" href="plain.css?v=charis-sil">
+<style>
+header .lede { font-size: 17px !important; color: #91979F !important; font-style: italic; }
+main > section:first-of-type > h2 { border-top: 0 !important; }
+</style>
+<style>
+header .lede { margin: 0 20px !important; }
+main > section > h2 { border-top: 0 !important; padding-top: 0 !important; margin-bottom: 0 !important; }
+main > section > .card { padding-top: 5px !important; padding-bottom: 5px !important; }
+main > section p { margin-top: 0; margin-bottom: 0; padding-top: 15.5px; }
+.artifacts { border: 0 !important; }
+.artifacts a { font-weight: 600; }
+</style><style>
+main > section > table { margin-top: 20.5px; }
+@media (max-width: 760px) {
+  main > section > table { display: block; overflow-x: auto; }
+}
+</style><style>
+.threshold-evaluation table { border: 1px solid var(--line) !important; }
+.threshold-evaluation th,
+.threshold-evaluation td { border: 1px solid var(--line) !important; }
+.threshold-evaluation .pass,
+.threshold-evaluation .fail { color: var(--ink) !important; }
+</style><style>
+.method-branch { position: relative; padding-left: 3ch; }
+.branch-marker { position: absolute; left: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 400; }
+</style><style>
+.method-branch { padding-left: 2.5rem; }
+.method-evidence { display: block; position: relative; margin-top: 5px; padding-left: 2.5rem; }
+.evidence-marker { position: absolute; left: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 400; }
+</style><style>
+.method-branch { position: relative; padding-left: 2.5rem; }
+.method-branch::before { content: ""; position: absolute; left: 4px; top: 0; bottom: 0; border-left: 1px solid var(--ink); }
+.method-branch:first-child::before { top: calc(15.5px + .825em); }
+.method-branch:last-child::before { bottom: auto; height: calc(15.5px + .825em); }
+.method-branch::after { content: ""; position: absolute; left: 4px; top: calc(15.5px + .825em); width: calc(2.5rem - 14px); border-top: 1px solid var(--ink); }
+.method-evidence { position: relative; display: block; margin-top: 5px; padding-left: 2.5rem; }
+.method-evidence::before { content: ""; position: absolute; left: 4px; top: -5px; height: calc(5px + .825em); width: calc(2.5rem - 14px); border-left: 1px solid var(--ink); border-bottom: 1px solid var(--ink); }
+</style><style>
+.threshold-evaluation caption { text-align: left; caption-side: top; padding-bottom: 12px; font-size: 15.5px; }
+</style><style>
+.findings-table table,
+.findings-table th,
+.findings-table td { border: 1px solid var(--line) !important; }
+</style><style>
+main > .note { color: #878C92 !important; padding-left: 20px; padding-right: 20px; font-style: italic; font-weight: 400; }
+main > .note strong { font-weight: 600; }
+</style></head>
+<body><main>
+  <nav><strong>CodeArchitect research</strong><div><a href="index.html">Implementation analysis</a><a class="button" href="https://colab.research.google.com/drive/1fZfmiOZ7l35AeVMJTw1TlXOyQFkWI0gQ?usp=sharing">Research notebook</a><a class="button" href="https://github.com/ajorge2/code-viewer-demo">Source code</a><a class="button primary" href="https://site--codearchitect--74wvcb9qzxr6.code.run/">Try CodeArchitect</a></div></nav>
+  <section><h2>Research Question</h2><div class="card"><p>Can developer language produce recognizable concepts, such as configuration, testing, and version compatibility?</p><p>When exploring an unfamiliar codebase, developers often need to find code by what it does, even when they don’t know which function names to search for. The research investigates whether real developer commit messages can provide a vocabulary for that search, with categories such as application configuration or software testing.</p><p>Using a <a href="https://huggingface.co/datasets/bigcode/commitpackft">dataset</a> that pairs these messages with code changes, it groups descriptions of similar changes and checks whether the corresponding code shares recurring structural patterns. The code is represented as abstract syntax trees (ASTs), which describe its grammatical structure. Checking both the descriptions and the code helps distinguish categories that sound related from those that also share an implementation pattern—a step toward giving developers useful, evidence-backed labels for navigating unfamiliar code.</p></div></section>
+  <section><h2>Method: category discovery and verification</h2><div class="card"><p class="method-branch"><strong>Separate changes:</strong> Split each commit message into individual changes, each with an action and its target, for separate analysis. Ex. “add tests and update configuration” → “add tests” + “update configuration.”<span class="method-evidence"><strong>Evidence retained:</strong> Each extracted change linked to its original commit message, source repository, and commit.</span></p><p class="method-branch"><strong>Discover categories:</strong> Convert the target phrases from each extracted change into numerical representations of meaning (embeddings). Group similar targets, then repeat within groups to discover more specific categories.<span class="method-evidence"><strong>Evidence retained:</strong> Every group’s member phrases and their average embedding, which represents the group’s meaning.</span></p><p class="method-branch"><strong>Verify structure:</strong> Keep a category only when its code examples share a recurring pattern that can be expressed as a rule over a localized part of the AST.<span class="method-evidence"><strong>Evidence retained:</strong> The matching code-tree fragments and runnable rules for detecting the pattern.</span></p><p class="method-branch"><strong>Test transfer:</strong> Test the learned categories on code from repository families set aside before grouping began. Require both a meaning match and an AST-pattern match to check whether the categories apply beyond their source repositories.<span class="method-evidence"><strong>Evidence retained:</strong> Each predicted category and matching score, alongside the commit’s description of the change and the supporting code.</span></p><p class="method-branch"><strong>Evaluate acceptance thresholds:</strong> Have a human reviewer assess every accepted prediction without seeing which method produced it or its score. Compare the results with quality requirements fixed before review to decide which matching-score cutoff to use for accepting predictions.<span class="method-evidence"><strong>Evidence retained:</strong> The reviewer’s judgments, metric calculations, uncertainty ranges (confidence intervals), and final threshold decision.</span></p></div></section>
+  <section><h2>Research scale</h2><div class="card"><p><strong>Category discovery:</strong> 685 code changes from 668 repository families.</p><p><strong>Retained categories:</strong> 14 of 53 proposed groups passed both meaning and code-structure checks.</p><p><strong>Held-out evaluation:</strong> 151 code components from 132 repository families excluded from category discovery.</p></div></section>
+  <section><h2>Retained categories and hierarchy</h2><div class="card"><p>The retained categories include application configuration, automated software testing, version compatibility and metadata, state flags, test-suite infrastructure, configuration setup and paths, test-case artifacts, version lookup, and unit-test infrastructure.</p><p>More specific subcategories are retained only if their broader parent category has already passed both the meaning and code-structure checks.</p></div></section>
+  <section><h2>Human evaluation procedure</h2><p>The initial evaluation used an AI model to assess the pipeline’s outputs. A later human review kept the learned categories and held-out predictions unchanged. With the producing method and score hidden, the reviewer assessed every prediction accepted by either matching-score threshold or by a baseline using exact word matches.</p></section>
+  <section><h2>Coverage and precision at 0.62</h2><div class="card"><p><strong>Coverage at 0.62:</strong> Predictions accepted for 35 of 151 code components (23.2%), up from 11.9% at 0.72.</p><p><strong>Strict precision at 0.62:</strong> 68.6% of accepted predictions judged fully correct, below the 80% minimum set before human review.</p></div></section>
+  <section class="threshold-evaluation"><h2>Acceptance checks at 0.62</h2><table><thead><tr><th>Check</th><th>Observed</th><th>Required</th><th>Result</th></tr></thead><tbody>
+    <tr><td>Accepted coverage</td><td>23.2% (35/151)</td><td>≥ 20%</td><td class="pass">Pass</td></tr>
+    <tr><td>Strict human-reviewed precision</td><td>68.6% (24/35)</td><td>≥ 80%</td><td class="fail">Fail</td></tr>
+    <tr><td>Precision change vs. 0.72</td><td>−9.2 percentage points</td><td>≥ −5 percentage points</td><td class="fail">Fail</td></tr>
+    <tr><td>Review completeness</td><td>Complete</td><td>No missing review judgments</td><td class="pass">Pass</td></tr>
+  </tbody></table></section>
+  <section><h2>Decision: retain the 0.72 threshold</h2><p>Lowering the threshold to 0.62 nearly doubled coverage, but failed both precision requirements. Keeping 0.72 leaves more code components unlabeled to limit the additional errors observed at 0.62.</p></section>
+  <section><h2>Context-preparation benchmark</h2><div class="card"><p>A separate self-benchmark measured how long CodeArchitect takes to prepare code context before generating an answer. Preparing and caching repository summaries in advance reduced median context-preparation time from 33.2 to 12.9 seconds—a 61.3% reduction across three fixed questions on one 36-file, 9.7K-line repository. An immediate repeat prepared context in 0.81 milliseconds. These timings exclude answer generation; advance preparation took a separate median 18.9 seconds, so the improvement moves work ahead of the request rather than eliminating it.</p><p><a href="evidence/context-benchmark.html">Inspect the benchmark method, raw measurements, and limitations.</a></p></div></section>
+  <section><h2>Research evidence</h2><div class="artifacts">
+    <p><a href="https://colab.research.google.com/drive/1fZfmiOZ7l35AeVMJTw1TlXOyQFkWI0gQ?usp=sharing">Research notebook</a> — Category discovery, recursive grouping, code-structure checks, evaluation on excluded repositories, plots, and failure analysis.</p>
+    <p><a href="evidence/preregistration.md">Pre-review evaluation protocol</a> — Evaluation set, review criteria, metrics, and acceptance requirements fixed before human review.</p>
+    <p><a href="evidence/human-review-result.md">Human-review report</a> — The final decision table, evaluation scope, and limits on what the results establish.</p>
+    <p><a href="evidence/decision-result.json">Evaluation results (JSON)</a> — Counts, rates, Wilson confidence intervals, checks, and limitations.</p>
+    <p><a href="evidence/human-review.csv">Human review judgments</a> — Individual judgments from the blinded human review, used to calculate the results.</p>
+    <p><a href="evidence/manifest.json">Evidence source manifest</a> — Source fingerprint and assembly details for tracing the review materials to their inputs.</p>
+    <p><a href="evidence/context-benchmark.html">Benchmark method and measurements</a> — Recorded timings, exact calculation, measurement code, and limitations.</p>
+    <p><a href="https://github.com/ajorge2/code-viewer-demo/tree/main/benchmark-results">Raw timing records</a> — The original JSON and Markdown output plus a plain-language interpretation.</p>
+  </div></section>
+  <section class="findings-table"><h2>Findings and limitations</h2><table><thead><tr><th>Result</th><th>Evidence</th><th>Limits</th></tr></thead><tbody>
+    <tr><td>Fourteen human-readable categories learned from 685 code changes across 668 repository families</td><td>Research notebook, retained categories, and source records</td><td>Vocabulary concentrates on configuration, testing, versioning, and state metadata</td></tr>
+    <tr><td>151 held-out components from 132 repository families excluded from category discovery</td><td>Fixed evaluation set and evidence source manifest</td><td>Measures correctness among accepted predictions, not how many relevant categories are missed</td></tr>
+    <tr><td>Threshold remained at 0.72 after the 0.62 candidate failed both precision requirements</td><td>Pre-review evaluation protocol, blinded human judgments, and calculated results</td><td>The evaluation set and earlier AI judgments had informed development before human review</td></tr>
+    <tr><td>61% context-preparation latency reduction</td><td>Dated timing records, benchmark code, and three fixed questions</td><td>Three-question self-benchmark on one repository</td></tr>
+  </tbody></table></section>
+  <p class="note"><strong>Limitations:</strong>  The human judgments are new, but the evaluation set and earlier AI judgments had already informed development. These results do not establish whether developers understand unfamiliar code better or work more effectively with the tool. </p>
+</main></body></html>
