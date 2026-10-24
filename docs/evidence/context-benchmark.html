@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="../analysis-plain.css?v=research-plain-1">
 </head>
 <body><main>
-  <nav><strong>CodeArchitect / context evidence</strong><a href="../index.html">Back to CodeArchitect analysis</a></nav>
+  <nav><strong>CodeArchitect</strong><a href="../index.html">Back to CodeArchitect analysis</a></nav>
   <header><h1>Context-preparation timing benchmark</h1><p class="lede">The benchmark measured how long it takes to prepare code context before generating an answer. It compared three states: no advance preparation (cold), repository summaries prepared and cached in advance (prewarmed), and an immediate repeat request. The original timing records and benchmark code make the comparison inspectable.</p></header>
 
   <section><h2>Measured timing change</h2><p>In this self-benchmark, preparing repository summaries with a language model before the request reduced median context-preparation time by 61% (33.2 to 12.9 seconds) across three fixed questions on one 36-file, 9.7K-line repository. An immediate repeat prepared context in 0.81 milliseconds.</p></section>
