@@ -1,0 +1,13 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+[project]
+name = "sqlharness-mcp"
+version = "0.2.0"
+description = "Governed read-only SQLite tools for your existing AI model."
+requires-python = ">=3.11"
+dependencies = ["mcp==2.3.0", "sqlglot==30.21.0"]
+[project.scripts]
+sqlharness-mcp = "sqlharness.mcp_server:main"
+[tool.hatch.build.targets.wheel]
+packages = ["src/sqlharness"]

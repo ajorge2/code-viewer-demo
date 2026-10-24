@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import express from 'express';
 import cors from 'cors';
+import { createPublicRouter } from '../mcp/public.js';
 import { initLogger } from 'braintrust';
 
 initLogger({ projectName: process.env.BRAINTRUST_PROJECT_NAME || 'CodeArchitect' });
@@ -96,6 +97,8 @@ const INITIAL_SCAN_OPTIONS = PROJECT_DIR === SELF_DEMO_DIR
   : {};
 
 const app = express();
+// Isolated sample-only MCP routes run before legacy upload and model middleware.
+app.use('/mcp', createPublicRouter());
 let startupState = { initializing: true, error: null };
 app.use(cors());
 // Folder uploads (browser-picked projects) post all file contents in one body, so

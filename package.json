@@ -73,7 +73,9 @@
     "intent:large:validate-static-child-structure": "node experiments/intent-algebra/induce-static-component-structure.js --data-root .data/commitpackft/data --discovery-samples .data/intent-sweep-additive-5000/sample-results.jsonl --refinement .data/intent-sweep-additive-5000/static-component-refinement.json --child-expansions .data/intent-sweep-additive-5000/static-child-expansions.json --output .data/intent-sweep-additive-5000/static-normalization-structure.json --category 'Text normalization' --pool-per-language 1000",
     "intent:large:refine-static-normalization": ".tools/concept-cluster-venv/bin/python experiments/intent-algebra/refine-static-component-category.py --parent-refinement .data/intent-sweep-additive-5000/static-component-refinement.json --child-expansions .data/intent-sweep-additive-5000/static-child-expansions.json --embedding-cache .data/intent-sweep-additive-5000/static-component-embedding-cache.json --naming-cache .data/intent-sweep-additive-5000/static-refinement-naming-cache.json --output .data/intent-sweep-additive-5000/static-normalization-refinement.json --category 'Text normalization'",
     "intent:large:plots": "python3 experiments/intent-algebra/plot-pilot.py --input .data/intent-sweep-additive-5000 --output docs/figures/intent-algebra-sweep-5000",
-    "intent:review": "node experiments/intent-algebra/review-server.js"
+    "intent:review": "node experiments/intent-algebra/review-server.js",
+    "mcp": "node mcp/server.js",
+    "test:mcp": "node --test test/mcp.test.js test/mcp-public.test.js"
   },
   "engines": {
     "node": ">=20"
@@ -85,7 +87,9 @@
     "express": "^4.21.2",
     "openai": "^7.43.0",
     "tree-sitter-wasms": "^0.1.13",
-    "web-tree-sitter": "^0.22.6"
+    "web-tree-sitter": "^0.22.6",
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
