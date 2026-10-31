@@ -1,3 +1,4 @@
+import { traceEvent } from '../benchmark/contentTrace.js';
 // Two deliberately separate memo tables for the meaning recursion:
 //   • basic summaries (`bare`, `barewindow`, `folderbare`) are content-addressed,
 //     shared across users, and persisted to disk;
@@ -19,6 +20,7 @@ const DIR = process.env.MEANING_CACHE_DIR
   ? path.resolve(process.env.MEANING_CACHE_DIR)
   : path.join(HERE, '..', '..', '.meaning-cache');
 const FILE = path.join(DIR, 'basic-summaries.jsonl');
+const BUNDLED_FILE = path.join(HERE, '..', '..', 'demo', 'basic-summaries.jsonl');
 const LEGACY_FILE = path.join(DIR, 'meanings.jsonl');
 
 const mem = new Map();
@@ -73,7 +75,9 @@ function load() {
   const usingLegacy = !fs.existsSync(FILE) && fs.existsSync(LEGACY_FILE);
   const source = usingLegacy ? LEGACY_FILE : FILE;
   let raw;
-  try { raw = fs.readFileSync(source, 'utf8'); } catch { return; }
+  raw = [BUNDLED_FILE, source].map(file => {
+    try { return fs.readFileSync(file, 'utf8'); } catch { return ''; }
+  }).join('\n');
   const durableLines = [];
   for (const line of raw.split('\n')) {
     if (!line) continue;
@@ -109,6 +113,7 @@ export function cacheGet(key, { sessionId } = {}) {
     kind = kinds.get(key) || kind;
   }
   recordCacheAccess(kind, value !== undefined);
+  traceEvent('cache.lookup', { key, kind, scope: isFocusedKind(kind) ? 'browser-session' : 'shared-basic-summary' }, { hit: value !== undefined, value: value ?? null, provenance: 'Existing cache value; original generation is not reconstructed by this lookup.' });
   return value;
 }
 

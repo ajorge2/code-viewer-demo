@@ -22,96 +22,20 @@ function loadChunkSizes(projectId) {
   }
 }
 
-function ProjectOverview({ project, files, scan, onOpenFile }) {
-  const languages = useMemo(() => {
-    const counts = new Map()
-    for (const file of files) {
-      const label = file.language || file.relPath.split('.').pop() || 'other'
-      counts.set(label, (counts.get(label) || 0) + 1)
-    }
-    return [...counts.entries()].sort((a, b) => b[1] - a[1])
-  }, [files])
-
-  const topFolders = useMemo(() => {
-    const counts = new Map()
-    for (const file of files) {
-      const folder = file.relPath.includes('/') ? file.relPath.split('/')[0] : 'Project root'
-      counts.set(folder, (counts.get(folder) || 0) + 1)
-    }
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
-  }, [files])
-
-  const starterFile = useMemo(() => {
-    const preferred = ['client/src/App.jsx', 'src/App.jsx', 'README.md', 'package.json']
-    for (const relPath of preferred) {
-      const match = files.find((file) => file.relPath === relPath)
-      if (match) return match
-    }
-    return files.find((file) => {
-      const segments = file.relPath.split('/')
-      return !segments.some((segment) => segment.startsWith('.')) &&
-        !/(secret|credential|token|\.env|config\.local)/i.test(file.relPath)
-    }) || null
-  }, [files])
-
+function ProjectOverview({ scan }) {
   const coverageLimited = scan?.truncatedByCount || scan?.truncatedByBytes || scan?.truncatedByClient
-
   return (
     <div className="project-overview-shell">
       <section className="project-overview">
         <div className="overview-heading-row">
-          <h2>{project?.name || 'Active project'}</h2>
+          <h2>Selected file will appear here. Click on one to get started!<span className="overview-file-arrow" aria-hidden="true">←</span></h2>
         </div>
-
-        <div className="overview-metrics">
-          <div><span>Files</span><strong>{files.length}</strong></div>
-          <div><span>Languages</span><strong>{languages.length}</strong></div>
-        </div>
-
         {coverageLimited && (
           <div className="coverage-card warning">
-            <span><strong>Coverage limit reached</strong>The overview reflects the indexed subset.</span>
+            <span><strong>Coverage limit reached</strong>The indexed files are a subset of this project.</span>
           </div>
-        )}
-
-        <div className="overview-grid">
-          <section>
-            <div className="overview-section-head"><h3>Languages</h3><span>indexed files</span></div>
-            <div className="overview-bars">
-              {languages.slice(0, 6).map(([name, count]) => (
-                <div key={name} className="overview-bar-row">
-                  <span>{name}</span>
-                  <span className="overview-bar"><i style={{ width: `${Math.max(8, (count / files.length) * 100)}%` }} /></span>
-                  <span>{count}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-          <section>
-            <div className="overview-section-head"><h3>Largest areas</h3><span>by file count</span></div>
-            <div className="overview-folder-list">
-              {topFolders.map(([name, count]) => <div key={name}><span>{name}/</span><span>{count} files</span></div>)}
-            </div>
-          </section>
-        </div>
-
-        {starterFile && (
-          <button className="overview-primary" onClick={() => onOpenFile(starterFile.id)}>
-            Open {starterFile.relPath.split('/').pop()}
-          </button>
         )}
       </section>
-
-      <aside className="overview-insight">
-        <div className="overview-insight-body">
-          <div className="overview-insight-intro">
-            <div>
-              <h3>Choose evidence</h3>
-              <p>Select a file for exact code, or ask at project scope from Explorer.</p>
-            </div>
-          </div>
-        </div>
-      </aside>
     </div>
   )
 }
@@ -133,6 +57,18 @@ function EmptyWorkspace({ onOpenProject }) {
 
 export default function App() {
   const privacyDialogRef = useRef(null)
+  const privacyButtonRef = useRef(null)
+  const [privacyOpen, setPrivacyOpen] = useState(false)
+  useEffect(() => {
+    if (!privacyOpen) return
+    const dismiss = (event) => {
+      if (!privacyDialogRef.current?.contains(event.target) && !privacyButtonRef.current?.contains(event.target)) setPrivacyOpen(false)
+    }
+    const escape = (event) => { if (event.key === 'Escape') setPrivacyOpen(false) }
+    document.addEventListener('pointerdown', dismiss)
+    document.addEventListener('keydown', escape)
+    return () => { document.removeEventListener('pointerdown', dismiss); document.removeEventListener('keydown', escape) }
+  }, [privacyOpen])
   const licensesDialogRef = useRef(null)
   const [files, setFiles] = useState([])
   const [projectDir, setProjectDir] = useState('')
@@ -481,19 +417,28 @@ export default function App() {
   return (
     <div className="app" style={{ '--statusbar-size': showStatusbar ? '26px' : '0px' }}>
       <header className="topbar workspace-topbar">
+        <div className="brand-area">
         <div className="brand">
           <span className="logo" aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <rect x="2.5" y="17.4" width="4.6" height="1.7" rx="0.85" />
-              <rect x="6.5" y="14.4" width="4.6" height="1.7" rx="0.85" />
-              <rect x="10.5" y="11.4" width="4.6" height="1.7" rx="0.85" />
-              <rect x="14.5" y="8.4" width="4.6" height="1.7" rx="0.85" />
-              <rect x="18.5" y="5.4" width="4.6" height="1.7" rx="0.85" />
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="url(#brand-bar-gradient)">
+              <defs>
+                <linearGradient id="brand-bar-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#2E0012" />
+                  <stop offset="100%" stopColor="#7A2949" />
+                </linearGradient>
+              </defs>
+              <rect x="2.5" y="17.4" width="4.1" height="1.7" rx="0.25" />
+              <rect x="6.2" y="14.4" width="5.2" height="1.7" rx="0.25" />
+              <rect x="10.5" y="11.4" width="4.1" height="1.7" rx="0.25" />
+              <rect x="14.2" y="8.4" width="5.2" height="1.7" rx="0.25" />
+              <rect x="18.5" y="5.4" width="4.1" height="1.7" rx="0.25" />
             </svg>
           </span>
           <div>
-            <h1>CodeArchitect</h1>
+            <h1><span className="brand-code">Code</span><span className="brand-architect">Architect</span></h1>
           </div>
+        </div>
+
         </div>
         {view === 'main' && (
           <button
@@ -522,29 +467,22 @@ export default function App() {
         <div className="topbar-right">
           <button type="button" className="privacy-link" onClick={() => licensesDialogRef.current?.showModal()}>Software licenses</button>
           <dialog ref={licensesDialogRef} className="privacy-dialog licenses-dialog" aria-labelledby="licenses-title" onClick={event => { if (event.target === event.currentTarget) event.currentTarget.close() }}>
-            <button type="button" className="privacy-close" aria-label="Close software licenses" onClick={() => licensesDialogRef.current?.close()}>×</button>
+            <button type="button" className="privacy-close" aria-label="Close software licenses" onClick={() => licensesDialogRef.current?.close()}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
             <h2 id="licenses-title">Software licenses</h2>
             <pre>{softwareLicenses}</pre>
           </dialog>
           <span className="topbar-separator" aria-hidden="true">•</span>
-          <button type="button" className="privacy-link" onClick={() => privacyDialogRef.current?.showModal()}>Privacy</button>
-          <dialog ref={privacyDialogRef} className="privacy-dialog" aria-labelledby="privacy-title" onClick={event => { if (event.target === event.currentTarget) event.currentTarget.close() }}>
-            <button type="button" className="privacy-close" aria-label="Close privacy" onClick={() => privacyDialogRef.current?.close()}>×</button>
+          <button ref={privacyButtonRef} type="button" className="privacy-link" aria-expanded={privacyOpen} onClick={() => setPrivacyOpen((value) => !value)}>Privacy</button>
+          {privacyOpen && <div ref={privacyDialogRef} className="privacy-dialog privacy-bubble" role="dialog" aria-labelledby="privacy-title">
+            <button type="button" className="privacy-close" aria-label="Close privacy" onClick={() => setPrivacyOpen(false)}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
+            <div className="privacy-bubble-content">
             <h2 id="privacy-title">Privacy</h2>
             <p>The hosted web demo reads its bundled public source. Public API callers cannot upload a folder, select server filesystem paths, switch projects, or remove the shared project. Legacy web questions and selected source context are sent to OpenAI. Requests explicitly disable optional model-response storage; provider retention policies still apply. Parse/basic-summary caches can persist bundled source analysis. Content tracing is off by default; local operators may explicitly enable it.</p>
             <p>The local web server binds to loopback and supports trusted single-operator project selection. Source and generated summaries can be cached on that operator's disk. Do not expose this local application as a multi-user service.</p>
             <p>The independent MCP entry point is different: it returns bounded source/AST evidence, does not call a model, and does not persist source, requests, results, or trees. Its local root is selected explicitly; the HTTP MCP demonstration exposes synthetic files only. The AI client and its provider may retain returned context. Hosting infrastructure may retain operational metadata.</p>
-          </dialog>
-          {view === 'main' ? (
-            <>
-              {activeProject && (
-                <>
-                  <span className="topbar-separator" aria-hidden="true">•</span>
-                  <span id="topbar-context-slot" className="topbar-context-slot" />
-                </>
-              )}
-            </>
-          ) : (
+            </div>
+          </div>}
+          {view !== 'main' && (
             <button className="reload-btn text-btn" title="Back to the app" aria-label="Back to the app" onClick={() => setView('main')}>
               Back to workspace
             </button>
@@ -554,7 +492,7 @@ export default function App() {
 
       {view === 'main' ? (
         <div className={`app-body workspace-body${explorerOpen ? ' explorer-open' : ''}${folderInsightOpen ? ' folder-insight-open' : ''}`}>
-        <div className="workspace-explorer" style={{ width: explorerWidth }}>
+        <div className={`workspace-explorer${selectedFile ? ' has-selected-file' : ''}`} style={{ width: explorerWidth }}>
           <Library
             projectId={activeProjectId}
             files={files}

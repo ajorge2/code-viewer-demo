@@ -866,7 +866,7 @@ export default function CodeViewer({
       <div className="viewer-toolbar">
         <div className="toolbar-top">
           <div className="vt-file-row">
-            <span className="vt-path">{file.relPath}</span>
+            <span className="vt-path">{file.relPath.split('/').pop()}</span>
           </div>
           {demo && <div className="gran-row">
             <button
@@ -885,13 +885,6 @@ export default function CodeViewer({
             </button>
           </div>}
         </div>
-        {!demo && (
-          <div className="scope-ledger" aria-label="Active context">
-            <button type="button" onClick={bulgeExactFocus} title="Reveal the highlighted lines">
-              {pendingRange ? highlightLabel(pendingRange) : 'Whole file'}
-            </button>
-          </div>
-        )}
         {/* The manual chunking sliders live only on the demo page now — shown in a
             single side-by-side row. The main app chunks by highlighting. */}
         {demo && (
@@ -1009,6 +1002,22 @@ export default function CodeViewer({
           <>
             <div className="insight-resizer" onPointerDown={beginInsightResize} role="separator" aria-label="Resize Insight" />
             <InsightTabbar
+              leading={
+                <span className="chat-title">
+                <span className="chat-title-name">{file.relPath.split('/').pop()}</span>
+                <span className="chat-title-dot"> • </span>
+                <button
+                  type="button"
+                  className="chat-sel"
+                  onClick={bulgeSelection}
+                  title={selected != null ? 'Show the selected code' : 'Chatting about the whole file'}
+                >
+                  {selected != null && chunks[selected]
+                    ? selectionLabel(chunks[selected])
+                    : 'Whole file'}
+                </button>
+              </span>
+              }
               tabs={[
                 { id: 'understand', label: 'Understand' },
                 { id: 'trace', label: 'Trace' },
@@ -1132,42 +1141,7 @@ export default function CodeViewer({
             role="dialog"
             aria-label="Ask about this file"
           >
-            <div className="chat-head">
-              <span className="chat-title">
-                <span className="chat-title-name">{file.relPath.split('/').pop()}</span>
-                <span className="chat-title-dot"> • </span>
-                <button
-                  type="button"
-                  className="chat-sel"
-                  onClick={bulgeSelection}
-                  title={selected != null ? 'Show the selected code' : 'Chatting about the whole file'}
-                >
-                  {selected != null && chunks[selected]
-                    ? selectionLabel(chunks[selected])
-                    : 'Whole file'}
-                </button>
-              </span>
-            </div>
-            {editKey && (
-              <div className="chat-context">
-                <span className="chat-ctx-count">Chunks: {chunks.length}</span>
-              </div>
-            )}
             <div className="chat-body" ref={chatScrollRef}>
-              {chatLog.length === 0 && !chatBusy && !suggestBusy && (
-                <div className="chat-placeholder insight-empty-copy">
-                  <strong>Ask from evidence</strong>
-                  <span>
-                    The current file and {pendingRange ? 'your exact selection' : 'its whole-file structure'} are in scope.
-                    {ctxFileId ? ' One supporting file is attached.' : ' Attach one supporting file when a comparison needs it.'}
-                  </span>
-                  <div className="insight-prompt-list" aria-label="Example questions">
-                    <button type="button" onClick={() => setChatInput('Explain the responsibility of this code.')}>Explain this responsibility</button>
-                    <button type="button" onClick={() => setChatInput('What depends on this code?')}>What depends on this?</button>
-                    <button type="button" onClick={() => setChatInput('What should I inspect next?')}>What should I inspect next?</button>
-                  </div>
-                </div>
-              )}
               {chatLog.map((m, i) => (
                 <div key={i} className={`chat-msg ${m.role}${m.deepen ? ' deepen' : ''}${m.edit ? ' edit' : ''}${m.edits ? ' edits' : ''}`}>
                   {m.role === 'assistant' && m.scope && <div className="chat-msg-scope">Scope · {m.scope}</div>}

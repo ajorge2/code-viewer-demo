@@ -82,8 +82,7 @@ const ProjectSwitcher = forwardRef(function ProjectSwitcher({ projects, activeId
       className={`proj-tab proj-chooser${sandbox ? ' sandbox-locked' : ''}`}
       disabled={sandbox}
       onClick={() => { setOpen((o) => !o); setSettingsOpen(false) }}
-      title={sandbox ? 'Adding folders is disabled in this sandbox' : 'Open folder'}
-      aria-label={sandbox ? 'Adding folders is disabled in this sandbox' : 'Open folder'}
+      aria-label="Add codebase"
       aria-expanded={open}
     >
       <svg className={`proj-caret${open ? ' open' : ''}`} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -290,16 +289,16 @@ const ProjectSwitcher = forwardRef(function ProjectSwitcher({ projects, activeId
       {stackTabs.map((p, i) => {
         const isActive = p.id === activeId
         const className = `proj-tab proj-stack-tab${isActive ? ' proj-current has-remove' : ''}${welcome ? ' proj-tab-welcome' : ''}`
-        const projectName = <span className="proj-name">{p.name}</span>
+        const projectName = <span className="proj-name">{sandbox ? 'App Source Code' : p.name}</span>
         return (
           <Fragment key={p.id}>
             {isActive ? (
-              <div className={className} style={{ zIndex: 100 }} title={p.absPath}>
+              <div className={className} style={{ zIndex: 1000 }}>
                 <span
                   className={`proj-current-remove${sandbox ? ' sandbox-locked' : ''}`}
                   role={sandbox ? undefined : 'button'}
                   tabIndex={sandbox ? -1 : 0}
-                  title={sandbox ? 'Removing this project is disabled in the sandbox' : 'Remove from list'}
+                  title={sandbox ? undefined : 'Remove from list'}
                   aria-label={sandbox ? undefined : `Remove ${p.name}`}
                   aria-hidden={sandbox ? 'true' : undefined}
                   onClick={sandbox ? undefined : (e) => { e.stopPropagation(); onRemove(p.id) }}

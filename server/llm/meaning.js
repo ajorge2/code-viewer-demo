@@ -1,3 +1,4 @@
+import { traceStep, traceEvent } from '../benchmark/contentTrace.js';
 // RAG meaning engine. A question about a selected chunk is answered against a
 // recursively-built "meaning" of that chunk:
 //
@@ -16,6 +17,22 @@
 import 'dotenv/config';
 import crypto from 'crypto';
 import OpenAI from 'openai';
+import { traced, wrapOpenAI } from 'braintrust';
+import { runWithTelemetry } from '../benchmark/telemetry.js';
+
+const contentTracingEnabled = () => process.env.ENABLE_CONTENT_TRACING === 'true' && !process.env.PORT;
+
+async function traceChat(name, args, fn) {
+  if (!contentTracingEnabled()) return fn(args);
+  return traced(async (span) => {
+    const { sessionId, file, contextFile, ...input } = args;
+    span.log({ input: { ...input, file: file?.relPath, contextFile: contextFile?.relPath }, metadata: { environment: 'local' } });
+    const { value, telemetry } = await runWithTelemetry(name, {}, () => fn(args));
+    span.log({ output: value, metadata: { telemetry } });
+    return value;
+  }, { name });
+}
+
 import {
   fileNodes, semanticParentId, semanticPath,
   childrenIndex, semanticChildren, maxSemanticDepth, minimalFrontier,
@@ -104,6 +121,7 @@ async function createOpenAIMessage({ model, max_tokens: maxTokens, system, messa
     max_completion_tokens: maxTokens,
     ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
   };
+  traceEvent('prompt.assembled', { systemInstructions: instructions, conversationMessages: apiMessages.slice(instructions ? 1 : 0) }, { ...body, store: false });
   const completion = await openAI().chat.completions.create({ ...body, store: false });
   const content = completion?.choices?.[0]?.message?.content;
   if (typeof content !== 'string') {
@@ -111,12 +129,16 @@ async function createOpenAIMessage({ model, max_tokens: maxTokens, system, messa
     e.status = 503;
     throw e;
   }
+  traceEvent('response.extract_text', { choices: completion.choices }, { text: content, transformation: 'Read choices[0].message.content; no rewriting.' });
   return { content: [{ type: 'text', text: content }] };
 }
 
 let _openAI = null;
 function openAI() {
-  if (!_openAI) _openAI = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  if (!_openAI) {
+    const rawClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    _openAI = contentTracingEnabled() ? wrapOpenAI(rawClient) : rawClient;
+  }
   return _openAI;
 }
 
@@ -257,16 +279,17 @@ const ctxPending = new Map();
 // and folder bares — content-addressed by `key`, deduped, and slot-bounded.
 async function computeBare(key, label, body, meta) {
   const hit = cacheGet(key);
-  if (hit !== undefined) return hit;
+  if (typeof hit === 'string' && hit.trim()) return hit;
   if (barePending.has(key)) return barePending.get(key);
   const p = (async () => {
     const out = textOf(await withSlot(() => client().messages.create({
       model: BARE_MODEL,
-      max_tokens: 512,
+      max_tokens: 2048,
       ...effortCfg(BARE_MODEL, 'low'),
       system: [{ type: 'text', text: meta.system, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: body }],
     }), { phase: 'bare_summary', model: BARE_MODEL }));
+    if (!out.trim()) throw new Error(`Empty basic summary: ${label}`);
     cacheSet(key, out, { fileHash: meta.fileHash, kind: meta.kind });
     return out;
   })();
@@ -312,7 +335,7 @@ async function foldWindows(headline, parts) {
   const listing = parts.map((p, i) => `Part ${i + 1}/${parts.length}: ${p}`).join('\n');
   const msg = await withSlot(() => client().messages.create({
     model: BARE_MODEL,
-    max_tokens: 512,
+    max_tokens: 2048,
     ...effortCfg(BARE_MODEL, 'low'),
     system: [{ type: 'text', text: BARE_COMBINE_SYSTEM, cache_control: { type: 'ephemeral' } }],
     messages: [{ role: 'user', content: `Summaries of consecutive parts of ${headline}, in order:\n${listing}\n\nGive one unified 1-3 sentence summary of the whole.` }],
@@ -332,7 +355,7 @@ async function bareSummary(key, headline, rawText, meta, windowChars = DEFAULT_B
   const frame = (head, t) => `${head}:\n\n\`\`\`\n${clipW(t)}\n\`\`\``;
   if (rawText.length <= windowChars) return computeBare(key, headline, frame(headline, rawText), meta);
   const hit = cacheGet(key);
-  if (hit !== undefined) return hit;
+  if (typeof hit === 'string' && hit.trim()) return hit;
   if (barePending.has(key)) return barePending.get(key);
   const p = (async () => {
     const windows = splitWindows(rawText, windowChars);
@@ -343,6 +366,7 @@ async function bareSummary(key, headline, rawText, meta, windowChars = DEFAULT_B
       { system: meta.system, fileHash: meta.fileHash, kind: 'barewindow' },
     ));
     const out = await foldWindows(headline, parts);
+    if (!out.trim()) throw new Error(`Empty basic summary: ${headline}`);
     cacheSet(key, out, { fileHash: meta.fileHash, kind: meta.kind });
     return out;
   })();
@@ -354,7 +378,7 @@ async function bareSummary(key, headline, rawText, meta, windowChars = DEFAULT_B
 async function foldMeaning(node, bare, outer) {
   const msg = await withSlot(() => client().messages.create({
     model: MEANING_MODEL,
-    max_tokens: 512,
+    max_tokens: 2048,
     ...effortCfg(MEANING_MODEL, 'low'),
     system: [{ type: 'text', text: CTX_SYSTEM, cache_control: { type: 'ephemeral' } }],
     messages: [{
@@ -456,13 +480,20 @@ export function projectCacheHashes(files, tree = getProjectTree()) {
 // Fold a folder chain root → last, returning the last folder's ctx. Uses the
 // eager folder bares; degrades to partial/null if not yet warm. Per-dir cached.
 async function chainContext(chain, sessionId) {
+  return traceStep('context.folder_chain', { folders: chain.map(n => ({ path: n.path, basicSummaryKey: n.bareKey, contextualSummaryKey: `c:dir:${n.hash}` })) }, () => chainContextImpl(chain, sessionId));
+}
+
+async function chainContextImpl(chain, sessionId) {
   let ctx = null;
   for (const node of chain) {
     const ctxKey = `c:dir:${node.hash}`;
     const cachedCtx = cacheGet(ctxKey, { sessionId });
     if (cachedCtx !== undefined) { ctx = cachedCtx; continue; }
     const bare = cacheGet(node.bareKey);
-    if (bare === undefined) break; // not warmed yet → use what we have so far
+    if (bare === undefined) {
+      traceEvent('context.chain_stopped', { folder: node.path }, { reason: 'Basic summary missing; return accumulated context without waiting.', accumulatedContext: ctx });
+      break;
+    }
     ctx = ctx === null ? bare : await foldMeaning(node, bare, ctx);
     cacheSet(ctxKey, ctx, { fileHash: node.hash, kind: 'dirctx', sessionId });
   }
@@ -582,7 +613,7 @@ async function foldPeers(node, selfBare, peerBares, rootContext) {
     : '(this unit spans the whole file — there are no other regions)';
   const msg = await withSlot(() => client().messages.create({
     model: MEANING_MODEL,
-    max_tokens: 512,
+    max_tokens: 2048,
     ...effortCfg(MEANING_MODEL, 'low'),
     system: [{ type: 'text', text: CTX_PEERS_SYSTEM, cache_control: { type: 'ephemeral' } }],
     messages: [{
@@ -719,7 +750,9 @@ export async function frontierChunks(file, around = null, sessionId) {
 //              or 'infer' (typed message → classify deepen vs. new).
 //   transcript recent [{role,text}] turns, for classification + answer context.
 // Returns { answer, meaning, path, depth, atBottom, maxDepth }.
-export async function ask({ file, nodeId, question, depth = 0, intent = 'infer', transcript = [], contextFile = null, bareWindow = DEFAULT_BARE_WINDOW, focus = '', highlight = '', traceContext = null, sessionId }) {
+export function ask(args) { return traceChat('chat.file', args, askImpl); }
+
+async function askImpl({ file, nodeId, question, depth = 0, intent = 'infer', transcript = [], contextFile = null, bareWindow = DEFAULT_BARE_WINDOW, focus = '', highlight = '', traceContext = null, sessionId }) {
   const { nodes } = await fileNodes(file);
   if (!nodes[nodeId]) {
     const e = new Error('Unknown nodeId for this file (it may be stale — re-chunk and retry).');
@@ -880,13 +913,16 @@ const FOLDER_ANSWER_SYSTEM =
 
 // Answer a question about a FOLDER (the current directory in the file browser).
 // dirPath '' = project root. Returns { answer, summary, path }.
-export async function askFolder({ dirPath = '', question, transcript = [], contextFile = null, sessionId }) {
+export function askFolder(args) { return traceChat('chat.folder', args, askFolderImpl); }
+
+async function askFolderImpl({ dirPath = '', question, transcript = [], contextFile = null, sessionId }) {
   const tree = getProjectTree();
   if (!tree) { const e = new Error('No project is loaded yet.'); e.status = 503; throw e; }
   const path = dirPath.replace(/\\/g, '/').replace(/\/$/, '');
   const node = tree.nodes.get(path);
   if (!node || node.kind !== 'dir') { const e = new Error(`Unknown folder: ${path || '(root)'}`); e.status = 404; throw e; }
 
+  traceEvent('context.folder_scope', { requestedPath: dirPath }, { path, children: node.children.map(c => ({ path: c.path, kind: c.kind, summaryKey: c.bareKey })), transcriptUsed: transcript.slice(-4), attachedFile: contextFile });
   const summary = await chainContext(folderChainToDir(path), sessionId); // ctx of this folder
   const contents = node.children
     .map((c) => `- ${c.name}${c.kind === 'dir' ? '/' : ''}: ${cacheGet(c.bareKey) ?? '(summary pending)'}`)

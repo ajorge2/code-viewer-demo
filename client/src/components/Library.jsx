@@ -3,7 +3,6 @@ import { askFolder } from '../lib/api.js'
 import { renderRich } from '../lib/richText.jsx'
 import { humanizeError } from '../lib/humanizeError.js'
 import ContextAttach from './ContextAttach.jsx'
-import InsightTabbar from './InsightTabbar.jsx'
 
 // Build a nested folder tree from flat relPaths.
 function buildTree(files) {
@@ -367,7 +366,6 @@ export default function Library({
       <div
         className="explorer-pane-head"
         aria-label="Explorer"
-        title={cwd ? `${rootName}/${cwd}` : projectDir}
       >
         <span className="lib-crumbs explorer-path">
           {[rootName, ...cwdParts].map((part, i, arr) => (
@@ -383,7 +381,6 @@ export default function Library({
           ))}
           <span className="crumb-sep">/</span>
         </span>
-        <span className="explorer-pane-meta">{files.length} files</span>
       </div>
       <div className="lib-project lib-tools" title={cwd ? `${rootName}/${cwd}` : projectDir}>
         <textarea
@@ -420,7 +417,7 @@ export default function Library({
               className="tree-row folder"
               key={`f-${i}`}
               onClick={() => navToFolder(cwd ? `${cwd}/${row.path}` : row.path)}
-              title={`Open ${row.name}/`}
+              aria-label={`Open ${row.name}/`}
             >
               <Guides depth={row.depth} prefix={row.prefix} isLast={row.isLast} />
               <span className="tree-label">{row.name}/</span>
@@ -430,7 +427,7 @@ export default function Library({
               key={row.file.id}
               className={`tree-row file${row.file.id === selectedId ? ' active' : ''}`}
               onClick={() => { dropChat(); onSelect(row.file.id) }}
-              title={row.file.relPath}
+              aria-label={row.file.relPath}
             >
               <Guides depth={row.depth} prefix={row.prefix} isLast={row.isLast} />
               <span className="tree-label">{row.file.relPath.split('/').pop()}</span>
@@ -460,15 +457,9 @@ export default function Library({
           role="dialog"
           aria-label="Ask about this folder"
         >
-          <InsightTabbar
-            label="Insight views"
-            tabs={[{ id: 'understand', label: 'Understand' }]}
-            activeTab="understand"
-            onClose={closeChat}
-            className="folder-insight-tabbar"
-          />
-          <div className="chat-head">
-            <span className="chat-head-left">
+          <div className="insight-tabbar folder-insight-tabbar">
+            <div className="insight-tabbar-scope">
+              <span className="chat-head-left">
               {/* Same folder history back/forward as the main UI's path chevrons —
                   navigating re-scopes this chat to the new folder. */}
               {(canBack || canFwd) && <>
@@ -491,21 +482,10 @@ export default function Library({
                 <span className="chat-sel">{cwd ? 'Folder scope' : 'Project scope'}</span>
               </span>
             </span>
+            </div>
+            <button type="button" className="insight-collapse" onClick={closeChat} aria-label="Close chat"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
           </div>
           <div className="chat-body" ref={chatScrollRef}>
-            {chatLog.length === 0 && !chatBusy && (
-              <div className="chat-placeholder insight-empty-copy">
-                <strong>Ask from evidence</strong>
-                <span>
-                  The current {cwd ? 'folder and its indexed structure are' : 'project and its indexed structure are'} in scope. Attach one supporting file when a comparison needs it.
-                </span>
-                <div className="insight-prompt-list" aria-label="Example questions">
-                  <button type="button" onClick={() => setChatInput(`Explain the responsibility of this ${cwd ? 'folder' : 'project'}.`)}>Explain this responsibility</button>
-                  <button type="button" onClick={() => setChatInput(`What depends on this ${cwd ? 'folder' : 'project'}?`)}>What depends on this?</button>
-                  <button type="button" onClick={() => setChatInput('What should I inspect next?')}>What should I inspect next?</button>
-                </div>
-              </div>
-            )}
             {chatLog.map((m, i) => {
               const refClick = (r) => (r.kind === 'file' ? () => openFileRef(r.id) : () => setCwd(r.path))
               const refs = m.role === 'assistant' ? refsInText(m.text, projectRefs) : []

@@ -1,3 +1,4 @@
+import { traceStep } from './contentTrace.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { performance } from 'node:perf_hooks';
 
@@ -77,7 +78,7 @@ export async function measureTelemetry(name, fn) {
   if (!context) return fn();
   const startedAt = performance.now();
   try {
-    return await fn();
+    return await traceStep(name, {}, fn);
   } finally {
     addTiming(context, name, performance.now() - startedAt);
   }

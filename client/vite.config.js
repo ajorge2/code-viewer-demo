@@ -7,7 +7,15 @@ export default defineConfig({
   server: {
     port: 5174,
     proxy: {
-      '/api': 'http://localhost:8799',
+      '/api': {
+        target: 'http://localhost:8799',
+        changeOrigin: false,
+        configure(proxy) {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            proxyReq.setHeader('host', req.headers.host)
+          })
+        },
+      },
     },
   },
 })

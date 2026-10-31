@@ -95,7 +95,7 @@ const PROJECT_DIR = path.resolve(PUBLIC_DEMO ? path.join(__dirname, '..') : (pro
 const SELF_DEMO_DIR = path.resolve(path.join(__dirname, '..'));
 const INITIAL_SCAN_OPTIONS = PROJECT_DIR === SELF_DEMO_DIR
   ? {
-      excludeRootDirs: ['experiments', 'docs', 'test'],
+      excludeRootDirs: ['experiments', 'docs', 'test', 'demo'],
       excludeRootFiles: ['package.json', 'README.md'],
     }
   : {};
