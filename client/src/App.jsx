@@ -526,6 +526,7 @@ export default function App() {
             <h2 id="licenses-title">Software licenses</h2>
             <pre>{softwareLicenses}</pre>
           </dialog>
+          <span className="topbar-separator" aria-hidden="true">•</span>
           <button type="button" className="privacy-link" onClick={() => privacyDialogRef.current?.showModal()}>Privacy</button>
           <dialog ref={privacyDialogRef} className="privacy-dialog" aria-labelledby="privacy-title" onClick={event => { if (event.target === event.currentTarget) event.currentTarget.close() }}>
             <button type="button" className="privacy-close" aria-label="Close privacy" onClick={() => privacyDialogRef.current?.close()}>×</button>
@@ -537,7 +538,10 @@ export default function App() {
           {view === 'main' ? (
             <>
               {activeProject && (
-                <span id="topbar-context-slot" className="topbar-context-slot" />
+                <>
+                  <span className="topbar-separator" aria-hidden="true">•</span>
+                  <span id="topbar-context-slot" className="topbar-context-slot" />
+                </>
               )}
             </>
           ) : (
