@@ -3356,3 +3356,10 @@ button:disabled { box-shadow: none; }
 }
 
 .workspace-topbar .proj-stack-tab.proj-current { min-height: 28px; height: 28px; padding-inline: 7px; gap: 5px; }
+
+.workspace-topbar .brand { column-gap: 20px; }
+.workspace-topbar .logo { background: transparent; box-shadow: none; filter: none; }
+.workspace-topbar .logo svg { width: 40px; height: 40px; background: transparent; }
+@media (max-width: 767px) {
+  .workspace-topbar .logo svg { width: 32px; height: 32px; }
+}
