@@ -3335,3 +3335,8 @@ button:disabled { box-shadow: none; }
 .privacy-close:hover { border-color: currentColor; }
 
 .licenses-dialog pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 1.6; text-align: left; }
+
+.workspace-topbar .proj-chooser,
+.workspace-topbar .proj-chooser:hover,
+.workspace-topbar .proj-chooser.sandbox-locked,
+.workspace-topbar .proj-chooser.sandbox-locked:disabled { background: transparent; box-shadow: none; border-color: transparent; }
