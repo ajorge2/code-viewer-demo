@@ -3324,3 +3324,12 @@ button:disabled { box-shadow: none; }
   .workspace-explorer { transition: none; }
   .status-primary.busy > i { animation: none; }
 }
+
+.privacy-link { border: 0; padding: 4px 0; background: transparent; color: inherit; font: inherit; font-size: 11px; cursor: pointer; }
+.privacy-link:hover { text-decoration: underline; }
+.privacy-dialog { box-sizing: border-box; width: min(580px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); padding: 28px; border: 1px solid var(--border); border-radius: 14px; background: var(--panel); color: var(--text); }
+.privacy-dialog::backdrop { background: rgba(20, 30, 27, .4); }
+.privacy-dialog h2 { margin: 0 32px 20px 0; font-size: 22px; }
+.privacy-dialog p { font-size: 14px; line-height: 1.6; }
+.privacy-close { position: absolute; top: 16px; right: 16px; width: 28px; height: 28px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: inherit; font-size: 22px; cursor: pointer; }
+.privacy-close:hover { border-color: currentColor; }
