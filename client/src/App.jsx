@@ -554,7 +554,7 @@ export default function App() {
           <Library
             projectId={activeProjectId}
             files={files}
-            projectDir={projectDir}
+            projectDir={activeProject?.name || projectDir}
             edits={edits}
             loaded={loaded}
             selectedId={selectedId}
