@@ -51,7 +51,7 @@ html, body, #root { height: 100%; margin: 0; overflow: hidden; }
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-family: "Maitree", Georgia, serif;
   font-weight: 400;
 }
 /* Form controls don't inherit font by default; keep them on the UI face.
@@ -150,7 +150,7 @@ b, strong { font-weight: inherit; }
 }
 .topbar h1 {
   font-size: 22.5px; margin: 0; font-weight: 900;
-  font-family: "Manrope", system-ui, sans-serif;
+  font-family: "Maitree", Georgia, serif;
 }
 .subtitle { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
 .topbar-right {
@@ -168,7 +168,7 @@ b, strong { font-weight: inherit; }
 /* "Welcome" centered in the expanded top bar; hidden once it collapses. */
 .topbar-welcome {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  font-family: "Manrope", system-ui, sans-serif; font-weight: 500;
+  font-family: "Maitree", Georgia, serif; font-weight: 500;
   font-size: 85.5px; color: #fff; pointer-events: none; white-space: nowrap;
   /* Very subtle dark halo so the white text stays legible over the gradient. */
   text-shadow: 0 0 14px rgba(0, 0, 0, 0.12), 0 0 5px rgba(0, 0, 0, 0.09);
@@ -1718,7 +1718,7 @@ b, strong { font-weight: inherit; }
 .workspace-topbar .brand { padding: 0 14px 0 2px; height: 36px; display: flex; align-items: center; }
 .workspace-topbar .brand::after { right: 0; height: 28px; background: var(--border-subtle); }
 .workspace-topbar .logo { color: var(--context-exact); }
-.workspace-topbar h1 { font-family: "Manrope", system-ui, sans-serif; font-size: 17px; font-weight: 650; letter-spacing: -.025em; }
+.workspace-topbar h1 { font-family: "Maitree", Georgia, serif; font-size: 17px; font-weight: 650; letter-spacing: -.025em; }
 .workspace-topbar .topbar-right { border-left: 0; padding: 0; gap: 10px; }
 .topbar-context-slot { position: relative; display: inline-flex; }
 .workspace-topbar .topbar-context-slot .proj-menu { left: auto; right: 0; }
@@ -2068,7 +2068,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .workspace-topbar .brand::after { height: 22px; background: #d9dfdb; }
 .workspace-topbar .logo { color: #22a758; }
 .workspace-topbar h1 {
-  font-family: "Manrope", system-ui, sans-serif;
+  font-family: "Maitree", Georgia, serif;
   font-size: 16px;
   font-weight: 700;
   letter-spacing: -.035em;
@@ -2447,7 +2447,7 @@ body, .app, .workspace-body, .workspace-stage { background: var(--neo-surface); 
   margin: 0;
   overflow-y: auto;
   resize: none;
-  font-family: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-family: "Maitree", Georgia, serif;
   line-height: 18px;
 }
 .lib-tools .lib-nav {
