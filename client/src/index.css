@@ -2049,7 +2049,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
   --context-structural: #68736d;
   --context-support: #d6a43a;
   --diff-add: #15924d;
-  --topbar-size: 62px;
+  --topbar-size: 100px;
   /* The main file toolbar is a 44px title row plus a 34px scope row. Keep
      project Insight anchored to the same lower edge as file Insight. */
   --viewer-toolbar-size: 78px;
