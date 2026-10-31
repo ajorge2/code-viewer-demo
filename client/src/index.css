@@ -3354,3 +3354,5 @@ button:disabled { box-shadow: none; }
 .workspace-topbar .proj-stack-tab.proj-current:active {
   box-shadow: inset 2px 2px 6px rgba(82,96,88,.13), inset -2px -2px 6px rgba(255,255,255,.58);
 }
+
+.workspace-topbar .proj-stack-tab.proj-current { min-height: 28px; height: 28px; padding-inline: 7px; gap: 5px; }
