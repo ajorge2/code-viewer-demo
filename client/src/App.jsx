@@ -1,3 +1,4 @@
+import softwareLicenses from '../public/THIRD_PARTY_LICENSES.txt?raw'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
@@ -132,6 +133,7 @@ function EmptyWorkspace({ onOpenProject }) {
 
 export default function App() {
   const privacyDialogRef = useRef(null)
+  const licensesDialogRef = useRef(null)
   const [files, setFiles] = useState([])
   const [projectDir, setProjectDir] = useState('')
   const [activeProjectId, setActiveProjectId] = useState(null)
@@ -517,7 +519,14 @@ export default function App() {
             sandbox
           />
         )}
-        <div className="topbar-right"><button type="button" className="privacy-link" onClick={() => privacyDialogRef.current?.showModal()}>Privacy</button>
+        <div className="topbar-right">
+          <button type="button" className="privacy-link" onClick={() => licensesDialogRef.current?.showModal()}>Software licenses</button>
+          <dialog ref={licensesDialogRef} className="privacy-dialog licenses-dialog" aria-labelledby="licenses-title" onClick={event => { if (event.target === event.currentTarget) event.currentTarget.close() }}>
+            <button type="button" className="privacy-close" aria-label="Close software licenses" onClick={() => licensesDialogRef.current?.close()}>×</button>
+            <h2 id="licenses-title">Software licenses</h2>
+            <pre>{softwareLicenses}</pre>
+          </dialog>
+          <button type="button" className="privacy-link" onClick={() => privacyDialogRef.current?.showModal()}>Privacy</button>
           <dialog ref={privacyDialogRef} className="privacy-dialog" aria-labelledby="privacy-title" onClick={event => { if (event.target === event.currentTarget) event.currentTarget.close() }}>
             <button type="button" className="privacy-close" aria-label="Close privacy" onClick={() => privacyDialogRef.current?.close()}>×</button>
             <h2 id="privacy-title">Privacy</h2>

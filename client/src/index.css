@@ -3333,3 +3333,5 @@ button:disabled { box-shadow: none; }
 .privacy-dialog p { font-size: 14px; line-height: 1.6; }
 .privacy-close { position: absolute; top: 16px; right: 16px; width: 28px; height: 28px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: inherit; font-size: 22px; cursor: pointer; }
 .privacy-close:hover { border-color: currentColor; }
+
+.licenses-dialog pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 1.6; text-align: left; }
