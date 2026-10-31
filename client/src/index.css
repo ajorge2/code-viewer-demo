@@ -1,835 +1,3349 @@
-import softwareLicenses from '../public/THIRD_PARTY_LICENSES.txt?raw'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
-import {
-  fetchHealth, fetchFiles, fetchProjects,
-  uploadProject, activateProject, removeProject, clearTreeCache, fetchSample,
-  setProjectBareWindow,
-} from './lib/api.js'
-import Library from './components/Library.jsx'
-import CodeViewer from './components/CodeViewer.jsx'
-import ProjectSwitcher from './components/ProjectSwitcher.jsx'
-import { humanizeError } from './lib/humanizeError.js'
-
-// Per-project localStorage namespace for chunk-size overrides.
-const keyFor = (projectId) => `cv:chunkSizes:${projectId}`
-function loadChunkSizes(projectId) {
-  if (!projectId) return {}
-  try {
-    return JSON.parse(localStorage.getItem(keyFor(projectId)) || '{}')
-  } catch {
-    return {}
-  }
+:root {
+  color-scheme: light;
+  --bg: #ffffff;
+  /* Warm off-whites (was cool blue-grey #f7f8fa/#eef1f6) so small surfaces —
+     hovers, the lang chip, the switch — read warm rather than clinical. */
+  --panel: #faf7f4;
+  --panel-2: #f2ebe5;
+  --border: #c3bbb2;
+  /* White → soft-apricot wash for the big panel columns (library sidebar, the
+     notes/edits drawer). Distinct enough to read as a gradient, light enough to
+     keep text legible. */
+  --panel-grad: linear-gradient(180deg, #ffffff 0%, #ffffff 88%, #fdf6f0 100%);
+  /* Structural lines (was charcoal #444039): a very light, slightly-cool grey,
+     translucent. --line-grad fades it to nothing — top-left strong, dissolving
+     toward the bottom-right — for the bordered boxes' gradient-ring overlays
+     (which also carry a faint backdrop blur + white halo). */
+  --line: rgba(182, 195, 215, 0.5);
+  /* Absolute-length stops (not %): the grey is a fixed-size corner accent that
+     fades to white/transparent over ~150px. So a large border (code box) reads
+     mostly white while a short one stays greyer — white prominence scales with
+     the border's size. */
+  /* Fades from the cool grey to a faint cool *white* (not pure transparent) so
+     the lighter end keeps the same blue undertone rather than reading neutral. */
+  --line-grad: linear-gradient(135deg, rgba(182, 195, 215, 0.5) 0px, rgba(214, 237, 247, 0.3) 150px);
+  /* Manila-tab outline: white with a very slight cool hue. */
+  --tab-line: #eef3fb;
+  --text: #1f2430;
+  --muted: #6b7280;
+  --accent: #4f46e5;
+  --active: #e7e9ff;
+  --guide: #aab3c0;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  /* Gradient palettes — keep the anchor hues (#3BB4F0 cool, #D11E08 warm) and
+     blend in supporting colors so fills/thumbs/switches read as gradients. */
+  --fill-cool: linear-gradient(to right, #22d3ee, #3BB4F0, #6366f1);
+  --fill-warm: linear-gradient(to right, #fbbf24, #f97316, #D11E08);
+  --grad-cool: linear-gradient(135deg, #22d3ee, #3BB4F0 55%, #6366f1);
+  /* Chat-scoped variant of --grad-cool: the indigo tail (#6366f1) is replaced by a
+     teal-leaning blue so the chat user bubble / send button stay in the teal family
+     instead of drifting purple. */
+  --grad-cool-teal: linear-gradient(135deg, #22d3ee, #3BB4F0 55%, #2D93D6);
+  --grad-warm: linear-gradient(135deg, #fbbf24, #f97316 50%, #D11E08);
 }
 
-function ProjectOverview({ project, files, scan, onOpenFile }) {
-  const languages = useMemo(() => {
-    const counts = new Map()
-    for (const file of files) {
-      const label = file.language || file.relPath.split('.').pop() || 'other'
-      counts.set(label, (counts.get(label) || 0) + 1)
-    }
-    return [...counts.entries()].sort((a, b) => b[1] - a[1])
-  }, [files])
+* { box-sizing: border-box; }
+/* Viewport-locked shell: the app is height:100vh with its own internal scroll
+   regions, so the document itself should never scroll. Without this, an element
+   pinned to the right edge with an outward transform (the drawer handle) pushed a
+   few px past the viewport and let the page scroll sideways onto the backdrop. */
+html, body, #root { height: 100%; margin: 0; overflow: hidden; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Maitree", Georgia, serif;
+  font-weight: 400;
+}
+/* Form controls don't inherit font by default; keep them on the UI face.
+   Elements that want monospace set var(--mono) explicitly, which wins. */
+button, input, select, textarea {
+  font-family: inherit;
+  font-weight: inherit;
+}
+/* Default-bold elements (e.g. <b>) inherit the extralight weight instead. */
+b, strong { font-weight: inherit; }
+/* Mono UI text (paths, tree, breadcrumb, chunk ranges) at 400; the file-viewer
+   code body stays ExtraLight 200 (inherited from body). */
+.lib-project, .tree-label, .vt-path, .cl-range { font-weight: 400; }
 
-  const topFolders = useMemo(() => {
-    const counts = new Map()
-    for (const file of files) {
-      const folder = file.relPath.includes('/') ? file.relPath.split('/')[0] : 'Project root'
-      counts.set(folder, (counts.get(folder) || 0) + 1)
-    }
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
-  }, [files])
+.app { display: flex; flex-direction: column; height: 100vh; position: relative; }
+/* Shared gradient backdrop behind everything. Normally hidden (opaque top bar +
+   opaque panels cover it); revealed where things go transparent — the expanded
+   top bar and the opened-up bottom-right — so they read as one gradient field. */
+.app::before {
+  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-color: #fff;
+  background-image:
+    radial-gradient(60% 120% at 10% 12%, rgba(59, 180, 240, 0.48), transparent 60%),
+    radial-gradient(55% 120% at 34% 95%, rgba(34, 211, 238, 0.36), transparent 60%),
+    radial-gradient(55% 120% at 68% 4%, rgba(249, 115, 22, 0.32), transparent 60%),
+    radial-gradient(62% 130% at 95% 88%, rgba(209, 30, 8, 0.36), transparent 60%);
+  background-repeat: no-repeat; background-size: 160% 160%;
+  animation: topbar-drift 16s ease-in-out infinite alternate;
+}
+/* The drift animates background-position, which can't be composited — it repaints
+   the whole gradient every frame. While the welcome collapse is running, pause it
+   (backdrop + topbar) so that per-frame repaint doesn't compete with the expand
+   and make it choppy. Resumes once the controls settle in. */
+.app:has(.viewer.controls-hidden)::before,
+.app:has(.viewer.controls-hidden) .topbar { animation-play-state: paused; }
+/* Both sit above the fixed gradient backdrop (.app::before, z-index 0). The
+   topbar is bumped one higher than the app-body so the project-picker dropdown —
+   which overflows the topbar's bottom edge into the app-body's vertical space —
+   paints OVER the code/library below instead of being trapped under them. The
+   two don't overlap spatially (stacked column), so this only affects overflow. */
+.app-body { position: relative; z-index: 1; }
+.topbar { position: relative; z-index: 2; }
 
-  const starterFile = useMemo(() => {
-    const preferred = ['client/src/App.jsx', 'src/App.jsx', 'README.md', 'package.json']
-    for (const relPath of preferred) {
-      const match = files.find((file) => file.relPath === relPath)
-      if (match) return match
-    }
-    return files.find((file) => {
-      const segments = file.relPath.split('/')
-      return !segments.some((segment) => segment.startsWith('.')) &&
-        !/(secret|credential|token|\.env|config\.local)/i.test(file.relPath)
-    }) || null
-  }, [files])
+/* Top bar */
+.topbar {
+  position: relative;
+  display: flex; align-items: flex-start; justify-content: flex-start;
+  /* Expandable height. Content is top-anchored (flex-start) so the brand, its
+     divider, and the reset/expand buttons stay put when the bar grows; only the
+     bottom edge (and the tab pinned to it) moves down. */
+  height: 74px; transition: height .4s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 12px 20px;
+  border-bottom: 1px solid; border-image: linear-gradient(to right, var(--line) 0, rgba(214, 237, 247, 0.3) 240px) 1;
+  /* Punchy on-brand "mesh": soft radial blobs (azure / cyan / orange / red)
+     with rounded, bubbly edges, drifting slowly. */
+  background-color: #fff;
+  background-image:
+    radial-gradient(60% 120% at 10% 12%, rgba(59, 180, 240, 0.48), transparent 60%),
+    radial-gradient(55% 120% at 34% 95%, rgba(34, 211, 238, 0.36), transparent 60%),
+    radial-gradient(55% 120% at 68% 4%, rgba(249, 115, 22, 0.32), transparent 60%),
+    radial-gradient(62% 130% at 95% 88%, rgba(209, 30, 8, 0.36), transparent 60%);
+  background-repeat: no-repeat;
+  background-size: 160% 160%;
+  animation: topbar-drift 16s ease-in-out infinite alternate;
+}
+/* Expanded state — taller bar with the extra room opening up below the content.
+   The bar goes transparent and drops its divider so it merges into the shared
+   gradient backdrop, continuous with the opened-up bottom-right. */
+.topbar.big {
+  height: 50vh;
+  background-color: transparent; background-image: none;
+  border-image: none; border-bottom-color: transparent;
+}
+@keyframes topbar-drift {
+  0%   { background-position:   0% 0%, 100% 100%,   0% 100%, 100% 0%; }
+  50%  { background-position:  45% 55%,  55% 45%,  70% 30%,  30% 70%; }
+  100% { background-position: 100% 100%,  0% 0%, 100% 0%,   0% 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .topbar { animation: none; }
+}
+.brand {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 18px 10px 0; position: relative;
+}
+/* Divider line, detached from the brand box so its length is independent: a fixed
+   height, vertically centered → equal whitespace above and below, with the bottom
+   sitting higher than a full-height border would. */
+.brand::after {
+  content: ""; position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+  width: 1px; height: 34px; background: #fff;
+}
+.logo {
+  color: #5CC6E8;
+  display: grid; place-items: center;
+}
+.topbar h1 {
+  font-size: 22.5px; margin: 0; font-weight: 900;
+  font-family: "Maitree", Georgia, serif;
+}
+.subtitle { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+.topbar-right {
+  display: flex; align-items: center; gap: 14px;
+  border-left: 1px solid #fff; padding: 4px 0 4px 16px;
+  margin-left: auto; /* push to the far right; the tab sits next to the brand */
+  /* Fades in (after a short delay) once the bar collapses; the reset button and
+     its divider aren't shown while the bar is expanded. */
+  opacity: 1; transition: opacity .2s ease .12s;
+}
+.topbar.big .topbar-right { opacity: 0; pointer-events: none; transition: opacity 0s; }
+/* No button to show (e.g. no project loaded) → drop the divider + padding so a lone
+   vertical line isn't left floating. */
+.topbar-right:empty { border-left: none; padding: 0; }
+/* "Welcome" centered in the expanded top bar; hidden once it collapses. */
+.topbar-welcome {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  font-family: "Maitree", Georgia, serif; font-weight: 500;
+  font-size: 85.5px; color: #fff; pointer-events: none; white-space: nowrap;
+  /* Very subtle dark halo so the white text stays legible over the gradient. */
+  text-shadow: 0 0 14px rgba(0, 0, 0, 0.12), 0 0 5px rgba(0, 0, 0, 0.09);
+  opacity: 0; transition: opacity .2s ease;
+}
+.topbar.big .topbar-welcome { opacity: 1; }
+.reload-btn {
+  display: grid; place-items: center; width: 32px; height: 32px;
+  border-radius: 8px; border: 0.5px solid var(--border); background: var(--panel);
+  color: var(--muted); cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+.reload-btn:hover { background: var(--panel-2); color: var(--text); }
+.reload-btn:active { transform: scale(0.94); }
+/* Top-bar pills/buttons get black borders (crisper than grey over the gradient).
+   Scoped to the bar so the project dropdown's inner borders stay grey. */
+.topbar .proj-current, .topbar .reload-btn { border-color: var(--line); }
+.muted { color: var(--muted); }
 
-  const coverageLimited = scan?.truncatedByCount || scan?.truncatedByBytes || scan?.truncatedByClient
+/* Project switcher (top bar) — sits in flow just right of the brand divider, and
+   is pulled to the topbar's bottom edge (align-self:flex-end + a negative margin
+   that spans the 12px padding + 1px border) so the tab's open bottom overlaps the
+   divider, reading as part of the file bar below. */
+.proj-switch {
+  position: relative; align-self: flex-end;
+  margin: 0 0 -13px 12px; z-index: 5;
+  display: flex; align-items: flex-end;
+}
+/* Manila-folder tab: rounded top corners, side edges curving outward into a J
+   flare at the base (straight-slope polygon fallback for browsers without
+   clip-path: shape()). The bottom is left open so it merges into the bar. The
+   charcoal outline can't be a real border (clip-path drops borders on the
+   cut/curved edges), so it's faked with a 1px drop-shadow halo around the
+   silhouette; its bottom run lands on the divider, which is the same charcoal. */
+/* The tab is drawn as two stacked pseudo-layers so the label can stay sharp:
+   ::before is the charcoal *outline* shape (crisp outer edge), ::after is the
+   white fill laid on top inset 1px on the top/sides so only the ~1px charcoal
+   rim shows (matching the charcoal borders below). The text sits above both
+   (z-index) and is never blurred. The bottom is left open (fill runs to the
+   bottom) so the tab merges into the divider/bar. */
+.proj-tab {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  position: relative; box-sizing: border-box;
+  background: none; border: none;
+  color: var(--text); font-size: 13px; cursor: pointer;
+  /* The button box is rectangular but the visible tab is a clipped folder shape.
+     Disable hit-testing on the box so clicks on the transparent corners (and on
+     the parts tucked under an overlapping tab) fall through to the tab beneath;
+     re-enable it only on the visible fill + the label. */
+  pointer-events: none;
+}
+.proj-tab::before, .proj-tab::after, .proj-tab > * { pointer-events: auto; }
+/* Current-project tab (front of the stack): full width, sits on top. */
+.proj-current { max-width: 280px; padding: 7px 22px 9px; z-index: 2; }
+.proj-current.has-remove { padding-left: 24px; }
+/* Welcome state: a clean, empty placeholder tab at a fixed width — no project
+   name, no × remove control. */
+.proj-tab-welcome {
+  width: 260px; max-width: 260px; padding: 7px 22px 9px; cursor: default;
+  /* Pure-white outline so the tab blends into the white folder card (the default
+     cool off-white reads as a visible border here). */
+  --tab-line: #fff;
+}
+.proj-tab-welcome .proj-name,
+.proj-tab-welcome .proj-current-remove { display: none; }
+/* In the welcome view, pin the tab flush to the LEFT viewport edge so the folder
+   card's top edge runs continuously from the left (like a manila folder's tab —
+   no left flare, only the right one). The topbar's 20px left padding is countered
+   with left:-20px so the tab's left edge lands on the true viewport edge. */
+.topbar.big .proj-switch {
+  position: absolute; left: -20px; bottom: -13px; margin: 0; z-index: 5;
+}
+/* Drop the left flare: a straight vertical left edge at x=0, keeping only the
+   right flare that descends into the card top. Both pseudo-layers are white here
+   (--tab-line: #fff), so a single shared silhouette reads as one clean shape. */
+.proj-tab-welcome::before,
+.proj-tab-welcome::after {
+  clip-path: shape(
+    from 0 0,
+    line to calc(100% - 20px) 0,
+    curve to calc(100% - 11px) 10px with calc(100% - 15px) 0 / calc(100% - 11px) 4px,
+    curve to 100% 100% with calc(100% - 11px) 35% / calc(100% - 7px) 80%,
+    line to 0 100%,
+    close
+  );
+}
+/* Staggered stack: every open project is a folder tab laid out left-to-right.
+   Tabs overlap only by their flare (~16px) so each new project sits well to the
+   RIGHT of the previous one, just slightly on top of it. The active project is
+   last in the order, so it's the rightmost and on top. */
+.proj-stack-tab { margin-left: -16px; }
+.proj-stack-tab:first-child { margin-left: 0; }
+.proj-stack-tab:not(.proj-current) { max-width: 160px; padding: 7px 18px 9px; }
+/* The active tab can be dragged to reorder it among the others. */
+.proj-stack-tab.proj-current { cursor: default; }
+.proj-stack-tab.dragging { cursor: grabbing; }
+.proj-stack-tab.dragging .proj-name { user-select: none; }
+/* Drop indicator: a vertical blue line with a soft halo, marking where the
+   dragged tab will be inserted on release. */
+.proj-drop-line {
+  position: absolute; bottom: 1px; height: 30px;
+  width: 2px; transform: translateX(-1px);
+  background: #93DBFD; border-radius: 2px;
+  box-shadow: 0 0 6px 1px rgba(147, 197, 253, 0.6), 0 0 2px rgba(147, 197, 253, 0.7);
+  z-index: 200; pointer-events: none;
+}
+/* Tabs behind the front one read as slightly recessed. */
+.proj-stack-tab:not(.proj-current)::after { background: #eef0f2; }
+.proj-stack-tab:not(.proj-current):hover::after { background: #f4f5f7; }
+/* Close button on the active tab, sitting just left of the project name. */
+.proj-current-remove {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 17px; height: 17px; margin: -2px 0 -2px -6px;
+  border-radius: 5px; color: #D11E08; font-size: 14px; line-height: 1;
+  cursor: pointer; transition: background .12s ease, color .12s ease;
+}
+.proj-current-remove:hover { background: rgba(209, 30, 8, 0.12); }
+.proj-current-remove.sandbox-locked {
+  cursor: default;
+}
+.proj-current-remove.sandbox-locked:hover { background: transparent; }
+/* Chooser tab (the dropdown trigger): narrower, behind the current tab and tucked
+   under its right edge so it just peeks out. */
+/* In-flow, right after the active tab: it takes its own slot and overlaps only by
+   the flare (like any two adjacent tabs), pushing the following tab to the right.
+   z-index 99: under the active tab (100, whose right flare laps over it) but over
+   the tab that follows. */
+.proj-chooser { padding: 7px 14px 9px; margin-left: -16px; z-index: 99; }
+/* Caret flips to point up while the menu is open — clear toggle-button feedback. */
+.proj-caret { transition: transform .18s ease; }
+.proj-caret.open { transform: rotate(180deg); }
+/* Pressed feedback so the chooser reads as a real button. */
+.proj-chooser:active .proj-caret { transform: scale(0.88); }
+.proj-chooser:active.proj-chooser .proj-caret.open { transform: rotate(180deg) scale(0.88); }
+.proj-tab::before,
+.proj-tab::after {
+  content: ""; position: absolute;
+  clip-path: polygon(16px 0, calc(100% - 16px) 0, 100% 100%, 0 100%);
+  /* Top corners are cubic: leave the top edge horizontally, arrive at the side
+     vertically — tangent-continuous, so the direction never changes abruptly. */
+  clip-path: shape(
+    from 20px 0,
+    line to calc(100% - 20px) 0,
+    curve to calc(100% - 11px) 10px with calc(100% - 15px) 0 / calc(100% - 11px) 4px,
+    curve to 100% 100% with calc(100% - 11px) 35% / calc(100% - 7px) 80%,
+    line to 0 100%,
+    curve to 11px 10px with 7px 80% / 11px 35%,
+    curve to 20px 0 with 11px 4px / 15px 0
+  );
+}
+/* Charcoal outline. A drop-shadow (applied after clip-path, so it isn't clipped)
+   feathers the dark edge *outward* into the gradient — a soft, non-stamped edge.
+   It only draws outside the opaque shape, so there's no inward groove and the
+   text is untouched. (A plain blur would spread both ways and read as carved.) */
+.proj-tab::before {
+  inset: 0; z-index: 0; background: var(--tab-line);
+  /* Slightly-cool white outline — top + two sides only (directional shadows that
+     skip the downward direction so the tab's bottom edge stays open). */
+  filter:
+    drop-shadow(0 -1px 1px var(--tab-line))
+    drop-shadow(-1px 0 1px var(--tab-line))
+    drop-shadow(1px 0 1px var(--tab-line));
+  transition: background .15s ease, filter .15s ease;
+}
+/* White fill, with its own (slightly tighter) shape so the charcoal gap — i.e.
+   the border width — tapers from ~1.5px at the top down to ~1px along the sides
+   rather than stepping at the corner. No blur: blurring the fill feathered its
+   bottom edge transparent, letting the charcoal ::before bleed through as a
+   closing line. The outer edge is already softened by ::before's drop-shadows. */
+.proj-tab::after  {
+  inset: 0; z-index: 1; background: #fff;
+  transition: background .15s ease;
+  clip-path: polygon(17px 1.5px, calc(100% - 17px) 1.5px, calc(100% - 1px) 100%, 1px 100%);
+  clip-path: shape(
+    from 21px 1.5px,
+    line to calc(100% - 21px) 1.5px,
+    curve to calc(100% - 12.5px) 11px with calc(100% - 16px) 1.5px / calc(100% - 12.5px) 5.5px,
+    curve to calc(100% - 1px) 100% with calc(100% - 12.5px) 35% / calc(100% - 8px) 80%,
+    line to 1px 100%,
+    curve to 12.5px 11px with 8px 80% / 12.5px 35%,
+    curve to 21px 1.5px with 12.5px 5.5px / 16px 1.5px
+  );
+}
+/* Label/caret above both layers, kept crisp. */
+.proj-tab > * { position: relative; z-index: 2; }
+/* Hover: keep the outline; just darken the fill slightly. */
+.proj-tab:not(.proj-current):hover::after { background: #f4f5f7; }
+.proj-name {
+  font-weight: 200; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.proj-menu {
+  position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+  z-index: 50; width: 300px; max-width: 80vw;
+  background: #fff; border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
+}
+/* The active project's window-size slider popover (reuses .proj-menu's box). */
+.proj-settings { padding: 14px 16px 16px; overflow: visible; }
+.proj-settings-title { font-size: 13px; font-weight: 600; color: var(--text, #0f172a); margin-bottom: 6px; }
+.proj-settings-hint { font-size: 12px; line-height: 1.5; color: var(--muted); margin: 0 0 12px; }
+.proj-settings .slider-wrap { gap: 12px; }
+.proj-settings .slider-val { min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+.proj-settings-clear {
+  width: 100%; margin-top: 14px; padding: 10px 0 0; border: 0;
+  border-top: 1px solid var(--border-subtle); background: transparent;
+  color: var(--text-secondary); font-size: 11.5px; text-align: left; cursor: pointer;
+}
+.proj-settings-clear:hover { color: #a23c34; }
 
-  return (
-    <div className="project-overview-shell">
-      <section className="project-overview">
-        <div className="overview-heading-row">
-          <h2>{project?.name || 'Active project'}</h2>
-        </div>
-
-        <div className="overview-metrics">
-          <div><span>Files</span><strong>{files.length}</strong></div>
-          <div><span>Languages</span><strong>{languages.length}</strong></div>
-        </div>
-
-        {coverageLimited && (
-          <div className="coverage-card warning">
-            <span><strong>Coverage limit reached</strong>The overview reflects the indexed subset.</span>
-          </div>
-        )}
-
-        <div className="overview-grid">
-          <section>
-            <div className="overview-section-head"><h3>Languages</h3><span>indexed files</span></div>
-            <div className="overview-bars">
-              {languages.slice(0, 6).map(([name, count]) => (
-                <div key={name} className="overview-bar-row">
-                  <span>{name}</span>
-                  <span className="overview-bar"><i style={{ width: `${Math.max(8, (count / files.length) * 100)}%` }} /></span>
-                  <span>{count}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-          <section>
-            <div className="overview-section-head"><h3>Largest areas</h3><span>by file count</span></div>
-            <div className="overview-folder-list">
-              {topFolders.map(([name, count]) => <div key={name}><span>{name}/</span><span>{count} files</span></div>)}
-            </div>
-          </section>
-        </div>
-
-        {starterFile && (
-          <button className="overview-primary" onClick={() => onOpenFile(starterFile.id)}>
-            Open {starterFile.relPath.split('/').pop()}
-          </button>
-        )}
-      </section>
-
-      <aside className="overview-insight">
-        <div className="overview-insight-body">
-          <div className="overview-insight-intro">
-            <div>
-              <h3>Choose evidence</h3>
-              <p>Select a file for exact code, or ask at project scope from Explorer.</p>
-            </div>
-          </div>
-        </div>
-      </aside>
-    </div>
-  )
+.proj-list { max-height: 320px; overflow-y: auto; padding: 6px; }
+.proj-empty { padding: 12px; color: var(--muted); font-size: 13px; text-align: center; }
+.proj-item {
+  display: flex; align-items: center; border-radius: 8px;
+}
+.proj-item:hover { background: var(--panel-2); }
+.proj-item.active { background: rgba(59, 180, 240, 0.12); }
+.proj-item-main {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start;
+  gap: 1px; padding: 7px 10px; background: none; border: none; cursor: pointer;
+  text-align: left; color: var(--text);
+}
+.proj-item-name {
+  font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 210px;
+}
+.proj-item.active .proj-item-name { color: #0D8BC5; }
+.proj-item-meta { font-size: 11px; color: var(--muted); }
+.proj-remove {
+  flex-shrink: 0; width: 24px; height: 24px; margin-right: 6px;
+  border: none; background: none; color: var(--muted); cursor: pointer;
+  border-radius: 6px; font-size: 16px; line-height: 1;
+}
+.proj-remove:hover { background: rgba(209, 30, 8, 0.12); color: #D11E08; }
+.proj-add {
+  display: flex; flex-direction: column; gap: 8px; padding: 10px;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 12px 12px; transition: background .15s ease, box-shadow .15s ease;
+}
+/* Folder dropzone: a dashed inset that lights up while a folder is dragged over it. */
+.proj-add.drag-over {
+  background: rgba(59, 180, 240, 0.1);
+  box-shadow: inset 0 0 0 2px #3BB4F0;
+}
+.proj-add.disabled { opacity: 0.6; }
+.proj-drop-hint {
+  text-align: center; font-size: 11.5px; color: var(--muted);
+  border: 1px dashed var(--border); border-radius: 8px; padding: 9px 8px;
+}
+.proj-add.drag-over .proj-drop-hint { color: #0D8BC5; border-color: #3BB4F0; }
+.proj-pick-btn {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 9px 12px; border-radius: 8px; cursor: pointer;
+  border: 1px solid #3BB4F0; background: var(--grad-cool); color: #fff;
+  font-size: 13px;
+}
+.proj-pick-btn:disabled { opacity: 0.85; cursor: default; }
+/* White spinner shown in the picker button while reading/uploading a folder. */
+.proj-pick-spinner {
+  width: 13px; height: 13px; border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.45); border-top-color: #fff;
+  animation: empty-spin 0.7s linear infinite;
+}
+.proj-error {
+  padding: 0 10px 10px; color: #D11E08; font-size: 12px;
 }
 
-function EmptyWorkspace({ onOpenProject }) {
-  return (
-    <div className="empty-workspace">
-      <h2>Understand a codebase without losing your place.</h2>
-      <p>Open a folder to map its structure, inspect exact code, ask scoped questions, and keep proposed changes safely in drafts.</p>
-      <button className="overview-primary" onClick={onOpenProject}>Open a project folder</button>
-      <div className="empty-workspace-steps">
-        <span><b>1</b> Choose a folder</span>
-        <span><b>2</b> Review coverage</span>
-        <span><b>3</b> Explore safely</span>
-      </div>
-    </div>
-  )
+.app-body { display: flex; flex: 1; min-height: 0; }
+
+/* Welcome call-to-action: centered over the blank card, fades in/out with the
+   welcome state. pointer-events: none so the click still falls through to the
+   app-body handler that collapses the welcome view. */
+.welcome-cta {
+  /* Span just the white folder card (library 300px + the viewer's left-half), so
+     the text centers within the card, not the full viewport. Card right edge sits
+     at (viewport + 300px)/2, i.e. right: calc(50% - 150px). */
+  position: absolute; top: 0; bottom: 0; left: 0; right: calc(50% - 150px); z-index: 6;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+  font-size: 30px; font-weight: 500; letter-spacing: 0.01em; color: var(--muted);
+  opacity: 0; transition: opacity 0.4s ease;
+}
+.app-body.welcome .welcome-cta { opacity: 1; }
+
+/* Library sidebar */
+.library {
+  width: 300px; flex-shrink: 0;
+  display: flex; flex-direction: column; background: var(--panel-grad);
+  position: relative; /* anchors the folder-chat FAB */
+}
+.lib-nav {
+  display: flex; gap: 4px; flex-shrink: 0; margin: 0 10px 0 auto;
+}
+.chev {
+  display: flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; padding: 0; border-radius: 5px;
+  background: none; border: 1px solid #3BB4F0; color: #3BB4F0;
+  cursor: pointer;
+}
+.chev:hover:not(:disabled) { background: rgba(59, 180, 240, 0.12); }
+.chev:disabled { opacity: 0.35; cursor: default; }
+.lib-project {
+  display: flex; align-items: flex-start;
+  font-size: 12.5px; font-family: var(--mono); color: var(--text);
+  padding: 10px 12px 0;
+}
+.lib-crumbs {
+  flex: 0 1 auto; min-width: 0;
+  /* Wrap the path up to 3 lines, then ellipsize. */
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3;
+  overflow: hidden; overflow-wrap: anywhere; word-break: break-word;
+}
+.lib-count {
+  flex-shrink: 0; padding-left: 10px;
+  border-left: 1px solid var(--border); color: var(--muted); white-space: nowrap;
+}
+.crumb-sep { color: var(--muted); }
+.crumb { cursor: pointer; }
+.crumb:hover { color: var(--accent); text-decoration: underline; }
+.filter {
+  margin: 10px 12px 12px; padding: 8px 10px; border-radius: 8px;
+  background: var(--bg); border: 1px solid var(--border); color: var(--text);
+  font-size: 13px;
+}
+.filter:focus { outline: none; border-color: #3BB4F0; }
+.file-list {
+  overflow-y: auto; flex: 1; padding: 4px 6px 12px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(67, 74, 70, .58) transparent;
+}
+.file-list::-webkit-scrollbar { width: 9px; background: transparent; }
+.file-list::-webkit-scrollbar-track,
+.file-list::-webkit-scrollbar-track-piece {
+  background: transparent;
+  box-shadow: none;
+}
+.file-list::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(67, 74, 70, .58);
+  background-clip: padding-box;
+}
+.file-list::-webkit-scrollbar-thumb:hover,
+.file-list::-webkit-scrollbar-thumb:active {
+  background: rgba(50, 57, 53, .72);
+  background-clip: padding-box;
 }
 
-export default function App() {
-  const privacyDialogRef = useRef(null)
-  const licensesDialogRef = useRef(null)
-  const [files, setFiles] = useState([])
-  const [projectDir, setProjectDir] = useState('')
-  const [activeProjectId, setActiveProjectId] = useState(null)
-  const [projects, setProjects] = useState([])
-  // undefined = the first check is still pending; null = a completed check failed.
-  const [health, setHealth] = useState(undefined)
-  const [scan, setScan] = useState(null)
-  const [startupError, setStartupError] = useState('')
-  const [systemNotice, setSystemNotice] = useState('')
-  const [loaded, setLoaded] = useState(false)
-  const [selectedId, setSelectedId] = useState(null)
-  const [explorerOpen, setExplorerOpen] = useState(false)
-  const [folderInsightOpen, setFolderInsightOpen] = useState(false)
-  const [closeFolderChatSignal, setCloseFolderChatSignal] = useState(0)
-  const [explorerWidth, setExplorerWidth] = useState(() => {
-    try {
-      const saved = Number(localStorage.getItem('cv:explorerWidth'))
-      return Number.isFinite(saved) && saved >= 232 && saved <= 380 ? saved : 288
-    } catch {
-      return 288
-    }
-  })
-  const projectSwitcherRef = useRef(null)
-  // True while a project is being uploaded or switched in — i.e. it's registered
-  // on the server but its files aren't in the viewer yet. Drives a loading state
-  // in the stage so the main area isn't blank (or showing the old project).
-  const [projectLoading, setProjectLoading] = useState(false)
-  // Name of the project being loaded, so the stage spinner can say which one.
-  const [loadingName, setLoadingName] = useState('')
-
-  // 'main' is the normal app; 'help' is the standalone demo page (a sample file in
-  // the code view with the chunking sliders, reached via the ⊙? button).
-  const [view, setView] = useState('main')
-  const [sampleFile, setSampleFile] = useState(null)
-  const [sampleChunk, setSampleChunk] = useState(1)
-  // Intro modal that greets you each time the chunking demo page opens. When opened
-  // via the demo-page ? button it's dismissable (× + click-out); the auto-pop on
-  // entering the demo is not (Continue only).
-  const [demoIntroOpen, setDemoIntroOpen] = useState(false)
-  const [demoIntroDismissable, setDemoIntroDismissable] = useState(false)
-  const [demoIntroPage, setDemoIntroPage] = useState(0) // 0=sliders, 1=highlight, 2=context
-  const [cachingOpen, setCachingOpen] = useState(false) // "how caching works" modal (opened from two places)
-  useEffect(() => { if (view === 'help') { setDemoIntroOpen(true); setDemoIntroDismissable(false); setDemoIntroPage(0) } }, [view])
-  const openDemoIntro = () => { setDemoIntroOpen(true); setDemoIntroDismissable(true); setDemoIntroPage(0) }
-  // Load the sample on mount, and retry whenever the demo page is opened (so a
-  // failed initial fetch — e.g. the server wasn't up yet — recovers without a refresh).
-  useEffect(() => {
-    if (sampleFile) return
-    fetchSample().then((s) => setSampleFile(s.file)).catch(() => {})
-  }, [view, sampleFile])
-
-  // Clear-tree-cache confirmation modal. `clearing` guards against a double-submit
-  // while the DELETE is in flight.
-  const [confirmClear, setConfirmClear] = useState(false)
-  const [clearing, setClearing] = useState(false)
-  const handleClearTreeCache = async () => {
-    setClearing(true)
-    try {
-      await clearTreeCache()
-      setConfirmClear(false)
-      setSystemNotice('Context cache cleared.')
-    } catch (error) {
-      setSystemNotice(humanizeError(error, 'The context cache could not be cleared.'))
-    } finally {
-      setClearing(false)
-    }
-  }
-
-  // Per-project bare-window size change. The slider commits a pending value; we
-  // confirm (it re-summarizes the project) before applying.
-  const [pendingWindow, setPendingWindow] = useState(null) // chars awaiting confirm
-  const [applyingWindow, setApplyingWindow] = useState(false)
-  const handleBareWindow = (chars) => setPendingWindow(chars)
-  const confirmBareWindow = async () => {
-    if (pendingWindow == null || !activeProjectId) return
-    setApplyingWindow(true)
-    try {
-      const r = await setProjectBareWindow(activeProjectId, pendingWindow)
-      if (r.projects) setProjects(r.projects)
-      setPendingWindow(null)
-      setSystemNotice('Context detail updated; summaries are rebuilding.')
-    } catch (error) {
-      setSystemNotice(humanizeError(error, 'Context detail could not be changed.'))
-    } finally {
-      setApplyingWindow(false)
-    }
-  }
-
-  // Per-file chunk size for the active project. Defaults to the file's original;
-  // a per-file override is stored only when the user moves that file's slider.
-  // Persisted per-project to localStorage so changes survive a refresh and don't
-  // bleed across projects.
-  const [chunkSizes, setChunkSizes] = useState({})
-  useEffect(() => {
-    if (!activeProjectId) return
-    try {
-      const next = JSON.stringify(chunkSizes)
-      // This effect also fires on activeProjectId change, which happens right after
-      // loadActiveFiles() reads sizes from storage — so guard against writing back
-      // the value we just loaded (or any other no-op write).
-      if ((localStorage.getItem(keyFor(activeProjectId)) ?? '{}') === next) return
-      localStorage.setItem(keyFor(activeProjectId), next)
-    } catch {
-      /* ignore quota / unavailable storage */
-    }
-  }, [chunkSizes, activeProjectId])
-
-  // Per-chunk edits, keyed `${fileId}::${nodeId}`. Each value records the edited
-  // text + the slider config and location at edit time, so the edit-history
-  // carousel can jump back to that exact chunk/config. Persisted to localStorage.
-  const [edits, setEdits] = useState(() => {
-    try { return JSON.parse(sessionStorage.getItem('cv:edits')) || {} } catch { return {} }
-  })
-  useEffect(() => {
-    try { sessionStorage.setItem('cv:edits', JSON.stringify(edits)) } catch { /* ignore */ }
-  }, [edits])
-
-  // Draft keys predating project namespaces cannot identify their owner. Assign
-  // them once to the project that was active when this version first loads, then
-  // persist the migration so they can never appear in every similarly shaped
-  // project. Legacy objects that already carry an owner keep that owner.
-  useEffect(() => {
-    if (!activeProjectId) return
-    setEdits((current) => {
-      let changed = false
-      const next = { ...current }
-      for (const [key, value] of Object.entries(current)) {
-        if (key.split('::').length !== 2) continue
-        const owner = (typeof value === 'object' && value?.projectId) || activeProjectId
-        const namespacedKey = `${owner}::${key}`
-        if (!(namespacedKey in next)) {
-          next[namespacedKey] = typeof value === 'string'
-            ? { text: value, projectId: owner }
-            : { ...value, projectId: owner }
-        }
-        delete next[key]
-        changed = true
-      }
-      return changed ? next : current
-    })
-  }, [activeProjectId])
-
-  // A jump requested from the edit history: switch to the edit's file, restore its
-  // granularity, and hand the rest (depth/sub + select-the-chunk) to the viewer.
-  const [jumpTarget, setJumpTarget] = useState(null)
-  // Bumped when a file should open WITH its chat already open (e.g. clicking a file
-  // shortcut in a folder-chat answer). The viewer watches this signal.
-  const [fileChatSignal, setFileChatSignal] = useState(0)
-  const openFileWithChat = (id) => {
-    setSelectedId(id)
-    setExplorerOpen(false)
-    setCloseFolderChatSignal((n) => n + 1)
-    setFileChatSignal((n) => n + 1)
-  }
-  // The workspace is immediately usable. Orientation now comes from the stable
-  // Explorer / Code / Insight shell rather than a one-way welcome animation.
-  const viewerLocked = false
-  const controlsReady = true
-  const jumpToEdit = (entry) => {
-    if (!entry) return
-    setSelectedId(entry.fileId)
-    if (entry.gran != null) setChunkSizes((m) => ({ ...m, [entry.fileId]: entry.gran }))
-    setJumpTarget({ ...entry })
-  }
-
-  // Open a reference result: switch to its file and scroll to the offset (the viewer
-  // applies the offset jump once that file's text renders).
-  const openReference = (fileId, offset) => {
-    setSelectedId(fileId)
-    setJumpTarget({ fileId, offset })
-  }
-
-  const selectedFile = files.find((f) => f.id === selectedId) || null
-  const activeProject = projects.find((p) => p.id === activeProjectId) || null
-  const draftCount = Object.entries(edits).filter(([key, value]) => {
-    const parts = key.split('::')
-    return parts.length >= 3 ? parts[0] === activeProjectId : value?.projectId === activeProjectId
-  }).length
-  const coverageLimited = !!(scan?.truncatedByCount || scan?.truncatedByBytes || scan?.truncatedByClient)
-  const statusText = projectLoading
-    ? 'Indexing project'
-    : systemNotice || (view === 'help' ? 'Chunking demo' : '')
-  const showStatusbar = !!(statusText || draftCount > 0 || (selectedFile && coverageLimited))
-
-  const selectFile = (id) => {
-    setSelectedId(id)
-    setExplorerOpen(false)
-  }
-
-  const beginExplorerResize = (event) => {
-    if (window.innerWidth < 1180) return
-    event.preventDefault()
-    const startX = event.clientX
-    const startWidth = explorerWidth
-    const move = (moveEvent) => {
-      setExplorerWidth(Math.max(232, Math.min(380, startWidth + moveEvent.clientX - startX)))
-    }
-    const finish = () => {
-      window.removeEventListener('pointermove', move)
-      window.removeEventListener('pointerup', finish)
-      setExplorerWidth((width) => {
-        try { localStorage.setItem('cv:explorerWidth', String(width)) } catch { /* storage unavailable */ }
-        return width
-      })
-    }
-    window.addEventListener('pointermove', move)
-    window.addEventListener('pointerup', finish)
-  }
-  // Every file chunks structurally now (grammar tree, JSON, or the indent
-  // fallback), so the baseline is always granularity 1 (whole file = one box);
-  // a per-file override wins when present. Later an LLM pass may choose this per file.
-  const chunkSize = chunkSizes[selectedId] ?? 1
-  const setChunkSize = (val) =>
-    setChunkSizes((m) => ({ ...m, [selectedId]: val }))
-  // Reload: drop all overrides so every file's slider returns to its original.
-  const resetChunkSizes = () => setChunkSizes({})
-
-  // Load the active project's file list + its saved chunk sizes. Called on mount
-  // and after any project change so the view follows the active project.
-  async function loadActiveFiles() {
-    try {
-      const f = await fetchFiles()
-      setFiles(f.files)
-      setProjectDir(f.projectDir || '')
-      setActiveProjectId(f.projectId || null)
-      setScan(f.scan || null)
-      setChunkSizes(loadChunkSizes(f.projectId))
-      setSelectedId(null)
-      setStartupError('')
-    } catch (error) {
-      setFiles([])
-      setProjectDir('')
-      setScan(null)
-      setStartupError(humanizeError(error, 'The workspace could not be loaded.'))
-    } finally {
-      setLoaded(true)
-    }
-  }
-
-  async function initializeWorkspace(isCancelled = () => false) {
-    let [nextHealth, nextProjects] = await Promise.all([
-      fetchHealth().catch(() => null),
-      fetchProjects().catch(() => ({ projects: [], activeId: null })),
-    ])
-    // The API begins listening before its default project scan completes. Follow
-    // the server's explicit initialization state instead of guessing a timeout;
-    // large repositories can legitimately take longer than a few seconds.
-    while (nextHealth?.ok && nextHealth.initializing) {
-      setHealth(nextHealth)
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      if (isCancelled()) return false
-      ;[nextHealth, nextProjects] = await Promise.all([
-        fetchHealth().catch(() => null),
-        fetchProjects().catch(() => nextProjects),
-      ])
-    }
-    if (isCancelled()) return false
-    setHealth(nextHealth)
-    if (!nextHealth) {
-      setStartupError('CodeArchitect cannot reach its analysis service. Check the connection and retry.')
-      setLoaded(true)
-      return false
-    }
-    if (nextHealth.startupError && nextProjects.projects.length === 0) {
-      setStartupError(humanizeError(nextHealth.startupError, 'The initial project could not be indexed.'))
-      setLoaded(true)
-      return false
-    }
-    setProjects(nextProjects.projects)
-    await loadActiveFiles()
-    return true
-  }
-
-  useEffect(() => {
-    let cancelled = false
-    initializeWorkspace(() => cancelled)
-    return () => { cancelled = true }
-  }, [])
-
-  // Keep the service indicator honest after startup and recover it automatically
-  // after a transient outage.
-  useEffect(() => {
-    let cancelled = false
-    const check = async () => {
-      const next = await fetchHealth().catch(() => null)
-      if (!cancelled) setHealth(next)
-    }
-    const timer = window.setInterval(check, 15_000)
-    return () => { cancelled = true; window.clearInterval(timer) }
-  }, [])
-
-  const retryWorkspace = async () => {
-    setLoaded(false)
-    setStartupError('')
-    await initializeWorkspace()
-  }
-
-  const switchProject = async (id) => {
-    if (id === activeProjectId) return
-    setLoadingName(projects.find((p) => p.id === id)?.name || '')
-    setProjectLoading(true)
-    try {
-      const r = await activateProject(id)
-      setProjects(r.projects)
-      await loadActiveFiles()
-      setSystemNotice(`Opened ${r.project?.name || projects.find((p) => p.id === id)?.name || 'project'}`)
-    } catch (error) {
-      setSystemNotice(humanizeError(error, 'The project could not be opened.'))
-    } finally {
-      setProjectLoading(false)
-      setLoadingName('')
-    }
-  }
-
-  // Open the native folder picker and load the chosen project. Throws on
-  // failure (caller surfaces the message); a no-op if the user cancels.
-  // Load a project from a browser folder upload (works in hosted deploys, where
-  // the server can't read the user's filesystem).
-  const handleUploadProject = async (name, files, uploadScan = {}) => {
-    setLoadingName(name)
-    setProjectLoading(true)
-    try {
-      const r = await uploadProject(name, files, uploadScan)
-      setProjects(r.projects)
-      await loadActiveFiles()
-      setSystemNotice(`Indexed ${files.length} files from ${name}`)
-    } finally {
-      setProjectLoading(false)
-      setLoadingName('')
-    }
-  }
-
-  const handleRemoveProject = async (id) => {
-    try {
-      const removedName = projects.find((project) => project.id === id)?.name || 'project'
-      const r = await removeProject(id)
-      setProjects(r.projects)
-      await loadActiveFiles()
-      setSystemNotice(`Removed ${removedName} from the workspace.`)
-    } catch (error) {
-      setSystemNotice(humanizeError(error, 'The project could not be removed.'))
-    }
-  }
-
-  return (
-    <div className="app" style={{ '--statusbar-size': showStatusbar ? '26px' : '0px' }}>
-      <header className="topbar workspace-topbar">
-        <div className="brand">
-          <span className="logo" aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <rect x="2.5" y="17.4" width="4.6" height="1.7" rx="0.85" />
-              <rect x="6.5" y="14.4" width="4.6" height="1.7" rx="0.85" />
-              <rect x="10.5" y="11.4" width="4.6" height="1.7" rx="0.85" />
-              <rect x="14.5" y="8.4" width="4.6" height="1.7" rx="0.85" />
-              <rect x="18.5" y="5.4" width="4.6" height="1.7" rx="0.85" />
-            </svg>
-          </span>
-          <div>
-            <h1>CodeArchitect</h1>
-          </div>
-        </div>
-        {view === 'main' && (
-          <button
-            type="button"
-            className={`mobile-pane-toggle${explorerOpen ? ' active' : ''}`}
-            onClick={() => setExplorerOpen((open) => !open)}
-            aria-expanded={explorerOpen}
-          >
-            Explorer
-          </button>
-        )}
-        {view === 'main' && (
-          <ProjectSwitcher
-            ref={projectSwitcherRef}
-            projects={projects}
-            activeId={activeProjectId}
-            onSwitch={switchProject}
-            onUpload={handleUploadProject}
-            onRemove={handleRemoveProject}
-            onBareWindow={handleBareWindow}
-            onClearContext={() => setConfirmClear(true)}
-            welcome={false}
-            sandbox
-          />
-        )}
-        <div className="topbar-right">
-          <button type="button" className="privacy-link" onClick={() => licensesDialogRef.current?.showModal()}>Software licenses</button>
-          <dialog ref={licensesDialogRef} className="privacy-dialog licenses-dialog" aria-labelledby="licenses-title" onClick={event => { if (event.target === event.currentTarget) event.currentTarget.close() }}>
-            <button type="button" className="privacy-close" aria-label="Close software licenses" onClick={() => licensesDialogRef.current?.close()}>×</button>
-            <h2 id="licenses-title">Software licenses</h2>
-            <pre>{softwareLicenses}</pre>
-          </dialog>
-          <span className="topbar-separator" aria-hidden="true">•</span>
-          <button type="button" className="privacy-link" onClick={() => privacyDialogRef.current?.showModal()}>Privacy</button>
-          <dialog ref={privacyDialogRef} className="privacy-dialog" aria-labelledby="privacy-title" onClick={event => { if (event.target === event.currentTarget) event.currentTarget.close() }}>
-            <button type="button" className="privacy-close" aria-label="Close privacy" onClick={() => privacyDialogRef.current?.close()}>×</button>
-            <h2 id="privacy-title">Privacy</h2>
-            <p>The hosted web demo reads its bundled public source. Public API callers cannot upload a folder, select server filesystem paths, switch projects, or remove the shared project. Legacy web questions and selected source context are sent to OpenAI. Requests explicitly disable optional model-response storage; provider retention policies still apply. Parse/basic-summary caches can persist bundled source analysis. Content tracing is off by default; local operators may explicitly enable it.</p>
-            <p>The local web server binds to loopback and supports trusted single-operator project selection. Source and generated summaries can be cached on that operator's disk. Do not expose this local application as a multi-user service.</p>
-            <p>The independent MCP entry point is different: it returns bounded source/AST evidence, does not call a model, and does not persist source, requests, results, or trees. Its local root is selected explicitly; the HTTP MCP demonstration exposes synthetic files only. The AI client and its provider may retain returned context. Hosting infrastructure may retain operational metadata.</p>
-          </dialog>
-          {view === 'main' ? (
-            <>
-              {activeProject && (
-                <>
-                  <span className="topbar-separator" aria-hidden="true">•</span>
-                  <span id="topbar-context-slot" className="topbar-context-slot" />
-                </>
-              )}
-            </>
-          ) : (
-            <button className="reload-btn text-btn" title="Back to the app" aria-label="Back to the app" onClick={() => setView('main')}>
-              Back to workspace
-            </button>
-          )}
-        </div>
-      </header>
-
-      {view === 'main' ? (
-        <div className={`app-body workspace-body${explorerOpen ? ' explorer-open' : ''}${folderInsightOpen ? ' folder-insight-open' : ''}`}>
-        <div className="workspace-explorer" style={{ width: explorerWidth }}>
-          <Library
-            projectId={activeProjectId}
-            files={files}
-            projectDir={activeProject?.name || projectDir}
-            edits={edits}
-            loaded={loaded}
-            selectedId={selectedId}
-            onSelect={selectFile}
-            onOpenFileChat={openFileWithChat}
-            closeChatSignal={closeFolderChatSignal}
-            onFolderInsightChange={setFolderInsightOpen}
-            noProject={!activeProject}
-          />
-        </div>
-        <div className="workspace-resizer explorer-resizer" onPointerDown={beginExplorerResize} role="separator" aria-label="Resize Explorer" />
-        <main className="stage workspace-stage">
-          {!loaded ? (
-            <div className="project-loading-state">
-              <span className="empty-spinner" aria-hidden="true" />
-              <div>
-                <strong>Preparing workspace</strong>
-                <span>Scanning supported source files and checking coverage…</span>
-              </div>
-            </div>
-          ) : projectLoading ? (
-            <div className="project-loading-state">
-              <span className="empty-spinner" aria-hidden="true" />
-              <div>
-                <strong>{loadingName ? `Reading ${loadingName}` : 'Reading project'}</strong>
-                <span>Filtering generated files and building the structural index…</span>
-              </div>
-            </div>
-          ) : startupError ? (
-            <div className="workspace-error-state">
-              <h2>Workspace unavailable</h2>
-              <p>{startupError}</p>
-              <button className="overview-primary" onClick={retryWorkspace}>Try again</button>
-            </div>
-          ) : selectedFile ? (
-            <CodeViewer
-              projectId={activeProjectId}
-              file={selectedFile}
-              files={files}
-              chunkSize={chunkSize}
-              onChunkSize={setChunkSize}
-              locked={viewerLocked}
-              controlsReady={controlsReady}
-              edits={edits}
-              setEdits={setEdits}
-              jumpTarget={jumpTarget}
-              onJumpConsumed={() => setJumpTarget(null)}
-              onJumpToEdit={jumpToEdit}
-              openChatSignal={fileChatSignal}
-              folderChatOpen={folderInsightOpen}
-              onOpenFileChat={() => setCloseFolderChatSignal((n) => n + 1)}
-              onOpenDemo={() => setView('help')}
-              onOpenCaching={() => setCachingOpen(true)}
-              onOpenReference={openReference}
-            />
-          ) : activeProject && files.length > 0 ? (
-            <ProjectOverview project={activeProject} files={files} scan={scan} onOpenFile={selectFile} />
-          ) : !activeProject ? (
-            <EmptyWorkspace onOpenProject={() => projectSwitcherRef.current?.openFolder()} />
-          ) : (
-            <div className="workspace-error-state quiet">
-              <h2>No supported source files found</h2>
-              <p>This folder may contain only generated, binary, locked, or unsupported files.</p>
-              <button className="overview-primary" onClick={() => projectSwitcherRef.current?.openFolder()}>Choose another folder</button>
-            </div>
-          )}
-        </main>
-        </div>
-      ) : (
-        // Demo page: just the sample file in the code view with the chunking sliders.
-        <div className="app-body">
-          <main className="stage stage-demo">
-            {sampleFile && (
-              <CodeViewer
-                file={sampleFile}
-                files={[sampleFile]}
-                chunkSize={sampleChunk}
-                onChunkSize={setSampleChunk}
-                locked={false}
-                controlsReady
-                edits={edits}
-                setEdits={setEdits}
-                jumpTarget={null}
-                onJumpConsumed={() => {}}
-                onJumpToEdit={() => {}}
-                openChatSignal={0}
-                demo
-                onOpenInfo={openDemoIntro}
-              />
-            )}
-          </main>
-        </div>
-      )}
-
-      {showStatusbar && (
-        <footer className="workspace-statusbar" aria-live="polite">
-          {statusText && <span className={projectLoading ? 'status-primary busy' : 'status-primary'}>{statusText}</span>}
-          {view === 'main' && selectedFile && coverageLimited && (
-            <span className="status-warning">Coverage limited{scan?.skipped > 0 ? ` · ${scan.skipped} skipped` : ''}</span>
-          )}
-          {view === 'main' && draftCount > 0 && <span>{draftCount} {draftCount === 1 ? 'draft' : 'drafts'}</span>}
-        </footer>
-      )}
-
-      {view === 'help' && demoIntroOpen && (
-        <div className={`modal-overlay ${demoIntroDismissable ? 'dim' : 'glass'}`} onClick={demoIntroDismissable ? () => setDemoIntroOpen(false) : undefined}>
-          <div className="chunk-help demo-intro" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-            {demoIntroDismissable && (
-              <button className="chunk-help-x" onClick={() => setDemoIntroOpen(false)} aria-label="Close">×</button>
-            )}
-
-            {demoIntroPage === 0 && (
-              <>
-                <h2 className="demo-intro-title">How chunking works</h2>
-                <p className="chunk-help-text">Use these controls to adjust how the file is divided:</p>
-                <ul className="demo-intro-list">
-                  <li><b>Granularity.</b> Sets the maximum split depth.</li>
-                  <li><b>Depth spread.</b> Sets the allowed depth difference when larger chunks split first.</li>
-                </ul>
-                <p className="chunk-help-text">
-                  Both controls adjust boundaries within the same fixed syntax tree. Each chunk
-                  maps to a single path, so cached results remain valid as settings change.
-                  <button
-                    className="caching-q"
-                    onClick={() => setCachingOpen(true)}
-                    title="How caching works"
-                    aria-label="How caching works"
-                  >?</button>
-                </p>
-              </>
-            )}
-
-            {demoIntroPage === 1 && (
-              <>
-                <h2 className="demo-intro-title">Chunking around a highlight</h2>
-                <p className="chunk-help-text">
-                  CodeArchitect maps your selection to the smallest chunk that fully contains it.
-                </p>
-              </>
-            )}
-
-            {demoIntroPage === 2 && (
-              <>
-                <h2 className="demo-intro-title">Finding the right context</h2>
-                <p className="chunk-help-text">
-                  CodeArchitect uses the smallest set of chunks that covers your selection, with
-                  more detail near the highlighted code.
-                </p>
-              </>
-            )}
-
-            <div className="demo-intro-nav">
-              {demoIntroPage > 0 && (
-                <button className="demo-intro-back" onClick={() => setDemoIntroPage((p) => p - 1)}>Back</button>
-              )}
-              <span className="demo-intro-dots" aria-hidden="true">
-                {[0, 1, 2].map((i) => <span key={i} className={`demo-intro-dot${i === demoIntroPage ? ' on' : ''}`} />)}
-              </span>
-              {demoIntroPage < 2 ? (
-                <button className="chunk-help-demo" onClick={() => setDemoIntroPage((p) => p + 1)}><span>Next</span></button>
-              ) : (
-                <button className="chunk-help-demo" onClick={() => setDemoIntroOpen(false)}><span>Got it</span></button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {confirmClear && (
-        <div
-          className="modal-overlay"
-          onClick={() => { if (!clearing) setConfirmClear(false) }}
-        >
-          <div
-            className="modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="clear-cache-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 id="clear-cache-title" className="modal-title">Clear the cache?</h2>
-            <p className="modal-body">
-              This will clear the detailed context generated for this project. It will be
-              rebuilt automatically the next time you ask a question. Project structure
-              and base summaries will not be affected.
-            </p>
-            <div className="modal-actions">
-              <button
-                className="modal-btn ghost"
-                onClick={() => setConfirmClear(false)}
-                disabled={clearing}
-              >
-                Cancel
-              </button>
-              <button
-                className="modal-btn danger"
-                onClick={handleClearTreeCache}
-                disabled={clearing}
-              >
-                {clearing ? 'Clearing…' : 'Clear cache'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {pendingWindow != null && (
-        <div
-          className="modal-overlay"
-          onClick={() => { if (!applyingWindow) setPendingWindow(null) }}
-        >
-          <div
-            className="modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="window-size-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 id="window-size-title" className="modal-title">Change context detail?</h2>
-            <p className="modal-body">
-              This re-summarizes {projects.find((p) => p.id === activeProjectId)?.name || 'this project'} from
-              scratch at the new window size (~{Math.round(pendingWindow / 1000)}k). Each
-              file is re-analyzed in the background — safe, just slower for a moment.
-            </p>
-            <div className="modal-actions">
-              <button
-                className="modal-btn ghost"
-                onClick={() => setPendingWindow(null)}
-                disabled={applyingWindow}
-              >
-                Cancel
-              </button>
-              <button
-                className="modal-btn primary"
-                onClick={confirmBareWindow}
-                disabled={applyingWindow}
-              >
-                {applyingWindow ? 'Applying…' : 'Apply'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* "How caching works" — opened from the demo intro's ? and from the help
-          modal's link. Portaled to body and layered above both. */}
-      {cachingOpen && createPortal(
-        <div className="modal-overlay dim caching-overlay" onClick={() => setCachingOpen(false)}>
-          <div className="chunk-help demo-intro" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-            <button className="chunk-help-x" onClick={() => setCachingOpen(false)} aria-label="Close">×</button>
-            <h2 className="demo-intro-title">How caching works</h2>
-            <p className="chunk-help-text">CodeArchitect uses two cached summary layers:</p>
-            <ul className="demo-intro-list">
-              <li>
-                <b>Gists.</b> Short summaries generated once for each code segment and reused
-                wherever the same code appears.
-              </li>
-              <li>
-                <b>Context summaries.</b> Detailed summaries generated when you ask a question.
-                They combine relevant gists with the surrounding code selected by your highlights.
-              </li>
-            </ul>
-            <p className="chunk-help-text">
-              Cache entries are tied to the source code and active context. Gists are regenerated
-              when code changes. Context summaries are regenerated when the relevant code or
-              highlights change.
-            </p>
-          </div>
-        </div>,
-        document.body,
-      )}
-    </div>
-  )
+/* No-project library: a single centered prompt to upload via the "+" tab. */
+.lib-empty {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 24px; text-align: center; color: var(--muted); font-size: 13.5px;
 }
+
+/* Welcome state: the library reads as a blank white card — none of the
+   file/folder content is visible. It fades back in as the welcome collapses. */
+.lib-project, .filter, .file-list { transition: opacity 0.4s ease; }
+.app-body.welcome .library { background: var(--bg); }
+.app-body.welcome .lib-project,
+.app-body.welcome .filter,
+.app-body.welcome .lib-empty,
+.app-body.welcome .file-list { opacity: 0; pointer-events: none; }
+/* No chat FABs in the welcome state — the card is fully blank. */
+.app-body.welcome .lib-chat-fab,
+.app-body.welcome .chat-fab { display: none; }
+
+.tree-row {
+  display: flex; align-items: stretch; width: 100%; height: 26px;
+  text-align: left; background: none; border: none; color: var(--text);
+  font-size: 12.5px; padding: 0; border-radius: 6px;
+}
+.tree-row.file { cursor: pointer; }
+.tree-row.file:hover { background: var(--panel-2); }
+.tree-row.file.active { background: rgba(209, 30, 8, 0.12); color: #D11E08; }
+.tree-row.folder { color: var(--muted); cursor: pointer; }
+.tree-row.folder:hover { background: var(--panel-2); color: var(--text); }
+
+.tree-label {
+  font-family: var(--mono); white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; align-self: center; flex: 1; min-width: 0;
+  padding: 0 6px 0 4px;
+}
+.mod-dot {
+  align-self: center; flex-shrink: 0; width: 7px; height: 7px;
+  border-radius: 50%; background: #3BB4F0; margin-right: 8px;
+}
+
+/* Tree guide lines (vertical pass-throughs + the └/├ elbow connector). */
+.guide { position: relative; width: 16px; flex-shrink: 0; align-self: stretch; }
+.g-vert { position: absolute; left: 8px; top: 0; bottom: 0; border-left: 1px solid var(--guide); }
+.g-elbow { position: absolute; left: 8px; top: 0; bottom: 0; border-left: 1px solid var(--guide); }
+.g-elbow.last { bottom: auto; height: 50%; }
+.g-horiz { position: absolute; left: 8px; top: 50%; width: 7px; border-top: 1px solid var(--guide); }
+
+.pad { padding: 12px; }
+
+/* Stage / viewer */
+.stage { flex: 1; min-width: 0; display: flex; background: var(--bg); }
+/* Transparent only while the welcome/collapse animation is running, so the gradient
+   backdrop shows through the opened-up area and stays visible as the viewer fills.
+   Once settled it's white, so the code panel's rounded corners don't reveal the
+   gradient behind them. */
+.stage:has(.viewer.controls-hidden) { background: transparent; }
+/* No project yet, welcome state still up: reveal the gradient on the right just
+   like the locked viewer does once a project is loaded. */
+.stage.stage-bare { background: transparent; }
+/* The placeholder reads as a white card filling the left half with a rounded
+   top-right corner — the same silhouette the locked viewer card gives — so the
+   white/gradient boundary matches a loaded project instead of a hard library edge. */
+.empty-bare-card {
+  max-width: 50%; flex: 1; min-width: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px; text-align: center;
+  color: var(--muted); background: var(--bg);
+  border-top-right-radius: 7px;
+}
+.empty { margin: auto; color: var(--muted); }
+.empty-loading { display: flex; align-items: center; gap: 9px; }
+.empty-spinner {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--muted);
+  animation: empty-spin 0.7s linear infinite;
+}
+@keyframes empty-spin { to { transform: rotate(360deg); } }
+.viewer { display: flex; flex-direction: column; flex: 1; min-width: 0; position: relative; }
+
+.viewer-toolbar {
+  display: flex; flex-direction: column; align-items: stretch;
+  padding: 10px 16px; background: #fff;
+  /* max-width (not flex/width) so the welcome→normal expansion animates. */
+  max-width: 100%; transition: max-width .22s ease, border-radius .22s ease;
+}
+.toolbar-top {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding-bottom: 8px; border-bottom: 1px solid transparent;
+  position: relative;
+  transition: border-bottom-color .2s ease;
+}
+/* The divider only belongs when the bottom controls are expanded; fade it in. */
+.toolbar-top.open { border-bottom-color: var(--border); }
+/* The bottom controls expand/collapse in height + opacity at the same pace as
+   the divider fade. grid-template-rows 0fr→1fr animates auto height smoothly. */
+.toolbar-bottom-wrap {
+  display: grid; grid-template-rows: 0fr; opacity: 0;
+  transition: grid-template-rows .2s ease, opacity .2s ease;
+}
+.toolbar-bottom-wrap.open { grid-template-rows: 1fr; opacity: 1; }
+.toolbar-bottom-wrap > .toolbar-bottom { overflow: hidden; min-height: 0; }
+/* Thin oval chevron toggling the bottom half. Absolutely positioned so it
+   never shifts the granularity slider (it floats over the value's right space). */
+.toolbar-bottom {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+  padding-top: 10px;
+}
+.vt-file { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
+.vt-file-row { display: flex; align-items: center; gap: 10px; min-width: 0; max-width: 100%; }
+.lang-tag {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em;
+  background: var(--panel-2); border: 1px solid var(--border); color: #0D8BC5;
+  padding: 3px 8px; border-radius: 4px;
+}
+.vt-path { font-family: var(--mono); font-size: 16.25px; color: var(--text); }
+.vt-controls { display: flex; align-items: center; gap: 18px; }
+.slider-stack { display: flex; flex-direction: column; gap: 6px; }
+/* Demo page only: the three chunking sliders sit side by side on one line. */
+.slider-stack.slider-row { flex-direction: row; align-items: center; gap: 26px; flex-wrap: wrap; }
+.slider-stack.slider-row .slider-val { min-width: 0; }
+/* Top row: granularity slider + the highlight toggle, with a divider beneath
+   both, separating the primary controls from the secondary sliders. */
+/* Reserve room on the right for the absolutely-positioned Advanced chevron
+   (right: 10px) so the hint text doesn't run underneath it. */
+.gran-row { display: flex; align-items: center; }
+.chunk-count {
+  font-size: 12px; color: var(--muted); white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.chunk-count b { color: var(--text); }
+.gran-hint { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.gran-help {
+  display: inline-grid; place-items: center; margin-left: 8px; padding: 0;
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  transition: color .15s ease;
+}
+.gran-help:hover { color: #0D8BC5; }
+.gran-divider {
+  width: 1px; align-self: stretch; margin: 2px 12px;
+  background: var(--border);
+}
+/* Chunk-highlights toggle — a compact switch (like Suggest edits) leading the row. */
+.chunk-switch {
+  cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11.5px; color: var(--muted); padding: 2px; margin-right: 12px;
+  background: none; border: none; white-space: nowrap; flex-shrink: 0;
+  transition: color .15s ease;
+}
+.chunk-switch:hover { color: var(--text); }
+.chunk-switch.active { color: #0D8BC5; }
+.chunk-switch-track {
+  position: relative; flex-shrink: 0;
+  width: 22px; height: 13px; border-radius: 999px;
+  background: var(--border); transition: background .18s ease;
+}
+.chunk-switch-knob {
+  position: absolute; top: 2px; left: 2px;
+  width: 9px; height: 9px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.3);
+  transition: transform .18s ease;
+}
+.chunk-switch.active .chunk-switch-track { background: #3BB4F0; }
+.chunk-switch.active .chunk-switch-knob { transform: translateX(9px); }
+/* Granularity leads with the chunk count + divider, so no extra indent here. */
+.slider-wrap.gran { padding-left: 0; }
+.slider-wrap.gran .slider-label { font-size: 13.8px; }
+.slider-wrap { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
+.slider-label { min-width: 82px; white-space: nowrap; }
+.slider-wrap input[type="range"] {
+  width: 200px; margin: 0; -webkit-appearance: none; appearance: none;
+  background: transparent; cursor: pointer;
+}
+.slider-wrap input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 999px;
+  /* Grey overlay (on top) masks the colourful fill past the thumb. */
+  background:
+    linear-gradient(to right, transparent var(--pct, 0%), #e4eaf1 var(--pct, 0%)),
+    var(--fill-cool);
+}
+.slider-wrap input[type="range"]::-moz-range-track {
+  height: 4px; border-radius: 999px; background: #e4eaf1;
+}
+.slider-wrap input[type="range"]::-moz-range-progress {
+  height: 4px; border-radius: 999px; background: var(--fill-cool);
+}
+.slider-wrap input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; margin-top: -5px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--grad-cool); border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(59, 180, 240, 0.5);
+}
+.slider-wrap input[type="range"]::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--grad-cool); border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(59, 180, 240, 0.5);
+}
+.slider-val { color: var(--text); font-variant-numeric: tabular-nums; min-width: 62px; }
+
+/* Tick marks on the depth-spread slider (rest positions 1–5; not 0 / ∞). */
+.range-ticks-wrap { position: relative; display: inline-flex; align-items: center; }
+.range-ticks-wrap input[type="range"] { margin: 0; }
+.range-ticks { position: absolute; left: 0; top: 50%; width: 100%; height: 0; pointer-events: none; }
+.range-ticks svg { position: absolute; top: -3px; left: 0; display: block; }
+
+/* Granularity is the primary control — color it red to signal importance. */
+.slider-wrap.gran input[type="range"]::-webkit-slider-runnable-track {
+  background:
+    linear-gradient(to right, transparent var(--pct, 0%), #e4eaf1 var(--pct, 0%)),
+    var(--fill-warm);
+}
+.slider-wrap.gran input[type="range"]::-moz-range-progress { background: var(--fill-warm); }
+.slider-wrap.gran input[type="range"]::-webkit-slider-thumb {
+  background: var(--grad-warm); box-shadow: 0 0 0 1px rgba(209, 30, 8, 0.5);
+}
+.slider-wrap.gran input[type="range"]::-moz-range-thumb {
+  background: var(--grad-warm); box-shadow: 0 0 0 1px rgba(209, 30, 8, 0.5);
+}
+/* Sub-split on/off switch */
+.switch {
+  position: relative; flex-shrink: 0; width: 34px; height: 10px; padding: 0;
+  border-radius: 999px; border: 1px solid var(--border); background: var(--panel-2);
+  cursor: pointer; transition: background .15s ease, border-color .15s ease;
+}
+.switch .switch-knob {
+  position: absolute; top: 0; left: 1px; width: 8px; height: 8px;
+  border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: left .15s ease;
+}
+.switch.on { background: var(--grad-cool); border-color: #3BB4F0; }
+.switch.on .switch-knob { left: 23px; }
+.sub-val { min-width: 44px; }
+.slider-wrap input[type="range"]:disabled { cursor: default; }
+.slider-wrap input[type="range"]:disabled::-webkit-slider-runnable-track { background: #eef1f6; }
+/* Greyed thumb when the slider is off — whether disabled (sub-split) or just
+   parked at 0 but still interactive (depth spread, via `.off`). */
+.slider-wrap input[type="range"]:disabled::-webkit-slider-thumb,
+.slider-wrap input[type="range"].off::-webkit-slider-thumb {
+  background: #cbd2dc; border-color: #fff; box-shadow: none;
+}
+.slider-wrap input[type="range"]:disabled::-moz-range-track { background: #eef1f6; }
+.slider-wrap input[type="range"]:disabled::-moz-range-progress { background: #eef1f6; }
+.slider-wrap input[type="range"]:disabled::-moz-range-thumb,
+.slider-wrap input[type="range"].off::-moz-range-thumb {
+  background: #cbd2dc; border-color: #fff; box-shadow: none;
+}
+
+.viewer-body { flex: 1; min-height: 0; display: flex; position: relative; }
+/* The toolbar's shadow over the file content. A fixed overlay on the (non-
+   scrolling) body — so it doesn't move with the code — using inset shadows on
+   the top edge (more intense) and, when the drawer is out, the right edge (less
+   intense). The top-right radius makes the two flow continuously around the
+   file content's rounded corner. */
+.viewer-body::before {
+  content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  /* Soft white "cloud" shadow (was dark navy) — a light, diffuse veil down from
+     the top edge rather than a dark recess. */
+  box-shadow: inset 0 9px 11px -8px rgba(255, 255, 255, 0.95);
+  /* The toolbar caps the card above, so the code box sits flush beneath it —
+     keep the top-left square (rounding it carved a notch out under the toolbar). */
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  /* Match the drawer's width transition so the right-edge shadow eases in/out
+     at the same pace as the drawer slides. opacity eases the fade in when the
+     welcome collapses (see .viewer-body.locked::before) instead of popping. */
+  transition: right .2s ease, border-radius .2s ease, box-shadow .2s ease, opacity .6s ease .15s;
+}
+.viewer-body.drawer-open::before {
+  right: 50%; border-top-right-radius: 7px;
+  box-shadow:
+    inset 0 9px 11px -8px rgba(255, 255, 255, 0.95),
+    inset -9px 0 11px -8px rgba(255, 255, 255, 0.7);
+}
+/* The code box's top+left edge lines: a translucent gradient drawn only in a 1px
+   ring (mask-exclude) so it follows the rounded corners. The gradient dissolves
+   by ~mid-box, so the right + bottom edges go fully transparent (no line there —
+   the drawer supplies its own divider). A hair of backdrop blur frosts the line
+   and a very faint white halo lifts it off the surface. */
+.viewer-body::after {
+  content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none;
+  border-top-left-radius: 0; border-bottom-left-radius: 0;
+  padding: 1px;
+  background: var(--line-grad) border-box;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          mask-composite: exclude;
+  /* Softly blur the line itself (NOT a backdrop-filter — that frosted the whole
+     panel behind the ring) plus a faint white halo. */
+  filter: blur(0.4px) drop-shadow(0 0 0.7px rgba(255, 255, 255, 0.7));
+  transition: right .2s ease, border-radius .2s ease, opacity .6s ease .15s;
+}
+.viewer-body.drawer-open::after {
+  right: 50%; border-top-right-radius: 7px;
+}
+/* Charcoal arc tracing only the code box's bottom-right rounded corner. Drawn as
+   an SVG (see CodeViewer) so the stroke can taper to nothing at both ends —
+   matching how the top-right corner thins in/out. */
+.corner-arc {
+  position: absolute; bottom: 0; right: 50%; z-index: 4; pointer-events: none;
+}
+
+/* Drawer handle: the same manila-folder tab as the project picker, but stood up
+   vertically and attached to the drawer's left edge (pointing left). It's built
+   as a horizontal tab, then rotated -90deg; the tab's open edge becomes the right
+   edge that meets the drawer. `right` is set inline and animates with the drawer
+   so the tab rides the drawer's left edge open ↔ closed. */
+.drawer-handle {
+  position: absolute; top: 50%; z-index: 5;
+  width: 50px; height: 24px;
+  /* Rotated about center: translateX(13px) lands the tab's open edge exactly on
+     the drawer's left border line, with the nose protruding into the code area. */
+  transform: translate(13px, -50%) rotate(-90deg);
+  background: none; border: none; padding: 0; cursor: pointer; color: #475569;
+  transition: right .2s ease, transform .12s ease, color .15s ease, opacity .2s ease;
+}
+/* Hidden while the file chat panel is open (or animating closed) so it doesn't sit
+   under the panel; fades back in once the chat is gone. */
+.drawer-handle.chat-hidden { opacity: 0; pointer-events: none; }
+.drawer-handle::before,
+.drawer-handle::after {
+  content: ""; position: absolute;
+  clip-path: shape(
+    from 11px 0,
+    line to calc(100% - 11px) 0,
+    curve to calc(100% - 6px) 7px with calc(100% - 8px) 0 / calc(100% - 6px) 3px,
+    curve to 100% 100% with calc(100% - 6px) 42% / calc(100% - 3px) 80%,
+    line to 0 100%,
+    curve to 6px 7px with 3px 80% / 6px 42%,
+    curve to 11px 0 with 6px 3px / 8px 0
+  );
+}
+/* Charcoal outline with the same outward feather as the project tab. */
+.drawer-handle::before {
+  inset: 0; z-index: 0; background: var(--tab-line);
+  /* Slightly-cool white outline, top+sides only (same as the project tab). */
+  filter:
+    drop-shadow(0 -1px 1px var(--tab-line))
+    drop-shadow(-1px 0 1px var(--tab-line))
+    drop-shadow(1px 0 1px var(--tab-line));
+}
+/* White fill, inset to leave the ~1px charcoal rim; open edge (toward the drawer)
+   left flush so the tab merges into the drawer. */
+.drawer-handle::after {
+  inset: 0; z-index: 1; background: #fff; transition: background .15s ease;
+  clip-path: shape(
+    from 12px 1.5px,
+    line to calc(100% - 12px) 1.5px,
+    curve to calc(100% - 7px) 8px with calc(100% - 9px) 1.5px / calc(100% - 7px) 4px,
+    curve to calc(100% - 1px) 100% with calc(100% - 7px) 42% / calc(100% - 4px) 80%,
+    line to 1px 100%,
+    curve to 7px 8px with 4px 80% / 7px 42%,
+    curve to 12px 1.5px with 7px 4px / 9px 1.5px
+  );
+}
+.drawer-handle:hover::after { background: #f4f5f7; }
+.drawer-handle:active { transform: translate(13px, -50%) rotate(-90deg) scale(0.94); }
+/* Counter-rotate the chevron so it stays upright inside the rotated tab. */
+.dh-icon {
+  position: relative; z-index: 2; display: grid; place-items: center;
+  width: 100%; height: 100%; transform: rotate(90deg);
+}
+
+/* Code area */
+.code-scroll {
+  flex: 1; overflow: auto; background: var(--bg); position: relative;
+  /* The visible top+left edge lines are a gradient-ring overlay on the (non-
+     scrolling) viewer-body::after — a real border here can't gradient and would
+     scroll with the content. Radius stays so the scrolling content is clipped to
+     the same rounded corners the ring traces. */
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  /* max-width (capped to 50% while locked) so the welcome→normal fill animates. */
+  max-width: 100%;
+  transition: border-radius .2s ease, max-width .22s ease;
+}
+/* When the drawer is out, clip the code (text + chunk highlights) to the same
+   rounded right corners as the shadow/drawer so nothing peeks past them. */
+.viewer-body.drawer-open .code-scroll {
+  border-top-right-radius: 7px;
+}
+/* Locked (top bar expanded): the code contracts to the left half and the toolbar
+   is hidden, so the right half opens up as part of the expanded top region —
+   showing the shared gradient backdrop (see .app::before). The drawer stays shut
+   and its handle is hidden until the bar collapses. */
+/* Keep the file-path header in the welcome view, but contract the toolbar to the
+   code panel's width and hide the granularity controls so the right stays gradient.
+   The toolbar now caps the card, so it carries the rounded top-right corner. */
+.viewer.locked .viewer-toolbar { max-width: 50%; border-top-right-radius: 7px; }
+.viewer.locked .toolbar-bottom-wrap { display: none; }
+/* Granularity row stays hidden until the collapse fully settles, so it doesn't
+   pop in mid-animation. */
+.viewer.controls-hidden .gran-row { display: none; }
+/* No toolbar shadow / edge line while locked — the area is continuous gradient.
+   Fade (opacity) rather than display:none so they ease in as the welcome collapses
+   instead of popping into existence mid-animation. */
+.viewer-body.locked::before, .viewer-body.locked::after { opacity: 0; }
+.viewer-body.locked { background: transparent; }
+.viewer-body.locked .code-scroll {
+  /* Capped to half via max-width (keeps flex:1) so collapsing animates the fill. */
+  max-width: 50%;
+  /* No scrolling in the welcome state — scrolling would expose the gradient
+     backdrop past the code. */
+  overflow: hidden;
+  /* All corners square — the toolbar above now caps the card's rounded top. */
+  border-radius: 0;
+}
+.viewer-body.locked .drawer-handle { display: none; }
+/* Welcome state: blank the card entirely — hide the filename and the code so the
+   whole viewer reads as empty white. Both fade back in as the welcome collapses. */
+.vt-path, .code { transition: opacity 0.4s ease; }
+.viewer.locked .vt-path { opacity: 0; }
+.viewer-body.locked .code { opacity: 0; pointer-events: none; }
+/* Keep the code scrollbar a constant width (don't let it fatten on hover). */
+.code-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.code-scroll::-webkit-scrollbar-track { background: transparent; }
+/* Thumb is hidden until the user scrolls; `.scrolling` (toggled in JS, cleared
+   3s after the last scroll) fades it in, then it fades back out. */
+.code-scroll::-webkit-scrollbar-thumb {
+  background: rgba(31, 41, 55, 0); border-radius: 6px;
+  transition: background .4s ease;
+}
+.code-scroll.scrolling::-webkit-scrollbar-thumb { background: rgba(31, 41, 55, 0.28); }
+.code-scroll.scrolling::-webkit-scrollbar-thumb:hover { background: rgba(31, 41, 55, 0.4); }
+/* Firefox: thin auto-hiding thumb follows the same scrolling state. */
+.code-scroll { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+.code-scroll.scrolling { scrollbar-color: rgba(31, 41, 55, 0.28) transparent; }
+.code { font-family: var(--mono); font-size: 12.5px; line-height: 17px; padding: 8px 0; }
+.code-line {
+  display: flex; align-items: flex-start; position: relative;
+  /* The code view isn't windowed, so animating the drawer (which re-wraps the code
+     pane) re-laid-out EVERY line each frame — the main source of the choppiness.
+     content-visibility lets off-screen lines skip layout/paint during the
+     animation, so per-frame cost scales with visible lines, not file size. `auto`
+     intrinsic size makes the browser remember each line's real height after first
+     paint, keeping the scroll height stable. Containment only applies while a line
+     is off-screen, so the on-screen selected-chunk glow isn't clipped. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 17px;
+}
+/* Pulse the selected chunk's lines when its label in the chat header is clicked. */
+.code-line.bulging {
+  animation: chunk-bulge 0.55s ease;
+  transform-origin: left center;
+  z-index: 1; /* lift the scaling line above its neighbours */
+}
+@keyframes chunk-bulge {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+/* Blue margin dot on a chunk's first line when it has notes or edits. */
+.ln-dot {
+  position: absolute; left: 5px; top: 5.5px;
+  width: 6px; height: 6px; border-radius: 50%; background: #3BB4F0;
+}
+/* Colored chunk segments within a line (can start/end mid-line). */
+/* Interactive only while chunk bands are shown (i.e. in the Q&A view); otherwise
+   the code reads as plain text with no per-token affordances. */
+.code.bands .seg:not(.plain-seg) { cursor: pointer; }
+.code.bands .seg:not(.plain-seg):hover { filter: brightness(0.96); }
+/* Selected chunk: a neon, glow-in-the-dark blue halo around its segments. Raised
+   so the glow sits above neighboring segments instead of being painted over. */
+.seg.sel, .seg.sel:hover {
+  position: relative; z-index: 1; border-radius: 2px;
+  /* drop-shadow (not box-shadow) traces the segment's true silhouette, so the
+     glow also wraps the step edges created when a long line spills onto an extra
+     visual row — box-shadow skips those mid-element wrap edges. */
+  filter:
+    drop-shadow(0 0 6px rgba(105, 175, 252, 0.7))
+    drop-shadow(0 0 18px rgba(105, 175, 252, 0.4));
+}
+.ln {
+  flex-shrink: 0; width: 52px; text-align: center; padding: 0 12px;
+  color: #aab2c2; user-select: none; font-variant-numeric: tabular-nums;
+}
+.lc {
+  white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word;
+  padding-right: 24px; flex: 1; min-width: 0; tab-size: 4;
+}
+
+/* Chunk list */
+.chunk-list {
+  width: 50%; flex-shrink: 0;
+  border-radius: 7px 0 0 0; /* top-left only; bottom-left squared */
+  background: var(--panel-grad); display: flex; flex-direction: column;
+  overflow: hidden; transition: width .2s ease;
+  position: relative; /* for the centered divider line + the edge ring */
+}
+/* Drawer's top+left edge lines — same translucent gradient ring (blur + faint
+   white halo) as the code box, following the drawer's rounded-left shape. */
+.chunk-list::before {
+  content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  border-radius: 7px 0 0 0;
+  padding: 1px;
+  background: var(--line-grad) border-box;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          mask-composite: exclude;
+  /* Blur the line itself, not the backdrop (which frosted the whole drawer). */
+  filter: blur(0.4px) drop-shadow(0 0 0.7px rgba(255, 255, 255, 0.7));
+}
+.chunk-list.closed::before { display: none; }
+/* Horizontal divider between the panes (fixed as the list scrolls). Sits at the
+   pane boundary — the edit-history pane below is 25% shorter than a half (37.5%),
+   so the split lands at 62.5%. */
+.chunk-list::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 62.5%;
+  height: 1px; background: var(--border); pointer-events: none; z-index: 1;
+}
+.chunk-list.closed { width: 0; border-left: none; }
+.chunk-list.closed::after { display: none; }
+/* The two drawer panes — Edits (top) and Edit history (bottom), split by the
+   divider. The history pane is 25% shorter than half (37.5%); Edits takes the
+   rest (62.5%). */
+.cl-pane {
+  height: 62.5%; box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 10px 12px; min-width: 0;
+}
+.cl-pane.cl-history { height: 37.5%; }
+.cl-pane-head {
+  flex-shrink: 0; font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cl-pane-for { color: #0D8BC5; text-transform: none; letter-spacing: 0; }
+.cl-pane-area {
+  flex: 1; min-height: 0; resize: none;
+  border: none; background: transparent; color: var(--text);
+  padding: 2px 0; font-family: var(--mono); font-size: 12px; line-height: 1.5;
+  white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto;
+}
+.cl-pane-area:focus { outline: none; }
+.cl-pane-area:disabled { background: transparent; color: var(--muted); cursor: default; }
+
+/* Edits pane: a "reset" on the right of the header. */
+.cl-edit-head { display: flex; align-items: center; justify-content: space-between; }
+.cl-reset {
+  font-size: 10px; text-transform: none; letter-spacing: 0;
+  color: #5CC6E8; background: none; border: 1px solid rgba(59, 180, 240, 0.4);
+  border-radius: 4px; padding: 1px 7px; cursor: pointer;
+}
+.cl-reset:hover:not(:disabled) { background: rgba(59, 180, 240, 0.12); }
+.cl-reset:disabled { opacity: 0.45; cursor: default; color: var(--muted); border-color: var(--border); }
+
+/* Diff editor: a transparent textarea over a backdrop that draws the diff. They
+   share identical metrics so the visible (backdrop) text lines up under the caret. */
+.cl-edit-wrap { position: relative; flex: 1; min-height: 0; }
+.cl-edit-back, .cl-edit-ta {
+  position: absolute; inset: 0; margin: 0; box-sizing: border-box;
+  font-family: var(--mono); font-size: 12px; line-height: 1.5;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.cl-edit-back {
+  z-index: 0; overflow: hidden; pointer-events: none; color: var(--text);
+  padding: 2px 0;
+}
+.cl-edit-line { position: relative; padding-left: 14px; }
+.cl-edit-dot {
+  position: absolute; left: 2px; top: 6px;
+  width: 6px; height: 6px; border-radius: 50%; background: #D11E08;
+}
+.cl-edit-add {
+  background: rgba(80, 208, 236, 0.32); /* light, cyan-leaning blue */
+  border-radius: 2px;
+}
+.cl-edit-ta {
+  z-index: 1; resize: none; border: none; background: transparent; outline: none;
+  padding: 2px 0 2px 14px; overflow: auto; scrollbar-width: none;
+  color: transparent; -webkit-text-fill-color: transparent; caret-color: var(--text);
+}
+.cl-edit-ta::-webkit-scrollbar { width: 0; height: 0; }
+.cl-edit-ta:disabled { cursor: default; }
+
+/* Edit-history carousel (bottom pane). */
+.cl-hist-nav { display: inline-flex; gap: 4px; }
+.cl-hist-arrow {
+  width: 18px; height: 18px; display: grid; place-items: center; padding: 0;
+  font-size: 14px; line-height: 1; color: #3BB4F0; cursor: pointer;
+  background: none; border: 1px solid rgba(59, 180, 240, 0.4); border-radius: 4px;
+}
+.cl-hist-arrow:hover:not(:disabled) { background: rgba(59, 180, 240, 0.12); }
+.cl-hist-arrow:disabled { opacity: 0.4; cursor: default; color: var(--muted); border-color: var(--border); }
+.cl-hist-card {
+  flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px;
+  text-align: left; cursor: pointer; overflow: hidden;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 10px; transition: border-color .15s ease, background .15s ease;
+}
+.cl-hist-card:hover { border-color: #3BB4F0; background: #fbfdff; }
+.cl-hist-loc {
+  flex-shrink: 0; font-family: var(--mono); font-size: 11px; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cl-hist-chunk { color: #0D8BC5; }
+.cl-hist-preview {
+  flex: 1; min-height: 0; margin: 0; overflow: hidden;
+  font-family: var(--mono); font-size: 11px; line-height: 1.45; color: var(--text);
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.cl-pane-empty { flex: 1; display: grid; place-items: center; color: var(--muted); font-size: 12px; }
+
+.cl-scroll { overflow-y: auto; flex: 1; padding: 6px; }
+.cl-item {
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  background: none; border: none; color: var(--text); cursor: pointer;
+  padding: 6px 8px; border-radius: 6px; font-size: 12px;
+}
+.cl-item:hover { background: var(--panel-2); }
+.cl-item.active { background: var(--active); }
+.cl-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.cl-range { font-family: var(--mono); flex: 1; }
+.cl-size { color: var(--muted); font-size: 11px; }
+
+.viewer-loading {
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  background: var(--panel-2); border: 1px solid var(--border);
+  padding: 6px 14px; border-radius: 999px; font-size: 12px; color: var(--muted);
+}
+/* No "chunking…" pill in the welcome state — the card stays blank. */
+.viewer.locked .viewer-loading { display: none; }
+
+/* RAG Q&A chat — floating button + panel over the file view. Both shift left to
+   clear the chunk drawer when it's open (matches the .viewer-body offset). */
+.chat-fab {
+  position: absolute; bottom: 20px; right: 20px; z-index: 6;
+  width: 48px; height: 48px; border-radius: 50%;
+  display: grid; place-items: center; cursor: pointer;
+  color: #5CC6E8;
+  background:
+    linear-gradient(145deg, rgba(135, 214, 234, 0.42), rgba(176, 190, 248, 0.22));
+  -webkit-backdrop-filter: blur(3px) saturate(150%);
+  backdrop-filter: blur(3px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 6px 18px rgba(31, 41, 55, 0.18),
+    inset 0 1px 2px rgba(255, 255, 255, 0.9),
+    inset 0 -3px 8px rgba(255, 255, 255, 0.35);
+  transition: right .2s ease, transform .12s ease, box-shadow .2s ease, background .2s ease;
+  /* Unlike the folder FAB — which is revealed gradually as its panel genies away to
+     the opposite corner — this FAB sits on top of its panel and would pop in at full
+     opacity the instant the chat closes. Fade it in instead so it reappears as
+     gradually as the folder one. (display:none→grid on un-hide restarts this.) */
+  animation: fab-fade-in .42s ease both;
+}
+@keyframes fab-fade-in { from { opacity: 0; } to { opacity: 1; } }
+.chat-fab:hover {
+  background:
+    linear-gradient(145deg, rgba(135, 214, 234, 0.58), rgba(176, 190, 248, 0.34));
+  box-shadow:
+    0 8px 22px rgba(31, 41, 55, 0.24),
+    inset 0 1px 2px rgba(255, 255, 255, 1),
+    inset 0 -3px 8px rgba(255, 255, 255, 0.45);
+}
+.chat-fab:active { transform: scale(0.94); }
+/* Attention pulse after a fresh highlight: an expanding ring radiating from the FAB
+   (on a pseudo-element, so it doesn't disturb the FAB's own fade-in animation). */
+.chat-fab.pulsing::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  pointer-events: none;
+  /* Exactly three pulses, then stop — browser-controlled so it never cuts into a
+     fourth (the JS timer only removes the class afterward). */
+  animation: fab-ping 0.95s ease-out 3;
+}
+@keyframes fab-ping {
+  0%        { box-shadow: 0 0 0 0 rgba(59, 180, 240, 0.55); }
+  70%, 100% { box-shadow: 0 0 0 13px rgba(59, 180, 240, 0); }
+}
+/* When the chat is open, the panel header already has a close (×), so the FAB is
+   redundant — hide it. */
+.chat-fab.open { display: none; }
+.viewer-body.drawer-open .chat-fab,
+.viewer-body.locked .chat-fab { right: calc(50% + 20px); }
+
+.chat-panel {
+  position: absolute; bottom: 18px; right: 20px; z-index: 6;
+  width: 380px; max-width: calc(100% - 40px);
+  height: 460px; max-height: calc(100% - 110px);
+  display: flex; flex-direction: column;
+  background: #fff; border: 1px solid var(--border); border-radius: 14px;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22); overflow: hidden;
+  transition: right .2s ease;
+  /* Genie: unfurl up out of the FAB corner (bottom-right). Animate ONLY transform
+     + opacity so the whole thing stays on the GPU compositor — animating
+     border-radius/filter forces a paint every frame and looks like a flip book. */
+  transform-origin: 92% 100%;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  animation: genie-in .46s cubic-bezier(0.22, 1, 0.3, 1) both;
+}
+.chat-panel.closing {
+  animation: genie-out .34s cubic-bezier(0.6, 0, 0.78, 0) both;
+}
+@keyframes genie-in {
+  0%   { opacity: 0; transform: translate(20px, 48px) scale(0.4, 0.22) skewX(7deg); }
+  35%  { opacity: 1; }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes genie-out {
+  0%   { opacity: 1; transform: none; }
+  65%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(20px, 48px) scale(0.4, 0.22) skewX(7deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-panel, .chat-panel.closing, .chat-fab { animation: none; }
+}
+.viewer-body.drawer-open .chat-panel,
+.viewer-body.locked .chat-panel { right: calc(50% + 20px); }
+/* When the folder chat and file chat are open side by side, drop both drop-shadows
+   so the folder chat (which stacks above) doesn't cast over the file chat — they sit
+   at one even level, separated only by their borders. */
+.app-body:has(.folder-chat-panel):has(.chat-panel:not(.folder-chat-panel)) .folder-chat-panel,
+.app-body:has(.folder-chat-panel):has(.chat-panel:not(.folder-chat-panel)) .chat-panel {
+  box-shadow: none;
+}
+.chat-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; border-bottom: 1px solid var(--border);
+}
+/* Folder-chat header: history chevrons + title on the left, close on the right. */
+.chat-head-left { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.chat-head-left .chat-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Filename truncates if long; the " • selection" label always stays visible. */
+.chat-title { font-size: 14px; flex: 1; min-width: 0; display: flex; align-items: baseline; }
+.chat-title-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex-shrink: 1; }
+.chat-title-dot { color: var(--muted); flex-shrink: 0; white-space: pre; }
+.chat-sel { flex-shrink: 0; white-space: nowrap; }
+/* Selection label: thin like the file name (inherits the 200 weight), a touch
+   smaller, blue, and clickable to pulse the selected chunk in the code. */
+.chat-sel {
+  font: inherit; font-size: 12px; color: #0D8BC5;
+  background: none; border: none; padding: 0; cursor: pointer; vertical-align: baseline;
+}
+.chat-sel:hover { text-decoration: underline; }
+.chat-close {
+  background: none; border: none; color: var(--muted);
+  font-size: 18px; line-height: 1; cursor: pointer;
+}
+.chat-close:hover { color: var(--text); }
+/* Suggest-edits row: borderless and untinted so it reads as part of the panel. The
+   header divider above it stays (the .chat-head border-bottom), giving the file chat
+   the same head divider the folder chat has. */
+.chat-context {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 14px 8px;
+}
+.chat-context .chat-suggest { align-self: center; }
+.chat-ctx-sep { color: var(--muted); }
+.chat-ctx-count {
+  font-size: 11.5px; color: var(--muted); white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.chat-ctx-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.chat-ctx-chunk { font-size: 11px; color: #0D8BC5; }
+/* Structural ancestry breadcrumb (file → … → selected node), built from the
+   stable node ids the chunks endpoint now returns. */
+.chat-ctx-path {
+  font-family: var(--mono); font-size: 10.5px; line-height: 1.5; color: var(--muted);
+}
+.chat-ctx-crumb:last-child { color: var(--text); }
+.chat-ctx-sep { color: var(--guide); }
+.chat-body { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.chat-placeholder { color: var(--muted); font-size: 13px; line-height: 1.5; }
+/* Q&A transcript: user bubbles align right (blue), assistant left (panel grey). */
+.chat-msg { display: flex; flex-direction: column; max-width: 88%; }
+.chat-msg.user { align-self: flex-end; align-items: flex-end; }
+.chat-msg.assistant { align-self: flex-start; align-items: flex-start; }
+.chat-bubble {
+  font-size: 13px; line-height: 1.5; padding: 8px 11px; border-radius: 12px;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+/* The LLM's **bold** is parsed into <strong> (see renderRich). Override the
+   global `strong { font-weight: inherit }` so emphasis actually reads as bold. */
+.chat-bubble strong { font-weight: 600; }
+/* Markdown `## heading` lines (renderRich strips the #'s) — a compact section
+   header. Kept inline (the line breaks come from the surrounding newlines, which
+   pre-wrap renders) so it doesn't double-space; just semibold + a touch larger. */
+.chat-bubble .chat-h { font-weight: 600; font-size: 13.5px; }
+/* Inline `code` (renderRich strips the backticks): monospace at a readable
+   weight (the body is ExtraLight 200, too thin for code) on a faint tint. */
+.chat-bubble code {
+  font-family: var(--mono); font-size: 0.92em; font-weight: 400;
+  background: rgba(120, 140, 170, 0.14); padding: 0.5px 4px; border-radius: 4px;
+}
+/* Inline clickable file/folder references inside an answer (mirrors the ref pills). */
+.chat-inline-ref {
+  background: none; border: none; padding: 0; margin: 0; cursor: pointer;
+  font: inherit; color: #0D8BC5;
+  text-decoration: underline; text-decoration-color: rgba(13, 139, 197, 0.4);
+  text-underline-offset: 2px;
+}
+.chat-inline-ref:hover { text-decoration-color: #0D8BC5; }
+.chat-inline-ref.code {
+  font-family: var(--mono); font-size: 0.92em; color: #0D8BC5;
+  background: rgba(59, 180, 240, 0.12); padding: 0.5px 4px; border-radius: 4px;
+  text-decoration: none;
+}
+.chat-inline-ref.code:hover { background: rgba(59, 180, 240, 0.22); }
+/* Fenced ```code``` blocks: a real multi-line code panel — monospace, scrollable,
+   with the backtick tint dropped (it's already on a panel). */
+.chat-bubble pre.chat-code {
+  margin: 6px 0; padding: 8px 10px; border-radius: 8px;
+  background: rgba(120, 140, 170, 0.14); border: 1px solid var(--line);
+  overflow-x: auto; white-space: pre;
+}
+.chat-bubble pre.chat-code code {
+  font-family: var(--mono); font-size: 0.86em; font-weight: 400;
+  background: none; padding: 0; border-radius: 0; white-space: pre;
+}
+/* On the blue user bubble, keep the code panel legible on the gradient. */
+.chat-msg.user .chat-bubble pre.chat-code {
+  background: rgba(255, 255, 255, 0.16); border-color: rgba(255, 255, 255, 0.28);
+}
+/* On the blue user bubble, use a translucent-white tint so it reads on the gradient. */
+.chat-msg.user .chat-bubble code { background: rgba(255, 255, 255, 0.22); }
+.chat-msg.user .chat-bubble { background: var(--grad-cool-teal); color: #fff; border-bottom-right-radius: 4px; }
+.chat-msg.assistant .chat-bubble { background: var(--panel-2); color: var(--text); border-bottom-left-radius: 4px; }
+.chat-bubble.thinking { color: var(--muted); font-style: italic; }
+.chat-msg-path {
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+  margin: 0 0 3px 2px; overflow-wrap: anywhere;
+}
+.chat-msg-error { color: #D11E08; font-size: 12px; align-self: flex-start; }
+.chat-msg-depth { font-size: 10px; color: var(--muted); margin: 2px 0 0 2px; }
+/* The "More detail" user chip reads as an action, not a typed message. */
+.chat-msg.user.deepen .chat-bubble {
+  background: none; color: #0D8BC5; border: 1px solid rgba(59, 180, 240, 0.4);
+  font-size: 11px; padding: 3px 9px;
+}
+/* Action row beneath the latest answer (More detail / Suggest edits). */
+.chat-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 10px; margin-top: 2px; }
+.chat-deepen {
+  align-self: flex-start; cursor: pointer;
+  font-size: 12px; color: #0D8BC5; padding: 5px 11px; border-radius: 999px;
+  background: rgba(59, 180, 240, 0.10); border: 1px solid rgba(59, 180, 240, 0.35);
+  transition: background .15s ease, border-color .15s ease;
+}
+.chat-deepen:hover { background: rgba(59, 180, 240, 0.18); }
+/* Lit up while the reader has part of an answer highlighted — the button will focus there. */
+.chat-deepen.focused { background: rgba(59, 180, 240, 0.22); border-color: rgba(59, 180, 240, 0.65); }
+/* The always-present nudge that highlighting an answer focuses "More detail". */
+.chat-deepen-hint {
+  flex: 1 1 130px; min-width: 0;
+  font-size: 11px; line-height: 1.3; color: var(--muted);
+}
+.chat-deepen-hint-mark {
+  color: #0D8BC5; border-bottom: 1px dashed rgba(59, 180, 240, 0.55); padding-bottom: 0.5px;
+}
+/* Jump-to buttons under a folder-chat answer: one per child file/folder the
+   answer named, so you can dive straight into that file's view or that
+   subfolder's chat. Same teal pill family as the action chips above. */
+.chat-refs { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0 2px; }
+.chat-ref {
+  cursor: pointer; font-family: var(--mono); font-size: 11.5px;
+  padding: 4px 10px; border-radius: 999px; color: #0D8BC5;
+  background: rgba(59, 180, 240, 0.10); border: 1px solid rgba(59, 180, 240, 0.35);
+  transition: background .15s ease;
+}
+.chat-ref:hover { background: rgba(59, 180, 240, 0.18); }
+/* Suggest edits: same pill shape, a greenish accent to set it apart as an action
+   that changes the code rather than the conversation. It's a toggle — `.active`
+   is the on (filled) state. */
+/* Label + sliding toggle switch (not a pill that fills with colour). The track
+   greys when off, turns green when on, and the knob slides across. */
+.chat-suggest {
+  align-self: flex-start; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12px; color: var(--muted); padding: 2px; background: none; border: none;
+  transition: color .15s ease;
+}
+.chat-suggest:hover { color: var(--text); }
+.chat-suggest:disabled { opacity: 0.6; cursor: default; }
+.chat-suggest.active { color: #0F7B4F; }
+.chat-suggest-track {
+  position: relative; flex-shrink: 0;
+  width: 26px; height: 15px; border-radius: 999px;
+  background: var(--border); transition: background .18s ease;
+}
+.chat-suggest-knob {
+  position: absolute; top: 2px; left: 2px;
+  width: 11px; height: 11px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.3);
+  transition: transform .18s ease;
+}
+.chat-suggest.active .chat-suggest-track { background: #10A360; }
+.chat-suggest.active .chat-suggest-knob { transform: translateX(11px); }
+/* Compact variant for the context bar. */
+.chat-suggest.sm { flex-shrink: 0; font-size: 10.5px; white-space: nowrap; }
+.chat-suggest.sm .chat-suggest-track { width: 22px; height: 13px; }
+.chat-suggest.sm .chat-suggest-knob { width: 9px; height: 9px; }
+.chat-suggest.sm.active .chat-suggest-knob { transform: translateX(9px); }
+/* Edit mode: tint the input row green so it's clear messages now make changes. */
+.chat-input-row.editing { background: rgba(16, 163, 96, 0.07); }
+.chat-input-row.editing .chat-input::placeholder { color: #0F7B4F; }
+.chat-input-row.editing .chat-send { background: #10A360; }
+
+/* Folder chat — FAB anchored to the bottom-right of the library column, panel
+   floats up from there. Reuses the shared chat-head/body/msg/input classes. */
+/* Identical to .chat-fab (size/colors/shadow) and at the same bottom offset, so
+   the two FABs' centers line up vertically across the two columns. */
+.lib-chat-fab {
+  position: absolute; bottom: 20px; right: 20px; z-index: 7;
+  width: 48px; height: 48px; border-radius: 50%;
+  display: grid; place-items: center; cursor: pointer;
+  color: #5CC6E8;
+  background: linear-gradient(145deg, rgba(135, 214, 234, 0.42), rgba(176, 190, 248, 0.22));
+  -webkit-backdrop-filter: blur(3px) saturate(150%); backdrop-filter: blur(3px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 6px 18px rgba(31, 41, 55, 0.18),
+    inset 0 1px 2px rgba(255, 255, 255, 0.9),
+    inset 0 -3px 8px rgba(255, 255, 255, 0.35);
+  transition: transform .12s ease, background .2s ease, box-shadow .2s ease;
+}
+.lib-chat-fab:hover {
+  background: linear-gradient(145deg, rgba(135, 214, 234, 0.58), rgba(176, 190, 248, 0.34));
+  box-shadow:
+    0 8px 22px rgba(31, 41, 55, 0.24),
+    inset 0 1px 2px rgba(255, 255, 255, 1),
+    inset 0 -3px 8px rgba(255, 255, 255, 0.45);
+}
+.lib-chat-fab:active { transform: scale(0.94); }
+.lib-chat-fab.open { display: none; }
+.folder-chat-panel {
+  position: fixed; bottom: 18px; left: 14px; z-index: 8;
+  width: 380px; max-width: calc(100vw - 28px);
+  height: 460px; max-height: calc(100vh - 96px);
+  display: flex; flex-direction: column;
+  background: #fff; border: 1px solid var(--border); border-radius: 14px;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.24); overflow: hidden;
+  transform-origin: 12% 100%;
+  /* Promote to a GPU layer like .chat-panel does — without this the genie scale
+     repaints every frame and looks choppy. */
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  animation: genie-in .46s cubic-bezier(0.22, 1, 0.3, 1) both;
+}
+.folder-chat-panel.closing {
+  animation: genie-out .34s cubic-bezier(0.6, 0, 0.78, 0) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .folder-chat-panel, .folder-chat-panel.closing { animation: none; }
+}
+.chat-input-row {
+  display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--border);
+  /* Keep the 📎/send buttons pinned to the bottom as the textarea grows upward. */
+  align-items: flex-end;
+}
+.chat-input {
+  flex: 1; min-width: 0; padding: 9px 12px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 13px;
+  /* Multi-line: Shift+Enter inserts a newline; the textarea auto-grows (JS) up to
+     max-height, then scrolls. No manual drag handle. */
+  resize: none; line-height: 1.4; min-height: 38px; max-height: 140px; overflow-y: auto;
+}
+.chat-input:focus { outline: none; border-color: #3BB4F0; }
+.chat-send {
+  width: 36px; height: 38px; flex-shrink: 0; border-radius: 10px; cursor: pointer;
+  border: 1px solid #3BB4F0; background: var(--grad-cool-teal); color: #fff; font-size: 15px;
+}
+.chat-send:disabled { opacity: 0.55; cursor: default; }
+/* Don't dim the whole input (it greyed the border); just the cursor. */
+.chat-input:disabled { cursor: default; }
+
+/* ── Attach-a-project-file-as-context control (📎 in the chat input row) ──────── */
+.ctx-attach { position: relative; display: flex; align-items: center; flex-shrink: 0; }
+.ctx-add {
+  width: 36px; height: 38px; flex-shrink: 0; cursor: pointer;
+  display: grid; place-items: center;
+  border-radius: 10px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--muted); line-height: 1;
+  transition: border-color .15s ease, color .15s ease;
+}
+.ctx-add:hover:not(:disabled) { border-color: #3BB4F0; color: #0D8BC5; }
+.ctx-add:disabled { opacity: 0.55; cursor: default; }
+/* Attached-file chip (replaces the picker once a file is chosen — limit 1). */
+.ctx-chip {
+  display: inline-flex; align-items: center; gap: 4px; max-width: 160px;
+  padding: 4px 4px 4px 9px; border-radius: 999px; font-size: 11.5px;
+  color: #0D8BC5; background: rgba(59, 180, 240, 0.10);
+  border: 1px solid rgba(59, 180, 240, 0.35);
+}
+.ctx-chip-name { font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctx-chip-x {
+  flex-shrink: 0; width: 16px; height: 16px; border: none; border-radius: 50%;
+  background: rgba(59, 180, 240, 0.18); color: #0D8BC5; cursor: pointer;
+  font-size: 12px; line-height: 1; display: grid; place-items: center;
+}
+.ctx-chip-x:hover { background: rgba(59, 180, 240, 0.32); }
+/* Searchable file picker, opening upward out of the 📎 button. */
+.ctx-menu {
+  position: absolute; bottom: calc(100% + 6px); left: 0; z-index: 9;
+  width: 300px; max-width: 70vw; display: flex; flex-direction: column;
+  background: #fff; border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.22); overflow: hidden;
+}
+.ctx-search {
+  padding: 9px 11px; border: none; border-bottom: 1px solid var(--border);
+  font-size: 12.5px; color: var(--text); background: var(--panel);
+}
+.ctx-search:focus { outline: none; }
+.ctx-list { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; }
+.ctx-item {
+  text-align: left; padding: 7px 11px; border: none; background: none; cursor: pointer;
+  font-family: var(--mono); font-size: 11.5px; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ctx-item:hover { background: rgba(59, 180, 240, 0.12); color: #0D8BC5; }
+.ctx-empty { padding: 10px 11px; color: var(--muted); font-size: 12px; }
+/* Footer shown when results are capped — the rest are reachable by searching. */
+.ctx-more {
+  padding: 7px 11px; color: var(--muted); font-size: 11px; font-style: italic;
+  border-top: 1px solid var(--border); background: var(--panel);
+}
+
+/* ── Confirmation modal (clear tree cache, …) ───────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  display: grid; place-items: center;
+  background: rgba(20, 22, 30, 0.34);
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+  animation: modalFade .14s ease;
+}
+@keyframes modalFade { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+  width: min(420px, calc(100vw - 48px));
+  background: var(--panel); color: var(--text);
+  border: 0.5px solid var(--border); border-radius: 14px;
+  padding: 22px 22px 18px; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22);
+  animation: modalPop .16s cubic-bezier(.2, .8, .3, 1);
+}
+@keyframes modalPop { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
+/* Toolbar-? help modal: a plain dark scrim around the modal — no blur on the
+   surrounding background (too heavy for a quick tip). The panel itself keeps its
+   frosted-glass look (.chunk-help below). */
+.modal-overlay.dim {
+  background: rgba(20, 22, 30, 0.34);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+/* Glass how-to modal (chunking help). */
+.modal-overlay.glass {
+  background: rgba(20, 22, 30, 0.18);
+  -webkit-backdrop-filter: blur(3.5px) saturate(135%); backdrop-filter: blur(3.5px) saturate(135%);
+}
+.chunk-help {
+  position: relative; width: min(440px, calc(100vw - 48px));
+  padding: 28px 26px 24px; border-radius: 18px; color: var(--text);
+  background: rgba(255, 255, 255, 0.55);
+  -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  /* Fade in with the overlay (no transform) — animating transform on a
+     backdrop-filter + big-shadow panel recomputes the 24px blur every frame and
+     looks choppy. */
+  animation: chunk-help-in .18s ease both;
+}
+@keyframes chunk-help-in { from { opacity: 0; } to { opacity: 1; } }
+.chunk-help-x {
+  position: absolute; top: 12px; right: 14px;
+  background: none; border: none; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer;
+}
+.chunk-help-x:hover { color: var(--text); }
+.chunk-help-text { margin: 2px 0 18px; font-size: 14.5px; line-height: 1.55; }
+/* White fill with a blue-gradient border + gradient text, centered. */
+.chunk-help-demo {
+  display: flex; width: fit-content; margin: 2px auto 0;
+  align-items: center; justify-content: center; gap: 6px;
+  padding: 9px 18px; border-radius: 999px; cursor: pointer; font-size: 13px;
+  border: 1.5px solid transparent;
+  background: linear-gradient(#fff, #fff) padding-box, var(--grad-cool) border-box;
+  transition: box-shadow .15s ease;
+}
+.chunk-help-demo > span {
+  background: var(--grad-cool);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  font-weight: 600;
+}
+.chunk-help-demo:hover { box-shadow: 0 4px 14px rgba(59, 180, 240, 0.22); }
+.chunk-help.demo-intro { width: min(480px, calc(100vw - 48px)); }
+.demo-intro-title { margin: 0 0 12px; font-size: 18px; font-weight: 600; }
+.demo-intro-list {
+  margin: 0 0 14px; padding-left: 18px; font-size: 14px; line-height: 1.6; color: var(--text);
+}
+.demo-intro-list li { margin-bottom: 4px; }
+.demo-intro-list b { font-weight: 600; color: #0D8BC5; }
+/* Multi-page nav: Back (left), page dots (center), Next/Got it (right). */
+.demo-intro-nav { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-top: 18px; }
+.demo-intro-nav .chunk-help-demo { justify-self: end; margin: 0; }
+.demo-intro-back {
+  justify-self: start; background: none; border: none; cursor: pointer;
+  font-size: 13px; color: var(--muted); padding: 6px 2px; transition: color .15s ease;
+}
+.demo-intro-back:hover { color: var(--text); }
+.demo-intro-dots { justify-self: center; display: inline-flex; gap: 6px; }
+.demo-intro-dot { width: 6px; height: 6px; border-radius: 50%; background: #d4dbe4; transition: background .15s ease; }
+.demo-intro-dot.on { background: #3bb4f0; }
+/* The caching sub-modal layers above the demo intro / help modal (both z-index 100). */
+.caching-overlay { z-index: 110; }
+/* Small inline ? that opens the caching modal from the demo intro's cached-results line. */
+.caching-q {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 17px; height: 17px; margin-left: 7px; padding: 0; vertical-align: middle;
+  border-radius: 50%; border: 1.3px solid #3bb4f0; background: none;
+  color: #0D8BC5; font-size: 11px; font-weight: 700; line-height: 1; cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+.caching-q:hover { background: #3bb4f0; color: #fff; }
+/* "Curious about how caching works?" link under the demo button in the help modal. */
+.chunk-help-caching {
+  display: block; margin: 10px auto 0; padding: 4px; background: none; border: none;
+  color: #0D8BC5; font-size: 12.5px; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.chunk-help-caching:hover { color: #0a6b99; }
+
+/* "Find references" peek card (opened by clicking a code symbol in the file chat). */
+.refs-peek {
+  position: relative; width: min(580px, calc(100vw - 48px));
+  max-height: min(72vh, 640px); display: flex; flex-direction: column;
+  background: #fff; color: var(--text); border: 0.5px solid var(--border);
+  border-radius: 14px; padding: 16px 18px 12px; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22);
+  animation: modalPop .16s cubic-bezier(.2, .8, .3, 1);
+}
+.refs-peek-head { display: flex; align-items: baseline; gap: 10px; padding-right: 22px; margin-bottom: 10px; }
+.refs-peek-name { font-size: 14px; font-weight: 600; color: #0D8BC5; background: rgba(59,180,240,.1); padding: 1px 7px; border-radius: 6px; }
+.refs-peek-meta { font-size: 12px; color: var(--muted); }
+.refs-peek-empty { font-size: 13px; color: var(--muted); padding: 14px 2px; }
+.refs-peek-list { overflow-y: auto; margin: 0 -6px; padding: 0 6px; }
+.refs-peek-file { margin-bottom: 8px; }
+.refs-peek-path { font-size: 11.5px; color: var(--muted); font-weight: 600; padding: 4px 2px; position: sticky; top: 0; background: #fff; }
+.refs-peek-here { color: #3bb4f0; font-weight: 500; }
+.refs-peek-row {
+  display: grid; grid-template-columns: 64px 30px 1fr; align-items: center; gap: 8px;
+  width: 100%; text-align: left; background: none; border: none; cursor: pointer;
+  padding: 4px 6px; border-radius: 6px; font-family: inherit;
+}
+.refs-peek-row:hover { background: #f1f5f9; }
+.refs-kind { font-size: 9.5px; text-transform: uppercase; letter-spacing: .03em; text-align: center;
+  padding: 2px 0; border-radius: 4px; font-weight: 700; color: #64748b; background: #eef2f6; }
+.refs-kind.definition { color: #166534; background: #dcfce7; }
+.refs-kind.call { color: #1e40af; background: #dbeafe; }
+.refs-kind.import { color: #92400e; background: #fef3c7; }
+.refs-kind.text { color: #6b7280; background: #f3f4f6; }
+.refs-peek-ln { font-size: 11px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.refs-peek-code { font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.refs-peek-foot { font-size: 11px; color: var(--muted); padding: 10px 2px 2px; border-top: 1px solid var(--border); margin-top: 8px; }
+.modal-title { margin: 0 0 8px; font-size: 17px; font-weight: 600; }
+.modal-body { margin: 0 0 18px; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.modal-btn {
+  padding: 8px 16px; border-radius: 9px; font-size: 13px; font-weight: 500;
+  cursor: pointer; border: 0.5px solid var(--border);
+  transition: background .15s ease, color .15s ease, opacity .15s ease;
+}
+.modal-btn:disabled { opacity: 0.6; cursor: default; }
+.modal-btn.ghost { background: var(--panel); color: var(--text); }
+.modal-btn.ghost:hover:not(:disabled) { background: var(--panel-2); }
+.modal-btn.danger { background: #d8463a; border-color: #d8463a; color: #fff; }
+.modal-btn.danger:hover:not(:disabled) { background: #c23a2f; }
+
+/* ── Context Workbench evolution ────────────────────────────────────────────
+   Stable place, evidence, and insight replace the welcome animation and the
+   competing floating drawers. */
+:root {
+  --surface-canvas: #f6f7f8;
+  --surface-pane: #ffffff;
+  --surface-subtle: #f4f2ef;
+  --border-subtle: #dfe3e8;
+  --border-strong: #b8c1cc;
+  --text-primary: #1f2430;
+  --text-secondary: #667085;
+  --context-exact: #2f9ed8;
+  --context-structural: #6b7c93;
+  --context-support: #d99b2b;
+  --context-inspected: #8793a5;
+  --diff-add: #168a5b;
+  --diff-remove: #c8463a;
+  --topbar-size: 60px;
+  --statusbar-size: 29px;
+  --z-dropdown: 30;
+  --z-sheet: 40;
+  --z-dialog: 50;
+}
+
+.app { height: 100dvh; background: var(--surface-canvas); }
+.app::before { background: var(--surface-canvas); animation: none; opacity: 0; }
+.workspace-topbar {
+  height: var(--topbar-size); flex: 0 0 var(--topbar-size);
+  align-items: center; padding: 0 16px; gap: 12px;
+  background: rgba(255, 255, 255, 0.98); background-image: none; animation: none;
+  border-bottom: 1px solid var(--border-subtle); border-image: none;
+  box-shadow: 0 1px 0 rgba(255,255,255,.9);
+}
+.workspace-topbar::before {
+  content: ""; position: absolute; inset: 0 auto 0 0; width: 4px;
+  background: linear-gradient(180deg, var(--context-exact), #6e7ee8 55%, var(--context-support));
+}
+.workspace-topbar .brand { padding: 0 14px 0 2px; height: 36px; display: flex; align-items: center; }
+.workspace-topbar .brand::after { right: 0; height: 28px; background: var(--border-subtle); }
+.workspace-topbar .logo { color: var(--context-exact); }
+.workspace-topbar h1 { font-family: "Maitree", Georgia, serif; font-size: 17px; font-weight: 650; letter-spacing: -.025em; }
+.workspace-topbar .topbar-right { border-left: 0; padding: 0; gap: 10px; }
+.topbar-context-slot { position: relative; display: inline-flex; }
+.workspace-topbar .topbar-context-slot .proj-menu { left: auto; right: 0; }
+.reload-btn.text-btn {
+  width: auto; padding: 0 10px; display: inline-flex; gap: 7px;
+  font-size: 11.5px; white-space: nowrap; background: #fff; border-color: var(--border-subtle);
+}
+.service-state { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-secondary); white-space: nowrap; }
+.service-state i { width: 7px; height: 7px; border-radius: 50%; background: #a0a8b4; }
+.service-state.online i { background: #1f9d68; box-shadow: 0 0 0 3px rgba(31,157,104,.11); }
+.service-state.offline { color: #a23c34; }
+.service-state.offline i { background: #c8463a; }
+.service-state.pending i { background: var(--context-support); }
+.mobile-pane-toggle { display: none; }
+
+/* Explicit project navigation and settings. */
+.workspace-topbar .proj-switch {
+  align-self: center; margin: 0; align-items: center; gap: 5px;
+  min-width: 0; max-width: min(58vw, 760px);
+}
+.workspace-topbar .proj-tab {
+  pointer-events: auto; min-height: 34px; height: 34px; padding: 0 11px;
+  margin: 0; border: 1px solid var(--border-subtle); border-radius: 8px;
+  background: #fff; font-size: 12px; color: var(--text-secondary); max-width: 190px;
+}
+.workspace-topbar .proj-tab::before,
+.workspace-topbar .proj-tab::after { display: none; }
+.workspace-topbar .proj-tab > * { pointer-events: auto; }
+.workspace-topbar .proj-stack-tab.proj-current {
+  cursor: pointer; color: var(--text-primary); border-color: #bfc8d3;
+  background: #f9fafb; box-shadow: inset 0 0 0 1px rgba(255,255,255,.8);
+}
+.workspace-topbar .proj-stack-tab:not(.proj-current) { padding: 0 10px; max-width: 135px; }
+.workspace-topbar .proj-chooser { z-index: auto; max-width: none; color: #246e92; background: #f5fbfd; border-color: rgba(47,158,216,.28); }
+.workspace-topbar .proj-chooser.sandbox-locked,
+.workspace-topbar .proj-chooser.sandbox-locked:disabled {
+  color: #246e92; background: #f5fbfd; border-color: rgba(47,158,216,.28);
+  opacity: 1; cursor: default;
+}
+.workspace-topbar .proj-caret.open { transform: rotate(45deg); }
+.proj-chooser-label { white-space: nowrap; }
+.proj-context-btn {
+  height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px;
+  border: 1px solid var(--border-subtle); border-radius: 8px; background: #fff;
+  color: var(--text-secondary); font-size: 11.5px; cursor: pointer; white-space: nowrap;
+}
+.proj-context-icon { display: none; }
+.proj-context-btn:hover, .proj-context-btn.active { color: #246e92; border-color: rgba(47,158,216,.45); background: #f5fbfd; }
+.workspace-topbar .proj-menu { top: calc(100% + 9px); left: 0; transform: none; }
+.proj-preflight { padding: 18px; width: 390px; max-width: calc(100vw - 30px); }
+.proj-preflight h2 { margin: 5px 0 7px; font-size: 20px; font-weight: 620; }
+.proj-preflight p { margin: 0; color: var(--text-secondary); font-size: 12px; line-height: 1.55; }
+.proj-preflight-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 15px 0 10px; }
+.proj-preflight-stats span { display: flex; flex-direction: column; gap: 2px; padding: 10px; border-radius: 9px; background: var(--surface-subtle); color: var(--text-secondary); font-size: 10.5px; }
+.proj-preflight-stats strong { color: var(--text-primary); font-size: 17px; font-weight: 620; }
+.proj-preflight-types { display: flex; flex-wrap: wrap; gap: 5px; }
+.proj-preflight-types span { padding: 4px 7px; border-radius: 999px; background: #f5f7f9; border: 1px solid var(--border-subtle); font: 10.5px var(--mono); color: var(--text-secondary); }
+.proj-coverage-warning, .coverage-card.warning { margin-top: 12px; padding: 10px 11px; border-radius: 8px; background: #fff8e8; border: 1px solid rgba(217,155,43,.36); color: #805d19; font-size: 11.5px; line-height: 1.45; }
+.proj-preflight-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 17px; }
+.proj-preflight-actions button { min-height: 36px; padding: 0 12px; border-radius: 8px; cursor: pointer; font-size: 12px; }
+.proj-preflight-cancel { background: #fff; color: var(--text-secondary); border: 1px solid var(--border-subtle); }
+.proj-preflight-confirm, .overview-primary { background: #237fa9; color: #fff; border: 1px solid #1f7499; }
+
+/* Stable workspace shell. */
+.workspace-body { background: var(--surface-canvas); }
+.workspace-explorer { flex: 0 0 auto; min-width: 232px; max-width: 380px; min-height: 0; position: relative; z-index: var(--z-sheet); }
+.workspace-explorer .library { width: 100%; height: 100%; border-right: 0; background: #fbfbfa; }
+.workspace-resizer { width: 5px; flex: 0 0 5px; position: relative; cursor: col-resize; background: #fff; border-left: 1px solid var(--border-subtle); border-right: 1px solid transparent; z-index: 4; }
+.workspace-resizer::after { content: ""; position: absolute; inset: 42% 1px; border-radius: 2px; background: #c7ced7; opacity: 0; transition: opacity .15s; }
+.workspace-resizer:hover::after, .workspace-resizer:active::after { opacity: 1; }
+.workspace-stage { min-width: 0; background: #fff; }
+.explorer-pane-head, .insight-rail-label {
+  height: 42px; flex: 0 0 42px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 12px; border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary); font-size: 11px; font-weight: 620; letter-spacing: .07em; text-transform: uppercase;
+}
+.explorer-pane-meta, .insight-rail-label span:last-child { color: var(--text-secondary); font-size: 10px; font-weight: 450; letter-spacing: .02em; text-transform: none; }
+.explorer-pane-meta { flex: 0 0 auto; margin-left: auto; white-space: nowrap; }
+.explorer-path {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-height: 30px;
+  margin-right: 10px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 400;
+  line-height: 15px;
+  letter-spacing: 0;
+  text-transform: none;
+  -webkit-line-clamp: 2;
+}
+.lib-project { padding-top: 11px; }
+.tree-row.file.active { background: rgba(47,158,216,.12); color: #246e92; box-shadow: inset 2px 0 var(--context-exact); }
+.lib-empty { align-items: flex-start; justify-content: flex-start; padding: 18px 14px; text-align: left; line-height: 1.5; }
+.lib-chat-fab {
+  bottom: 12px; right: 12px; width: auto; height: 36px; border-radius: 9px;
+  display: inline-flex; align-items: center; gap: 7px; padding: 0 11px;
+  color: #246e92; background: #f5fbfd; border: 1px solid rgba(47,158,216,.32);
+  box-shadow: 0 5px 14px rgba(31,41,55,.09); font-size: 11.5px;
+}
+.chat-panel.folder-chat-panel {
+  position: fixed; top: calc(var(--topbar-size) + var(--viewer-toolbar-size)); right: 0; bottom: var(--statusbar-size); left: auto;
+  width: 400px; max-width: min(100vw, 520px); height: auto; max-height: none;
+  border-radius: 0; border: 0;
+  box-shadow: inset 7px 0 14px rgba(82,96,88,.055), inset 1px 0 rgba(255,255,255,.66);
+  animation: none; transform: none;
+  z-index: var(--z-sheet); background: var(--neo-surface);
+}
+.chat-panel.folder-chat-panel.closing { animation: none; }
+.chat-panel.folder-chat-panel > .folder-insight-tabbar {
+  position: static; inset: auto; width: 100%; height: 43px; flex: 0 0 43px;
+  border-left: 0;
+}
+.chat-panel.folder-chat-panel > .chat-head {
+  position: relative; z-index: 1;
+  border-bottom: 1px solid var(--border-subtle); background: transparent;
+  isolation: isolate;
+}
+.chat-panel.folder-chat-panel > .chat-body {
+  /* Ask File has a 33px edit-context strip between its scope row and body.
+     Reserve the same rhythm here without inventing a redundant project-status row. */
+  padding-top: 47px;
+}
+
+/* No-project and project-overview states. */
+.empty-workspace, .workspace-error-state, .project-loading-state {
+  margin: auto; max-width: 640px; padding: 42px; text-align: center;
+}
+.empty-workspace h2, .workspace-error-state h2 { margin: 8px auto 10px; max-width: 560px; font-size: clamp(25px, 3vw, 38px); line-height: 1.12; letter-spacing: -.035em; font-weight: 630; }
+.empty-workspace > p, .workspace-error-state p { margin: 0 auto 22px; max-width: 550px; color: var(--text-secondary); font-size: 14px; line-height: 1.65; }
+.overview-primary { min-height: 40px; padding: 0 16px; border-radius: 9px; font-size: 12.5px; cursor: pointer; box-shadow: 0 4px 11px rgba(35,127,169,.16); }
+.overview-primary:hover { background: #1e7298; }
+.empty-workspace-steps { display: flex; justify-content: center; gap: 12px; margin: 26px 0 13px; }
+.empty-workspace-steps span { display: flex; align-items: center; gap: 7px; color: var(--text-secondary); font-size: 11.5px; }
+.empty-workspace-steps b { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: #eef5f8; color: #327fa4; font-weight: 650; }
+.empty-workspace small { color: #7b8492; }
+.project-loading-state { display: flex; align-items: center; justify-content: center; gap: 12px; text-align: left; }
+.project-loading-state div { display: flex; flex-direction: column; gap: 3px; }
+.project-loading-state strong { font-weight: 620; }
+.project-loading-state span:last-child { color: var(--text-secondary); font-size: 12px; }
+.project-overview-shell { width: 100%; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) 400px; background: var(--surface-canvas); }
+.project-overview { min-width: 0; overflow: auto; padding: clamp(28px,4vw,58px); background: #fff; }
+.project-overview h2 { margin: 6px 0 8px; font-size: clamp(27px,3vw,40px); font-weight: 640; letter-spacing: -.04em; }
+.overview-lede { max-width: 650px; margin: 0; color: var(--text-secondary); line-height: 1.6; font-size: 13.5px; }
+.overview-metrics { display: grid; grid-template-columns: repeat(3,minmax(110px,1fr)); gap: 10px; margin: 28px 0; }
+.overview-metrics > div { padding: 15px; display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--border-subtle); border-radius: 11px; background: #fafafa; }
+.overview-metrics strong { font-size: 25px; font-weight: 620; }
+.overview-metrics span { color: var(--text-secondary); font-size: 11px; }
+.coverage-card { display: flex; flex-direction: column; gap: 3px; }
+.coverage-card strong { font-weight: 620; }
+.overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 0 0 24px; }
+.overview-grid > section { min-width: 0; padding: 16px; border: 1px solid var(--border-subtle); border-radius: 11px; background: #fff; }
+.overview-grid h3, .overview-insight h3, .trace-panel h3 { margin: 0 0 13px; font-size: 13px; font-weight: 620; }
+.overview-bar-row { display: grid; grid-template-columns: 70px minmax(40px,1fr) 24px; gap: 8px; align-items: center; margin: 8px 0; color: var(--text-secondary); font-size: 11px; }
+.overview-bar { height: 5px; border-radius: 999px; background: #eef0f3; overflow: hidden; }
+.overview-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#2f9ed8,#7a88d8); }
+.overview-folder-list { display: flex; flex-direction: column; gap: 7px; }
+.overview-folder-list div { display: flex; justify-content: space-between; gap: 12px; color: var(--text-secondary); font: 11px var(--mono); }
+.overview-folder-list div span:first-child { color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; }
+.overview-insight { min-width: 0; display: flex; flex-direction: column; background: #fbfbfa; border-left: 1px solid var(--border-subtle); }
+.overview-insight-body { margin: auto; padding: 28px; text-align: center; max-width: 310px; }
+.overview-scope-icon { width: 44px; height: 44px; display: grid; place-items: center; margin: 0 auto 14px; border-radius: 50%; background: #eef5f8; color: #327fa4; }
+.overview-insight-body p { color: var(--text-secondary); font-size: 12px; line-height: 1.55; }
+.scope-mini-ledger { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 19px; padding: 12px; text-align: left; border: 1px solid var(--border-subtle); border-radius: 9px; background: #fff; }
+.scope-mini-ledger span { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 11px; }
+
+/* Persistent scope ledger in the evidence pane. */
+.viewer-toolbar { padding: 9px 14px 0; border-bottom: 1px solid var(--border-subtle); }
+.toolbar-top { padding-bottom: 8px; }
+.vt-file-row { min-width: 0; }
+.vt-path { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.insight-toggle { display: inline-flex; align-items: center; gap: 5px; min-height: 28px; padding: 0 8px; border-radius: 7px; border: 1px solid var(--border-subtle); background: #fff; color: var(--text-secondary); font-size: 11px; cursor: pointer; }
+.insight-toggle.active { color: #246e92; border-color: rgba(47,158,216,.35); background: #f5fbfd; }
+.scope-ledger { min-width: 0; height: 34px; display: flex; align-items: center; gap: 7px; overflow-x: auto; scrollbar-width: none; border-top: 1px solid #f0f1f3; }
+.scope-ledger::-webkit-scrollbar { display: none; }
+.scope-ledger > span, .scope-ledger > button {
+  --mesh-a: rgba(92,198,232,.16); --mesh-b: rgba(122,136,216,.12); --mesh-base: #f7f8f9;
+  flex: 0 0 auto; max-width: 260px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 7px;
+  border: 0; border-radius: 6px;
+  background:
+    radial-gradient(circle at 14% 12%, var(--mesh-a), transparent 48%),
+    radial-gradient(circle at 88% 86%, var(--mesh-b), transparent 52%),
+    var(--mesh-base);
+  color: var(--text-secondary); font: 10.5px var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.scope-ledger > :has(.scope-dot.exact) { --mesh-a: rgba(47,158,216,.22); --mesh-b: rgba(110,126,232,.14); --mesh-base: #f4f9fc; }
+.scope-ledger > :has(.scope-dot.file) { --mesh-a: rgba(100,116,139,.16); --mesh-b: rgba(92,198,232,.12); --mesh-base: #f6f8fa; }
+.scope-ledger > :has(.scope-dot.support) { --mesh-a: rgba(217,148,22,.20); --mesh-b: rgba(241,193,89,.12); --mesh-base: #fbf8f1; }
+.scope-ledger > button { cursor: pointer; }
+.scope-ledger > button:hover { --mesh-a: rgba(47,158,216,.30); --mesh-b: rgba(110,126,232,.20); --mesh-base: #eef6f9; color: #246e92; }
+.scope-ledger .scope-ledger-label {
+  padding-left: 0; background: none; color: var(--muted);
+  font-family: inherit; font-size: 11.5px; font-weight: 400;
+  text-transform: none; letter-spacing: normal;
+}
+.scope-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; background: radial-gradient(circle at 30% 28%, #a4adba 0 12%, var(--context-inspected) 72%); }
+.scope-dot.exact { background: radial-gradient(circle at 30% 28%, #65b6d8 0 12%, var(--context-exact) 72%); }
+.scope-dot.file { background: radial-gradient(circle at 30% 28%, #8995a5 0 12%, var(--context-structural) 72%); }
+.scope-dot.project { background: radial-gradient(circle at 30% 28%, #929dde 0 12%, #7a88d8 72%); }
+.scope-dot.structural { background: #fff; border: 2px solid var(--context-structural); }
+.scope-dot.support { background: radial-gradient(circle at 30% 28%, #dfa83d 0 12%, var(--context-support) 72%); }
+.scope-dot.attached { background: radial-gradient(circle at 30% 28%, #aa84c2 0 12%, #9a70b8 72%); }
+.scope-dot.safe { background: radial-gradient(circle at 30% 28%, #3eae7b 0 12%, var(--diff-add) 72%); }
+@keyframes scope-pulse { 50% { opacity: .35; transform: scale(.78); } }
+
+/* Dock the three Insight views into one stable rail. */
+.viewer-body.insight-open .code-scroll { margin-right: var(--insight-size); max-width: calc(100% - var(--insight-size)); }
+.viewer-body.insight-open::before, .viewer-body.drawer-open::before { right: var(--insight-size); border-radius: 0; }
+.viewer-body.insight-open::after, .viewer-body.drawer-open::after { right: var(--insight-size); border-radius: 0; }
+.drawer-handle { display: none !important; }
+.chat-fab {
+  bottom: 12px; right: 12px; width: auto; height: 36px; border-radius: 9px;
+  display: inline-flex; align-items: center; gap: 7px; padding: 0 11px;
+  color: #246e92; background: #f5fbfd; border: 1px solid rgba(47,158,216,.32);
+  box-shadow: 0 5px 14px rgba(31,41,55,.09); font-size: 11.5px;
+}
+.chat-fab.open { display: none; }
+.insight-tabbar {
+  position: absolute; top: 0; right: 0; width: var(--insight-size); height: 43px; z-index: 10;
+  display: flex; align-items: end; gap: 2px; padding: 0 7px;
+  border-left: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle); background: #fbfbfa;
+}
+.insight-tabbar-title { align-self: center; margin: 0 auto 0 3px; color: var(--text-primary); font-size: 11px; font-weight: 650; letter-spacing: .07em; text-transform: uppercase; }
+.insight-tabbar button { height: 31px; padding: 0 8px; border: 0; background: none; color: var(--text-secondary); font-size: 10.5px; cursor: pointer; white-space: nowrap; }
+.insight-tabbar button.active { color: #246e92; }
+.insight-tabbar .insight-collapse {
+  align-self: center; width: 26px; height: 26px; padding: 0;
+  border: 0; border-radius: 6px; font-size: 16px;
+}
+.insight-tabbar .insight-collapse:hover { background: #f0f2f4; }
+.insight-resizer { position: absolute; top: 0; bottom: 0; right: calc(var(--insight-size) - 3px); z-index: 14; width: 6px; cursor: col-resize; }
+.insight-resizer:hover { background: rgba(47,158,216,.14); }
+.chat-panel, .chunk-list, .trace-panel {
+  position: absolute; top: 43px; right: 0; bottom: 0; z-index: 8;
+  width: var(--insight-size); height: auto; max-width: none; max-height: none;
+  border: 0; border-left: 1px solid var(--border-subtle); border-radius: 0;
+  background: #fff; box-shadow: none; animation: none; transform: none; transition: none;
+}
+.chat-panel.closing { animation: none; }
+.chunk-list { display: flex; flex-direction: column; flex-shrink: initial; overflow: hidden; }
+.chunk-list.closed { display: none; width: var(--insight-size); }
+.chunk-list::before { display: none; }
+.chunk-list::after { background: var(--border-subtle); }
+.chat-head { min-height: 46px; padding: 10px 12px; }
+.chat-close { width: 28px; height: 28px; border-radius: 6px; }
+.chat-close:hover { background: #f0f2f4; }
+.chat-context { border-bottom: 1px solid #f0f1f3; }
+.chat-body { background: #fff; }
+.chat-msg-scope { margin: 0 0 3px 2px; color: #327fa4; font-size: 9.5px; letter-spacing: .02em; }
+.insight-empty-copy { margin: auto; width: 100%; max-width: 310px; display: flex; flex-direction: column; gap: 9px; padding: 16px; text-align: center; }
+.insight-empty-copy strong { color: var(--text-primary); font-size: 14px; font-weight: 620; }
+.insight-empty-copy > span { line-height: 1.55; }
+.insight-prompt-list { display: flex; flex-direction: column; gap: 6px; margin-top: 5px; }
+.insight-prompt-list button { min-height: 34px; padding: 7px 10px; border: 1px solid var(--border-subtle); border-radius: 8px; background: #fff; color: #327fa4; font-size: 11px; cursor: pointer; }
+.insight-prompt-list button:hover { background: #f5fbfd; border-color: rgba(47,158,216,.35); }
+.insight-thinking { display: flex; flex-direction: column; gap: 3px; font-style: normal !important; }
+.insight-thinking strong { color: var(--text-primary); font-size: 11.5px; font-weight: 620; }
+.insight-thinking span { font-size: 11px; line-height: 1.4; }
+.trace-attention {
+  display: inline-block; padding: 1px 4px; border-radius: 5px;
+  animation: trace-attention-pulse .72s ease-out 3;
+}
+@keyframes trace-attention-pulse {
+  0% { background: rgba(59,180,240,.34); box-shadow: 0 0 0 0 rgba(59,180,240,.42); }
+  70% { background: rgba(59,180,240,.14); box-shadow: 0 0 0 7px rgba(59,180,240,0); }
+  100% { background: transparent; box-shadow: 0 0 0 0 rgba(59,180,240,0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .trace-attention { animation: none; background: rgba(59,180,240,.2); }
+}
+.chat-msg-error { max-width: 100%; padding: 8px 10px; border: 1px solid rgba(200,70,58,.26); border-radius: 8px; background: #fff4f2; color: #a23c34; line-height: 1.45; }
+.trace-panel { display: flex; overflow: hidden; }
+.trace-scroll { flex: 1; overflow-y: auto; padding: 18px 16px 30px; }
+.trace-panel section + section { margin-top: 25px; padding-top: 21px; border-top: 1px solid var(--border-subtle); }
+.trace-panel h3 { margin: 5px 0 6px; }
+.context-map-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 5px 0 6px; }
+.context-map-head h3 { margin: 0; }
+.context-map-head .gran-help { flex: 0 0 auto; width: 28px; height: 28px; margin-left: auto; border-radius: 8px; }
+.trace-panel p { margin: 0; color: var(--text-secondary); font-size: 11.5px; line-height: 1.55; }
+.context-map-path { position: relative; display: flex; flex-direction: column; gap: 0; margin-top: 15px; border: 1px solid var(--border-subtle); border-radius: 10px; overflow: hidden; }
+.context-map-path > div { position: relative; min-height: 48px; display: flex; align-items: center; gap: 11px; padding: 8px 10px; border-bottom: 1px solid #eef0f2; }
+.context-map-path > div:last-child { border-bottom: 0; }
+.context-map-path span { min-width: 0; display: flex; flex-direction: column; gap: 2px; font: 10.5px var(--mono); overflow-wrap: anywhere; }
+.context-map-path small { color: var(--text-secondary); font: 9.5px "Manrope",sans-serif; text-transform: uppercase; letter-spacing: .06em; }
+.context-focus-list { display: flex; flex-direction: column; gap: 4px; margin: 3px 0 0; padding: 0; list-style: none; }
+.context-focus-list li { line-height: 1.35; cursor: default; transition: color 120ms ease; }
+.context-focus-list li.trace-hover { color: #a64c72; }
+.context-focus-list li:focus-visible { outline: 1px solid rgba(166,76,114,.48); outline-offset: 2px; border-radius: 2px; }
+.trace-loading { display: flex; align-items: center; gap: 8px; margin-top: 13px; color: var(--text-secondary); font-size: 11px; }
+.trace-result-summary { margin-bottom: 9px; color: var(--text-secondary); font-size: 10.5px; }
+.trace-panel .refs-peek-list { max-height: none; overflow: visible; margin-top: 13px; }
+.trace-panel .refs-peek-row { grid-template-columns: 54px 28px minmax(0,1fr); }
+.trace-panel .refs-peek-empty { padding: 12px; margin-top: 12px; border: 1px dashed var(--border-subtle); border-radius: 8px; color: var(--text-secondary); font-size: 11px; line-height: 1.5; }
+.viewer-error-banner { position: absolute; left: 14px; bottom: 14px; z-index: 15; max-width: min(440px,calc(100% - 28px)); padding: 9px 11px; border-radius: 8px; border: 1px solid rgba(200,70,58,.3); background: #fff4f2; color: #a23c34; font-size: 11px; box-shadow: 0 8px 22px rgba(31,41,55,.11); }
+.viewer-loading { left: 20px; transform: none; z-index: 12; }
+.seg.sel { box-shadow: inset 0 -1px var(--context-structural), inset 0 1px var(--context-structural); filter: none; }
+.seg.user-hl { box-shadow: inset 0 -2px var(--context-exact); }
+
+/* Persistent, honest workspace status. */
+.workspace-statusbar {
+  position: relative; z-index: 20; height: var(--statusbar-size); flex: 0 0 var(--statusbar-size);
+  display: flex; align-items: center; gap: 0; overflow-x: auto; scrollbar-width: none;
+  padding: 0 10px; border-top: 1px solid var(--border-subtle); background: #f8f9fa;
+  color: var(--text-secondary); font-size: 10.5px; white-space: nowrap;
+}
+.workspace-statusbar::-webkit-scrollbar { display: none; }
+.workspace-statusbar > span { display: inline-flex; align-items: center; gap: 6px; min-height: 18px; padding: 0 10px; border-right: 1px solid var(--border-subtle); }
+.workspace-statusbar > span:last-child { border-right: 0; }
+.workspace-statusbar .status-primary { padding-left: 2px; color: var(--text-primary); }
+.status-warning { color: #8a641b; }
+
+button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button"]:focus-visible {
+  outline: 2px solid rgba(47,158,216,.62); outline-offset: 2px;
+}
+
+/* ── Quiet operational UI ────────────────────────────────────────────────────
+   The workspace is treated like an instrument panel: neutral structure first,
+   restrained green for healthy/active state, and no decorative gradients. */
+:root {
+  --surface-canvas: #f1f4f2;
+  --surface-pane: #ffffff;
+  --surface-subtle: #f5f7f6;
+  --border-subtle: #e0e5e2;
+  --border-strong: #c5cec8;
+  --text-primary: #202522;
+  --text-secondary: #737c77;
+  --context-exact: #25a75b;
+  --context-structural: #68736d;
+  --context-support: #d6a43a;
+  --diff-add: #15924d;
+  --topbar-size: 62px;
+  /* The main file toolbar is a 44px title row plus a 34px scope row. Keep
+     project Insight anchored to the same lower edge as file Insight. */
+  --viewer-toolbar-size: 78px;
+  --statusbar-size: 30px;
+}
+
+.workspace-topbar {
+  padding: 0 18px;
+  gap: 14px;
+  background: #fbfcfb;
+  border-color: var(--border-subtle);
+  box-shadow: none;
+}
+.workspace-topbar::before { display: none; }
+.workspace-topbar .brand { height: 38px; padding-left: 0; padding-right: 16px; }
+.workspace-topbar .brand::after { height: 22px; background: #d9dfdb; }
+.workspace-topbar .logo { color: #22a758; }
+.workspace-topbar h1 {
+  font-family: "Maitree", Georgia, serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -.035em;
+}
+.workspace-topbar .proj-tab {
+  height: 33px;
+  min-height: 33px;
+  border-color: transparent;
+  border-radius: 7px;
+  background: transparent;
+  font-size: 11.5px;
+  font-weight: 500;
+}
+.workspace-topbar .proj-stack-tab.proj-current {
+  background: #fff;
+  border-color: #e3e8e5;
+  box-shadow: 0 3px 10px rgba(35, 45, 39, .055);
+}
+.workspace-topbar .proj-chooser {
+  color: #4f5a54;
+  background: #f3f6f4;
+  border-color: transparent;
+}
+.proj-context-btn {
+  border-color: transparent;
+  background: #f3f6f4;
+  color: #5f6963;
+  font-weight: 500;
+}
+.proj-context-btn:hover, .proj-context-btn.active {
+  color: #147b40;
+  border-color: #cfe3d6;
+  background: #edf7f0;
+}
+.proj-preflight-confirm, .overview-primary {
+  background: #25302a;
+  border-color: #25302a;
+}
+
+.workspace-body { background: var(--surface-canvas); }
+.workspace-explorer .library { background: #f7f9f8; }
+.workspace-resizer {
+  width: 4px;
+  flex-basis: 4px;
+  background: #f7f9f8;
+  border-left-color: #e5e9e6;
+}
+.workspace-stage { background: var(--surface-canvas); }
+.explorer-pane-head {
+  height: 44px;
+  flex-basis: 44px;
+  padding: 0 14px;
+  color: #37403b;
+  font-size: 10px;
+  letter-spacing: .12em;
+  background: #f7f9f8;
+}
+.explorer-pane-meta { color: #8a938e; }
+.lib-project { padding: 13px 13px 4px; color: #37403b; }
+.filter {
+  margin: 9px 12px 12px;
+  padding: 9px 11px;
+  border-color: #dce2de;
+  border-radius: 7px;
+  background: #fff;
+  color: #26302a;
+  box-shadow: none;
+}
+.filter:focus { border-color: #77b991; box-shadow: 0 0 0 3px rgba(37,167,91,.08); }
+.tree-row { border-radius: 5px; }
+.tree-row:hover { background: #edf1ef; }
+.tree-row.file.active {
+  background: #e7f3eb;
+  color: #157b3f;
+  box-shadow: inset 2px 0 #25a75b;
+}
+.lib-chat-fab {
+  color: #fff;
+  background: #25302a;
+  border-color: #25302a;
+  border-radius: 7px;
+  box-shadow: 0 5px 14px rgba(32, 40, 35, .12);
+}
+
+.project-overview-shell {
+  grid-template-columns: minmax(0, 1fr) 360px;
+  background: var(--surface-canvas);
+}
+.project-overview {
+  padding: clamp(30px, 4vw, 56px);
+  background: #fbfcfb;
+  border-right: 1px solid var(--border-subtle);
+}
+.overview-heading-row {
+  display: block;
+}
+.project-overview h2 {
+  margin: 0;
+  font-size: clamp(28px, 3vw, 39px);
+  font-weight: 600;
+  letter-spacing: -.045em;
+}
+.overview-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(110px, 1fr));
+  gap: 0;
+  margin: 30px 0 24px;
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.overview-metrics > div {
+  min-width: 0;
+  padding: 18px 20px 17px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 2px 8px;
+  border: 0;
+  border-right: 1px solid var(--border-subtle);
+  border-radius: 0;
+  background: transparent;
+}
+.overview-metrics > div:first-child { padding-left: 0; }
+.overview-metrics > div:last-child { border-right: 0; }
+.overview-metrics span {
+  grid-column: 1 / -1;
+  color: #7d8781;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.overview-metrics strong { font-size: 27px; font-weight: 600; letter-spacing: -.04em; }
+.overview-metrics small { color: #8a938e; font-size: 10.5px; }
+.coverage-card.warning {
+  margin: 0 0 20px;
+  padding: 11px 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 11px;
+  border: 0;
+  border-top: 1px solid #eadfbe;
+  border-bottom: 1px solid #eadfbe;
+  border-radius: 0;
+  background: transparent;
+  color: #756541;
+}
+.coverage-card.warning > span { display: flex; flex-wrap: wrap; gap: 4px 7px; }
+.coverage-card.warning strong { color: #584c32; }
+.overview-grid { gap: 12px; margin-bottom: 20px; }
+.overview-grid > section {
+  padding: 16px 17px 15px;
+  border-color: #e3e8e5;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(35, 45, 39, .045);
+}
+.overview-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #edf0ee;
+}
+.overview-section-head h3 { margin: 0; color: #303834; font-size: 12px; font-weight: 600; }
+.overview-section-head span { color: #99a09c; font-size: 9.5px; }
+.overview-bar-row {
+  grid-template-columns: 74px minmax(40px,1fr) 28px;
+  margin: 9px 0;
+  color: #717a75;
+  font-size: 10.5px;
+}
+.overview-bar { height: 3px; border-radius: 0; background: #edf0ee; }
+.overview-bar i { border-radius: 0; background: #27aa5b; }
+.overview-folder-list { gap: 0; }
+.overview-folder-list div {
+  padding: 9px 0;
+  border-bottom: 1px solid #edf0ee;
+  color: #828b86;
+  font-size: 10.5px;
+}
+.overview-folder-list div:last-child { border-bottom: 0; }
+.overview-primary {
+  min-height: 36px;
+  padding: 0 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  box-shadow: none;
+}
+.overview-primary:hover { background: #111814; }
+
+.overview-insight {
+  background: #f1f4f2;
+  border-left: 0;
+}
+.overview-insight-head {
+  height: 44px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #dde3df;
+  color: #46504a;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.overview-insight-body {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 34px 28px;
+  text-align: left;
+}
+.overview-insight-intro { display: block; }
+.overview-insight h3 { margin: 0 0 7px; color: #28312c; font-size: 14px; font-weight: 600; }
+.overview-insight-body p { margin: 0; color: #747e78; font-size: 11.5px; line-height: 1.65; }
+
+.scope-ledger > span, .scope-ledger > button {
+  --mesh-a: transparent;
+  --mesh-b: transparent;
+  --mesh-base: #f4f6f5;
+  border: 1px solid #e6eae8;
+  background: var(--mesh-base);
+}
+.scope-ledger > :has(.scope-dot.exact),
+.scope-ledger > :has(.scope-dot.file),
+.scope-ledger > :has(.scope-dot.support) {
+  --mesh-a: transparent;
+  --mesh-b: transparent;
+  --mesh-base: #f4f6f5;
+}
+.scope-ledger > button:hover {
+  --mesh-a: transparent;
+  --mesh-b: transparent;
+  --mesh-base: #edf3ef;
+  color: #166f3b;
+}
+.scope-dot, .scope-dot.file, .scope-dot.project, .scope-dot.attached {
+  background: #7d8982;
+}
+.scope-dot.exact, .scope-dot.safe { background: #28aa5c; }
+.scope-dot.support { background: #d2a23e; }
+.insight-toggle.active { color: #147b40; border-color: #cfe3d6; background: #edf7f0; }
+.chat-fab {
+  color: #fff;
+  background: #25302a;
+  border-color: #25302a;
+  border-radius: 7px;
+  box-shadow: 0 5px 14px rgba(32, 40, 35, .12);
+}
+.chat-fab:hover { color: #fff; background: #111814; border-color: #111814; }
+.insight-tabbar { background: #f7f9f8; }
+.insight-tabbar button.active { color: #147b40; }
+.workspace-statusbar { background: #f7f9f8; color: #7c8580; }
+.status-warning { color: #916d22; }
+
+button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button"]:focus-visible {
+  outline-color: rgba(37,167,91,.58);
+}
+
+/* ── Super-neumorphic material pass ─────────────────────────────────────────
+   One continuous cool surface, shaped with paired shadows. Bright color is
+   reserved for live state and active paths so the effect stays functional. */
+:root {
+  --neo-surface: #e9eeeb;
+  --neo-surface-light: #f2f5f3;
+  --neo-ink: #25302a;
+  --neo-shadow: rgba(82, 96, 88, .20);
+  --neo-shadow-soft: rgba(82, 96, 88, .11);
+  --neo-highlight: rgba(255, 255, 255, .92);
+  --neo-accent: #77d99b;
+  --neo-accent-hot: #b7ef69;
+  --surface-canvas: var(--neo-surface);
+  --surface-pane: var(--neo-surface);
+  --surface-subtle: #e4e9e6;
+  --border-subtle: rgba(102, 117, 108, .13);
+}
+
+body, .app, .workspace-body, .workspace-stage { background: var(--neo-surface); }
+.workspace-topbar {
+  background: var(--neo-surface);
+  border-bottom: 0;
+  box-shadow:
+    0 8px 20px var(--neo-shadow-soft),
+    inset 0 1px 0 var(--neo-highlight);
+}
+.workspace-topbar .brand::after {
+  width: 2px;
+  border-radius: 2px;
+  background: var(--neo-surface);
+  box-shadow: inset 1px 0 1px rgba(91,104,96,.18), 1px 0 1px rgba(255,255,255,.75);
+}
+.workspace-topbar .logo {
+  color: #2a9f61;
+  filter: drop-shadow(0 0 5px rgba(119,217,155,.32));
+}
+.workspace-topbar .proj-tab,
+.proj-context-btn {
+  border: 0;
+  background: var(--neo-surface);
+}
+.workspace-topbar .proj-stack-tab.proj-current,
+.workspace-topbar .proj-chooser,
+.proj-context-btn {
+  border: 0;
+  background: var(--neo-surface);
+  box-shadow:
+    -4px -4px 9px rgba(255,255,255,.78),
+    4px 4px 10px rgba(82,96,88,.15);
+}
+.workspace-topbar .proj-chooser {
+  width: 34px;
+  min-width: 34px;
+  padding-inline: 0;
+  justify-content: center;
+}
+.workspace-topbar .proj-stack-tab.proj-current:active,
+.workspace-topbar .proj-chooser:active,
+.proj-context-btn:active,
+.proj-context-btn.active {
+  box-shadow:
+    inset 3px 3px 7px rgba(82,96,88,.16),
+    inset -3px -3px 7px rgba(255,255,255,.72);
+}
+.proj-context-btn:hover, .proj-context-btn.active {
+  color: #177947;
+  background: var(--neo-surface);
+  border: 0;
+}
+
+.workspace-explorer .library {
+  background: var(--neo-surface);
+  box-shadow: inset 1px 0 0 rgba(255,255,255,.78);
+}
+.workspace-resizer {
+  background: var(--neo-surface);
+  border: 0;
+  box-shadow: inset 1px 0 0 rgba(255,255,255,.65), inset -1px 0 0 rgba(85,99,91,.10);
+}
+.explorer-pane-head {
+  background: transparent;
+  border: 0;
+  box-shadow: inset 0 -1px 0 rgba(87,101,93,.10), 0 1px 0 rgba(255,255,255,.54);
+}
+.filter {
+  border: 1px solid rgba(91,105,97,.10);
+  background: var(--neo-surface);
+  box-shadow:
+    inset 1px 1px 2px rgba(82,96,88,.06),
+    inset -1px -1px 2px rgba(255,255,255,.42);
+}
+.filter:focus {
+  border-color: rgba(119,185,145,.38);
+  box-shadow:
+    inset 1px 1px 2px rgba(82,96,88,.06),
+    inset -1px -1px 2px rgba(255,255,255,.42),
+    0 0 0 2px rgba(119,217,155,.13);
+}
+.lib-project.lib-tools {
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 12px 12px;
+}
+.lib-tools .filter {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 36px;
+  max-height: 54px;
+  margin: 0;
+  overflow-y: auto;
+  resize: none;
+  font-family: "Maitree", Georgia, serif;
+  line-height: 18px;
+}
+.lib-tools .lib-nav {
+  align-self: flex-start;
+  gap: 4px;
+  margin: 8px 0 0;
+}
+.tree-row:hover { background: rgba(255,255,255,.34); }
+.tree-row.file.active {
+  background: #e9dfd7;
+  color: var(--text);
+  box-shadow: none;
+}
+.tree-row.file:focus-visible {
+  outline: none;
+  background: var(--panel-2);
+}
+.tree-row.file.active:focus-visible { background: #e9dfd7; }
+.lib-chat-fab, .chat-fab {
+  color: var(--neo-ink);
+  background: var(--neo-surface);
+  border: 0;
+  box-shadow:
+    -5px -5px 11px rgba(255,255,255,.82),
+    5px 5px 12px rgba(82,96,88,.19),
+    0 0 0 1px rgba(255,255,255,.24);
+}
+.lib-chat-fab:hover, .chat-fab:hover {
+  color: #126f40;
+  background: var(--neo-surface);
+  border: 0;
+  box-shadow:
+    -5px -5px 11px rgba(255,255,255,.82),
+    5px 5px 12px rgba(82,96,88,.19),
+    0 0 18px rgba(119,217,155,.30);
+}
+.lib-chat-fab:active, .chat-fab:active {
+  transform: none;
+  box-shadow:
+    inset 3px 3px 7px rgba(82,96,88,.17),
+    inset -3px -3px 7px rgba(255,255,255,.75);
+}
+
+.project-overview { background: var(--neo-surface); border-right: 0; }
+.overview-metrics {
+  padding: 3px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--neo-surface);
+  box-shadow:
+    inset 5px 5px 11px rgba(82,96,88,.13),
+    inset -5px -5px 11px rgba(255,255,255,.74);
+}
+.overview-metrics > div { padding-block: 16px; border-right-color: rgba(100,113,105,.11); }
+.overview-metrics > div:first-child { padding-left: 18px; }
+.coverage-card.warning {
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--neo-surface);
+  box-shadow:
+    inset 3px 3px 7px rgba(119,100,55,.10),
+    inset -3px -3px 7px rgba(255,255,255,.70);
+}
+.overview-grid { gap: 18px; }
+.overview-grid > section {
+  border: 0;
+  border-radius: 18px;
+  background: var(--neo-surface);
+  box-shadow:
+    -8px -8px 18px rgba(255,255,255,.74),
+    8px 8px 20px rgba(82,96,88,.15);
+}
+.overview-section-head { border-bottom-color: rgba(93,107,99,.10); }
+.overview-bar { height: 4px; background: rgba(105,119,111,.10); }
+.overview-bar i {
+  background: linear-gradient(90deg, #3fbf91, var(--neo-accent-hot));
+  box-shadow: 0 0 7px rgba(119,217,155,.34);
+}
+.viewer .ln {
+  opacity: .82;
+}
+.overview-folder-list div { border-bottom-color: rgba(93,107,99,.09); }
+.overview-primary {
+  color: var(--neo-ink);
+  background: var(--neo-surface);
+  border: 0;
+  box-shadow:
+    -5px -5px 11px rgba(255,255,255,.80),
+    5px 5px 12px rgba(82,96,88,.18);
+}
+.overview-primary:hover {
+  color: #126f40;
+  background: var(--neo-surface);
+  box-shadow:
+    -5px -5px 11px rgba(255,255,255,.80),
+    5px 5px 12px rgba(82,96,88,.18),
+    0 0 18px rgba(119,217,155,.28);
+}
+.overview-primary:active {
+  box-shadow: inset 3px 3px 7px rgba(82,96,88,.17), inset -3px -3px 7px rgba(255,255,255,.72);
+}
+
+.overview-insight {
+  background: var(--neo-surface);
+  box-shadow:
+    inset 7px 0 15px rgba(82,96,88,.06),
+    inset 1px 0 rgba(255,255,255,.62);
+}
+.overview-insight-head {
+  border: 0;
+  box-shadow: inset 0 -1px rgba(91,104,96,.10), 0 1px rgba(255,255,255,.52);
+}
+
+.viewer-toolbar {
+  background: var(--neo-surface);
+  border-bottom: 0;
+  box-shadow: 0 6px 15px rgba(82,96,88,.09), inset 0 1px rgba(255,255,255,.68);
+}
+.scope-ledger { border-top: 0; }
+.scope-ledger > span, .scope-ledger > button {
+  --mesh-base: var(--neo-surface);
+  border: 0;
+  background: var(--neo-surface);
+  box-shadow:
+    inset 2px 2px 4px rgba(82,96,88,.11),
+    inset -2px -2px 4px rgba(255,255,255,.66);
+}
+.scope-ledger > button:hover {
+  --mesh-base: var(--neo-surface);
+  box-shadow:
+    -3px -3px 7px rgba(255,255,255,.72),
+    3px 3px 7px rgba(82,96,88,.13);
+}
+/* Context is supporting information, not a system-status display. Keep it as
+   plain text instead of reinforcing it with colored badges and pill chrome. */
+.scope-ledger { gap: 15px; }
+.scope-ledger > span,
+.scope-ledger > button {
+  max-width: none;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-secondary);
+}
+.scope-ledger > button:hover {
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.insight-toggle {
+  border: 0;
+  background: var(--neo-surface);
+  box-shadow: -3px -3px 7px rgba(255,255,255,.72), 3px 3px 7px rgba(82,96,88,.13);
+}
+.insight-toggle.active {
+  color: #126f40;
+  border: 0;
+  background: var(--neo-surface);
+  box-shadow: inset 2px 2px 5px rgba(82,96,88,.14), inset -2px -2px 5px rgba(255,255,255,.68);
+}
+.workspace-statusbar {
+  border-top: 0;
+  background: var(--neo-surface);
+  box-shadow: 0 -5px 14px rgba(82,96,88,.08), inset 0 1px rgba(255,255,255,.64);
+}
+.workspace-statusbar > span { border-right-color: rgba(91,105,97,.10); }
+
+/* ── Neumorphic component completion ───────────────────────────────────────
+   Shared elevation grammar for every interactive family. Broad surfaces stay
+   quiet; controls are raised, current selections press inward, and live state
+   gets the only luminous accent. The editor canvas intentionally stays flat. */
+:root {
+  --neo-raised:
+    -5px -5px 11px rgba(255,255,255,.78),
+     5px  5px 12px rgba(82,96,88,.17);
+  --neo-raised-sm:
+    -3px -3px 7px rgba(255,255,255,.76),
+     3px  3px 8px rgba(82,96,88,.15);
+  --neo-raised-lg:
+    -10px -10px 24px rgba(255,255,255,.80),
+     11px  11px 26px rgba(72,87,78,.20);
+  --neo-inset:
+    inset 3px 3px 7px rgba(82,96,88,.16),
+    inset -3px -3px 7px rgba(255,255,255,.74);
+  --neo-inset-soft:
+    inset 2px 2px 5px rgba(82,96,88,.13),
+    inset -2px -2px 5px rgba(255,255,255,.68);
+  --neo-etch-shadow: rgba(82,96,88,.18);
+  --neo-etch-highlight: rgba(255,255,255,.76);
+  --neo-focus: 0 0 0 3px rgba(119,217,155,.18), 0 0 18px rgba(119,217,155,.22);
+  --neo-danger: #c9564b;
+  --context-exact: #55c984;
+  --context-structural: #8db9a0;
+  --context-support: #d5aa4f;
+}
+
+/* Compact raised controls. */
+.chev, .reload-btn, .mobile-pane-toggle, .gran-help, .ctx-add,
+.cl-reset, .cl-hist-arrow, .insight-collapse, .chat-close,
+.chunk-help-x, .caching-q, .demo-intro-back {
+  border: 0;
+  background: var(--neo-surface);
+  color: #617068;
+  box-shadow: var(--neo-raised-sm);
+}
+.chev:hover:not(:disabled), .reload-btn:hover:not(:disabled),
+.mobile-pane-toggle:hover:not(:disabled), .gran-help:hover:not(:disabled),
+.ctx-add:hover:not(:disabled), .cl-reset:hover:not(:disabled),
+.cl-hist-arrow:hover:not(:disabled), .insight-collapse:hover:not(:disabled),
+.chat-close:hover:not(:disabled), .chunk-help-x:hover:not(:disabled),
+.caching-q:hover:not(:disabled), .demo-intro-back:hover:not(:disabled) {
+  border: 0;
+  background: var(--neo-surface);
+  color: #167945;
+  box-shadow: var(--neo-raised-sm), 0 0 14px rgba(119,217,155,.23);
+}
+.chev:active:not(:disabled), .reload-btn:active:not(:disabled),
+.mobile-pane-toggle:active:not(:disabled), .gran-help:active:not(:disabled),
+.ctx-add:active:not(:disabled), .cl-reset:active:not(:disabled),
+.cl-hist-arrow:active:not(:disabled), .insight-collapse:active:not(:disabled),
+.chat-close:active:not(:disabled), .chunk-help-x:active:not(:disabled),
+.caching-q:active:not(:disabled), .demo-intro-back:active:not(:disabled) {
+  transform: none;
+  box-shadow: var(--neo-inset-soft);
+}
+button:disabled, .proj-add.disabled { opacity: .42; cursor: default; filter: saturate(.5); }
+button:disabled { box-shadow: none; }
+
+/* Text inputs and editors are recessed work surfaces. */
+.chat-input, .ctx-search, .cl-edit-wrap {
+  border: 0;
+  background: var(--neo-surface);
+  color: var(--neo-ink);
+  box-shadow: var(--neo-inset);
+}
+.chat-input:focus, .ctx-search:focus {
+  border: 0;
+  outline: 0;
+  box-shadow: var(--neo-inset), var(--neo-focus);
+}
+.chat-input::placeholder, .ctx-search::placeholder, .filter::placeholder { color: #929c96; }
+.cl-edit-ta, .cl-edit-back { background: transparent; }
+
+/* Keep overflow surfaces inside the material system. Browser-native scrollbar
+   tracks can otherwise flash as opaque white gutters while dragging. The code
+   viewer and deliberately hidden rails keep their more specialized rules. */
+:where(
+  .proj-list,
+  .cl-pane-area,
+  .cl-scroll,
+  .chat-body,
+  .chat-bubble pre.chat-code,
+  .chat-input,
+  .ctx-list,
+  .refs-peek-list,
+  .project-overview,
+  .project-overview-shell,
+  .trace-scroll
+) {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(67, 74, 70, .58) transparent;
+}
+:where(
+  .proj-list,
+  .cl-pane-area,
+  .cl-scroll,
+  .chat-body,
+  .chat-bubble pre.chat-code,
+  .chat-input,
+  .ctx-list,
+  .refs-peek-list,
+  .project-overview,
+  .project-overview-shell,
+  .trace-scroll
+)::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+  background: transparent;
+}
+:where(
+  .proj-list,
+  .cl-pane-area,
+  .cl-scroll,
+  .chat-body,
+  .chat-bubble pre.chat-code,
+  .chat-input,
+  .ctx-list,
+  .refs-peek-list,
+  .project-overview,
+  .project-overview-shell,
+  .trace-scroll
+)::-webkit-scrollbar-track,
+:where(
+  .proj-list,
+  .cl-pane-area,
+  .cl-scroll,
+  .chat-body,
+  .chat-bubble pre.chat-code,
+  .chat-input,
+  .ctx-list,
+  .refs-peek-list,
+  .project-overview,
+  .project-overview-shell,
+  .trace-scroll
+)::-webkit-scrollbar-track-piece,
+:where(
+  .proj-list,
+  .cl-pane-area,
+  .cl-scroll,
+  .chat-body,
+  .chat-bubble pre.chat-code,
+  .chat-input,
+  .ctx-list,
+  .refs-peek-list,
+  .project-overview,
+  .project-overview-shell,
+  .trace-scroll
+)::-webkit-scrollbar-corner {
+  background: transparent;
+  box-shadow: none;
+}
+:where(
+  .proj-list,
+  .cl-pane-area,
+  .cl-scroll,
+  .chat-body,
+  .chat-bubble pre.chat-code,
+  .chat-input,
+  .ctx-list,
+  .refs-peek-list,
+  .project-overview,
+  .project-overview-shell,
+  .trace-scroll
+)::-webkit-scrollbar-thumb {
+  min-width: 28px;
+  min-height: 28px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(67, 74, 70, .58);
+  background-clip: padding-box;
+}
+:where(
+  .proj-list,
+  .cl-pane-area,
+  .cl-scroll,
+  .chat-body,
+  .chat-bubble pre.chat-code,
+  .chat-input,
+  .ctx-list,
+  .refs-peek-list,
+  .project-overview,
+  .project-overview-shell,
+  .trace-scroll
+)::-webkit-scrollbar-thumb:hover,
+:where(
+  .proj-list,
+  .cl-pane-area,
+  .cl-scroll,
+  .chat-body,
+  .chat-bubble pre.chat-code,
+  .chat-input,
+  .ctx-list,
+  .refs-peek-list,
+  .project-overview,
+  .project-overview-shell,
+  .trace-scroll
+)::-webkit-scrollbar-thumb:active {
+  background: rgba(50, 57, 53, .72);
+  background-clip: padding-box;
+}
+
+/* Chrome and Safari can paint their own pale autofill surface over themed
+   fields. Repaint that state with the same recessed material and ink. */
+:where(.filter, .ctx-search, .chat-input):-webkit-autofill,
+:where(.filter, .ctx-search, .chat-input):-webkit-autofill:hover,
+:where(.filter, .ctx-search, .chat-input):-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--neo-ink);
+  caret-color: var(--neo-ink);
+  -webkit-box-shadow: 0 0 0 1000px var(--neo-surface) inset, var(--neo-inset);
+}
+:where(.filter, .ctx-search, .chat-input):autofill {
+  color: var(--neo-ink);
+  background: var(--neo-surface);
+  box-shadow: 0 0 0 1000px var(--neo-surface) inset, var(--neo-inset);
+}
+
+/* Sliders and binary controls. */
+.slider-wrap input[type="range"]::-webkit-slider-runnable-track,
+.slider-wrap.gran input[type="range"]::-webkit-slider-runnable-track {
+  height: 5px;
+  border: 0;
+  background: rgba(101,116,107,.12);
+  box-shadow: inset 1px 1px 3px rgba(75,90,81,.20), inset -1px -1px 2px rgba(255,255,255,.70);
+}
+.slider-wrap input[type="range"]::-webkit-slider-thumb,
+.slider-wrap.gran input[type="range"]::-webkit-slider-thumb {
+  width: 15px; height: 15px; margin-top: -5px;
+  border: 3px solid var(--neo-surface);
+  background: var(--neo-accent);
+  box-shadow: 2px 2px 5px rgba(68,84,74,.26), -2px -2px 5px rgba(255,255,255,.86), 0 0 10px rgba(119,217,155,.54);
+}
+.slider-wrap input[type="range"]::-moz-range-track {
+  height: 5px; border: 0; background: rgba(101,116,107,.12); box-shadow: var(--neo-inset-soft);
+}
+.slider-wrap input[type="range"]::-moz-range-progress { background: var(--neo-accent); }
+.slider-wrap input[type="range"]::-moz-range-thumb {
+  width: 10px; height: 10px; border: 3px solid var(--neo-surface); background: var(--neo-accent);
+  box-shadow: 0 0 10px rgba(119,217,155,.54);
+}
+.switch, .chunk-switch-track, .chat-suggest-track {
+  border: 0;
+  background: rgba(102,117,108,.14);
+  box-shadow: inset 2px 2px 4px rgba(74,89,80,.20), inset -2px -2px 4px rgba(255,255,255,.65);
+}
+.switch.on, .chunk-switch.active .chunk-switch-track, .chat-suggest.active .chat-suggest-track {
+  border: 0;
+  background: #43b978;
+  box-shadow: inset 2px 2px 4px rgba(38,111,69,.23), inset -2px -2px 4px rgba(199,255,220,.31), 0 0 11px rgba(119,217,155,.42);
+}
+.switch .switch-knob, .chunk-switch-knob, .chat-suggest-knob {
+  background: var(--neo-surface-light);
+  box-shadow: 2px 2px 4px rgba(54,70,60,.27), -1px -1px 3px rgba(255,255,255,.9);
+}
+.chunk-switch, .chat-suggest { color: #69756e; }
+.chunk-switch:hover, .chunk-switch.active, .chat-suggest:hover, .chat-suggest.active { color: #167945; }
+
+/* Menus, popovers, dialogs, and the unified Insight rail. */
+.proj-menu, .ctx-menu, .modal, .chunk-help {
+  border: 0;
+  background: var(--neo-surface);
+  box-shadow: var(--neo-raised-lg);
+}
+.proj-menu, .ctx-menu { border-radius: 14px; }
+.proj-menu::before { border-color: transparent; background: var(--neo-surface); box-shadow: -2px -2px 4px rgba(255,255,255,.70); }
+.proj-list, .ctx-list { padding: 7px; }
+.proj-item, .ctx-item { border: 0; border-radius: 9px; background: transparent; }
+.proj-item:hover, .ctx-item:hover {
+  background: var(--neo-surface);
+  color: #167945;
+  box-shadow: var(--neo-raised-sm);
+}
+.proj-item.active {
+  background: var(--neo-surface);
+  box-shadow: var(--neo-inset-soft), inset 3px 0 var(--neo-accent);
+}
+.proj-item-main, .proj-remove { color: inherit; }
+.proj-add {
+  margin: 8px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--neo-surface);
+  box-shadow: var(--neo-inset);
+}
+.proj-add.drag-over { color: #167945; box-shadow: var(--neo-inset), var(--neo-focus); }
+.proj-pick-btn, .proj-preflight-confirm, .chunk-help-demo {
+  border: 0;
+  border-radius: 9px;
+  background: var(--neo-surface);
+  color: #167945;
+  box-shadow: var(--neo-raised-sm);
+}
+.proj-pick-btn:hover, .proj-preflight-confirm:hover:not(:disabled), .chunk-help-demo:hover {
+  background: var(--neo-surface); box-shadow: var(--neo-raised-sm), 0 0 15px rgba(119,217,155,.25);
+}
+.proj-pick-btn:active, .proj-preflight-confirm:active:not(:disabled), .chunk-help-demo:active { box-shadow: var(--neo-inset-soft); }
+.proj-preflight, .proj-settings { background: var(--neo-surface); }
+.proj-preflight-stats, .proj-preflight-types, .proj-coverage-warning {
+  border: 0; background: var(--neo-surface); box-shadow: var(--neo-inset-soft);
+}
+.proj-settings-clear, .proj-preflight-cancel {
+  border: 0; background: var(--neo-surface); color: #65716a; box-shadow: var(--neo-raised-sm);
+}
+.modal-overlay, .modal-overlay.dim, .modal-overlay.glass {
+  background: rgba(34,43,38,.20);
+  -webkit-backdrop-filter: blur(7px) saturate(108%); backdrop-filter: blur(7px) saturate(108%);
+}
+.modal, .chunk-help { border-radius: 20px; }
+.modal-title, .demo-intro-title { color: var(--neo-ink); letter-spacing: -.02em; }
+.modal-btn {
+  border: 0; border-radius: 9px; background: var(--neo-surface); box-shadow: var(--neo-raised-sm);
+}
+.modal-btn.ghost, .modal-btn.ghost:hover:not(:disabled) { background: var(--neo-surface); color: var(--neo-ink); }
+.modal-btn.primary, .modal-btn.primary:hover:not(:disabled) {
+  border: 0; background: #31a96a; color: #fff;
+  box-shadow: 4px 4px 9px rgba(51,83,63,.23), -3px -3px 8px rgba(255,255,255,.67), 0 0 13px rgba(119,217,155,.24);
+}
+.modal-btn.danger, .modal-btn.danger:hover:not(:disabled) {
+  border: 0; background: var(--neo-danger); color: #fff;
+  box-shadow: 4px 4px 9px rgba(103,58,51,.24), -3px -3px 8px rgba(255,255,255,.65);
+}
+.modal-btn:active:not(:disabled) { box-shadow: var(--neo-inset-soft); }
+.demo-intro-dot { background: rgba(95,109,101,.17); box-shadow: var(--neo-inset-soft); }
+.demo-intro-dot.on { background: var(--neo-accent); box-shadow: 0 0 9px rgba(119,217,155,.62); }
+.chunk-help-demo > span {
+  background: none;
+  color: #167945;
+  -webkit-background-clip: initial; background-clip: initial;
+  -webkit-text-fill-color: currentColor;
+}
+.demo-intro-list b, .chunk-help-caching, .refs-peek-name, .refs-peek-here { color: #167945; }
+.chunk-help-caching:hover { color: #0f6036; }
+.refs-peek {
+  border: 0;
+  background: var(--neo-surface);
+  box-shadow: var(--neo-raised-lg);
+}
+.refs-peek-name { background: rgba(72,179,112,.12); }
+.refs-peek-path { background: var(--neo-surface); }
+.refs-peek-foot { border-top-color: rgba(91,105,97,.10); }
+
+.insight-tabbar {
+  border: 0;
+  background: var(--neo-surface);
+  box-shadow: 0 7px 16px rgba(82,96,88,.09), inset 0 1px rgba(255,255,255,.70), inset 1px 0 rgba(255,255,255,.58);
+}
+.insight-tabbar button:not(.insight-collapse) {
+  align-self: center;
+  border: 0;
+  border-radius: 8px;
+  color: #6b7770;
+}
+.insight-tabbar button:not(.insight-collapse):hover { color: #167945; background: rgba(255,255,255,.27); }
+.insight-tabbar button.active {
+  border: 0; color: #167945; background: var(--neo-surface);
+  box-shadow: inset 2px 2px 5px rgba(82,96,88,.14), inset -2px -2px 5px rgba(255,255,255,.68);
+}
+.chat-panel, .folder-chat-panel, .chunk-list, .trace-panel {
+  border: 0;
+  background: var(--neo-surface);
+  box-shadow: inset 7px 0 14px rgba(82,96,88,.055), inset 1px 0 rgba(255,255,255,.66);
+}
+.chat-head, .chat-context, .cl-pane-head {
+  border-color: rgba(91,105,97,.09);
+  background: transparent;
+}
+.chat-body { background: var(--neo-surface); }
+.chat-input-row {
+  border-top: 0;
+  background: var(--neo-surface);
+  box-shadow: 0 -6px 14px rgba(82,96,88,.08), inset 0 1px rgba(255,255,255,.60);
+}
+.chat-input-row.editing { background: #e6eee8; box-shadow: var(--neo-inset-soft), 0 0 15px rgba(119,217,155,.12); }
+
+/* Conversation, references, and scope pills. */
+.chat-msg.user .chat-bubble {
+  background: #2b9d62;
+  color: #fff;
+  box-shadow: 4px 4px 9px rgba(51,83,63,.19), -3px -3px 8px rgba(255,255,255,.57), 0 0 14px rgba(119,217,155,.18);
+}
+.chat-msg.assistant .chat-bubble {
+  background: var(--neo-surface);
+  color: var(--neo-ink);
+  box-shadow: var(--neo-raised-sm);
+}
+.chat-bubble code { background: rgba(94,111,101,.12); color: #176e42; }
+.chat-send {
+  border: 0;
+  background: #31a96a;
+  color: #fff;
+  box-shadow: 4px 4px 9px rgba(51,83,63,.23), -3px -3px 8px rgba(255,255,255,.67), 0 0 13px rgba(119,217,155,.27);
+}
+.chat-send:hover:not(:disabled) { background: #29975d; box-shadow: 4px 4px 9px rgba(51,83,63,.23), -3px -3px 8px rgba(255,255,255,.67), 0 0 18px rgba(119,217,155,.42); }
+.chat-send:active:not(:disabled) { box-shadow: inset 3px 3px 7px rgba(35,92,58,.28), inset -2px -2px 5px rgba(174,244,199,.25); }
+.chat-deepen, .chat-ref, .ctx-chip {
+  border: 0;
+  background: var(--neo-surface);
+  color: #167945;
+  box-shadow: var(--neo-raised-sm);
+}
+.chat-deepen:hover, .chat-ref:hover { background: var(--neo-surface); box-shadow: var(--neo-raised-sm), 0 0 14px rgba(119,217,155,.22); }
+.chat-deepen.focused { border: 0; background: var(--neo-surface); box-shadow: var(--neo-inset-soft), 0 0 12px rgba(119,217,155,.24); }
+.ctx-chip-x { background: rgba(74,173,110,.14); color: #167945; }
+.ctx-chip-x:hover { background: rgba(74,173,110,.25); }
+.insight-prompt-list button {
+  border: 0;
+  background: var(--neo-surface);
+  color: #316b4b;
+  box-shadow: var(--neo-raised-sm);
+}
+.insight-prompt-list button:hover { border: 0; background: var(--neo-surface); color: #167945; box-shadow: var(--neo-raised-sm), 0 0 14px rgba(119,217,155,.20); }
+.chat-msg-error, .viewer-error-banner {
+  border: 0;
+  background: #eee5e3;
+  color: #9b453d;
+  box-shadow: inset 3px 3px 7px rgba(119,73,67,.11), inset -3px -3px 7px rgba(255,255,255,.61);
+}
+
+/* Trace, references, drawers, and empty/loading states. */
+.context-map-path {
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+}
+.context-map-path > div { min-height: 0; padding: 0; border-bottom: 0; }
+.refs-peek-empty {
+  border: 0;
+  background: var(--neo-surface);
+  box-shadow: var(--neo-inset-soft);
+}
+.refs-peek-row {
+  border: 0;
+  border-radius: 9px;
+  background: var(--neo-surface);
+  box-shadow: var(--neo-raised-sm);
+}
+.refs-peek-row:hover { background: var(--neo-surface); color: #167945; box-shadow: var(--neo-raised-sm), 0 0 13px rgba(119,217,155,.20); }
+.refs-kind { border: 0; background: rgba(81,113,94,.10); color: #39654c; }
+.refs-kind.definition { color: #17683e; background: rgba(85,201,132,.18); }
+.refs-kind.call { color: #216845; background: rgba(85,201,132,.12); }
+.refs-kind.import { color: #86661f; background: rgba(213,170,79,.16); }
+.refs-kind.text { color: #68736d; background: rgba(105,119,111,.10); }
+.chat-sel, .chat-msg-scope, .chat-ctx-chunk, .chat-inline-ref,
+.chat-inline-ref.code, .chat-deepen-hint-mark, .cl-pane-for, .cl-hist-chunk {
+  color: #167945;
+}
+.chat-inline-ref.code { background: rgba(85,201,132,.11); }
+.chat-inline-ref.code:hover { background: rgba(85,201,132,.20); }
+.chat-deepen-hint-mark { border-bottom-color: rgba(85,201,132,.50); }
+.cl-pane { background: transparent; }
+.chunk-list::after { background: rgba(91,105,97,.10); box-shadow: 0 1px rgba(255,255,255,.55); }
+.cl-edit-wrap, .cl-hist-card {
+  border: 0;
+  border-radius: 10px;
+  background: var(--neo-surface);
+}
+.cl-hist-card { box-shadow: var(--neo-raised-sm); }
+.cl-edit-wrap { box-shadow: var(--neo-inset); }
+.cl-edit-add { background: rgba(119,217,155,.20); }
+.cl-edit-dot, .mod-dot, .ln-dot { background: var(--neo-accent); box-shadow: 0 0 8px rgba(119,217,155,.55); }
+.cl-pane-empty, .lib-empty {
+  color: #7b8780;
+  border-radius: 12px;
+  box-shadow: var(--neo-inset-soft);
+}
+.viewer-loading, .project-loading-state .empty-spinner {
+  border: 0;
+  background: var(--neo-surface);
+  box-shadow: var(--neo-raised-sm);
+}
+.empty-spinner { border-color: rgba(95,111,101,.17); border-top-color: var(--neo-accent); }
+.empty-workspace-steps span, .workspace-error-state {
+  border: 0;
+  background: var(--neo-surface);
+  box-shadow: var(--neo-raised-sm);
+}
+.workspace-error-state.quiet { box-shadow: var(--neo-inset-soft); }
+.lib-project { border-color: transparent; }
+.crumb {
+  border: 0; border-radius: 7px; background: transparent; color: var(--neo-ink);
+}
+.crumb:hover { background: var(--neo-surface); color: #167945; box-shadow: var(--neo-raised-sm); }
+.mobile-pane-toggle.active { border: 0; color: #167945; background: var(--neo-surface); box-shadow: var(--neo-inset-soft); }
+.viewer-body,
+.code-scroll {
+  background: var(--neo-surface);
+}
+
+/* Etched seams are reserved for structural boundaries. They use the same
+   recessed dark/light pair as the short divider beside the wordmark; cards and
+   ordinary controls keep their soft elevation instead of acquiring outlines. */
+.workspace-topbar .brand::after {
+  content: none;
+}
+.workspace-resizer {
+  background: transparent;
+  box-shadow: none;
+}
+.explorer-resizer {
+  width: 0;
+  flex: 0 0 0;
+}
+.explorer-resizer::before {
+  content: "";
+  position: absolute;
+  inset: 0 -4px;
+  cursor: col-resize;
+}
+.explorer-resizer::after { content: none; }
+.explorer-pane-head {
+  background: var(--surface-subtle);
+  box-shadow: none;
+}
+.overview-metrics > div {
+  position: relative;
+  border-right: 0;
+}
+.overview-metrics > div:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 18%;
+  right: -1px;
+  bottom: 18%;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--neo-surface);
+  box-shadow:
+    inset 1px 0 1px var(--neo-etch-shadow),
+    1px 0 1px var(--neo-etch-highlight);
+}
+.overview-section-head,
+.cl-pane-head {
+  position: relative;
+  border-bottom: 0;
+  box-shadow:
+    inset 0 -1px 1px var(--neo-etch-shadow),
+    0 1px 1px var(--neo-etch-highlight);
+}
+.chat-head,
+.chat-context {
+  position: relative;
+  border: 0;
+  box-shadow: none;
+}
+.chat-head {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.10), rgba(82,96,88,.035)),
+    var(--surface-subtle);
+  box-shadow: none;
+}
+.chat-context {
+  background:
+    linear-gradient(180deg, rgba(82,96,88,.025), rgba(255,255,255,.06)),
+    var(--surface-subtle);
+  box-shadow: 0 5px 12px rgba(82,96,88,.035);
+}
+.chat-panel.folder-chat-panel > .chat-head {
+  border-bottom: 0;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.10), rgba(82,96,88,.035)),
+    var(--surface-subtle);
+  box-shadow: 0 5px 12px rgba(82,96,88,.035);
+}
+.overview-insight {
+  position: relative;
+}
+.overview-insight::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  border-radius: 0;
+  background: var(--neo-surface);
+  box-shadow:
+    inset 1px 0 1px rgba(82,96,88,.14),
+    1px 0 1px rgba(255,255,255,.42);
+}
+.insight-tabbar {
+  justify-content: flex-end;
+  box-shadow: inset 0 1px rgba(255,255,255,.70);
+}
+.viewer-toolbar {
+  padding: 0;
+  border-inline: 0;
+  border-bottom: 0;
+  box-shadow: none;
+}
+.toolbar-top {
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--surface-subtle);
+  background: transparent;
+  box-shadow: none;
+}
+.scope-ledger {
+  box-sizing: border-box;
+  padding-inline: 14px;
+}
+.workspace-statusbar > span {
+  position: relative;
+  border-right: 0;
+}
+.workspace-statusbar > span:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 20%;
+  right: -1px;
+  bottom: 20%;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--neo-surface);
+  box-shadow:
+    inset 1px 0 1px var(--neo-etch-shadow),
+    1px 0 1px var(--neo-etch-highlight);
+}
+
+/* Tablet: preserve code width and use Insight as a right-side sheet. */
+@media (max-width: 1179px) {
+  .workspace-explorer { width: 250px !important; min-width: 250px; max-width: 250px; }
+  .workspace-resizer, .insight-resizer { display: none; }
+  .viewer-body.insight-open .code-scroll { margin-right: 0; max-width: 100%; }
+  .viewer-body.insight-open::before, .viewer-body.insight-open::after { right: 0; }
+  .insight-tabbar, .chat-panel, .chunk-list, .trace-panel { width: min(400px, 48vw); box-shadow: -14px 0 34px rgba(31,41,55,.14); }
+  .project-overview-shell { grid-template-columns: minmax(0,1fr) min(360px,38vw); }
+  .overview-grid { grid-template-columns: 1fr; }
+}
+
+/* Mobile: one primary surface at a time. Explorer and Insight become sheets. */
+@media (max-width: 767px) {
+  :root { --topbar-size: 56px; --statusbar-size: 30px; }
+  .workspace-topbar { height: var(--topbar-size); flex-basis: var(--topbar-size); padding: 0 9px; gap: 7px; }
+  .workspace-topbar .brand { height: 32px; padding-right: 9px; }
+  .workspace-topbar h1 { font-size: 14px; }
+  .workspace-topbar .logo svg { width: 16px; height: 16px; }
+  .mobile-pane-toggle { display: inline-flex; align-items: center; height: 32px; padding: 0 8px; border: 0; border-radius: 8px; background: var(--neo-surface); color: var(--text-secondary); font-size: 10.5px; box-shadow: var(--neo-raised-sm); }
+  .mobile-pane-toggle.active { color: #167945; border: 0; background: var(--neo-surface); box-shadow: var(--neo-inset-soft); }
+  .service-state, .topbar-right .text-btn { display: none; }
+  .workspace-topbar .proj-switch { margin-left: auto; max-width: 47vw; }
+  .workspace-topbar .proj-stack-tab:not(.proj-current) { display: none; }
+  .workspace-topbar .proj-current { max-width: 125px; }
+  .workspace-topbar .proj-current-remove, .proj-context-btn span:last-child { display: none; }
+  .proj-context-icon { display: inline; }
+  .proj-context-btn { width: 32px; padding: 0; justify-content: center; }
+  .workspace-topbar .proj-chooser { width: 32px; padding: 0; }
+  .workspace-topbar .proj-chooser-label { display: none; }
+  .workspace-topbar .proj-menu { position: fixed; top: var(--topbar-size); left: 8px; right: 8px; width: auto; max-width: none; }
+  .workspace-explorer {
+    position: fixed; top: var(--topbar-size); bottom: var(--statusbar-size); left: 0; z-index: var(--z-sheet);
+    width: min(88vw, 330px) !important; min-width: 0; max-width: none;
+    transform: translateX(-102%); transition: transform .2s ease; box-shadow: 12px 0 28px rgba(72,87,78,.20), inset 1px 0 rgba(255,255,255,.62);
+  }
+  .workspace-body.explorer-open .workspace-explorer { transform: translateX(0); }
+  .project-overview-shell { display: block; overflow-y: auto; }
+  .project-overview { overflow: visible; padding: 28px 20px; }
+  .overview-insight { margin: 0 14px 24px; border: 0; border-radius: 11px; box-shadow: var(--neo-raised-sm); }
+  .overview-insight::before { display: none; }
+  .overview-metrics { grid-template-columns: 1fr; }
+  .overview-metrics > div:not(:last-child)::after {
+    top: auto;
+    right: 18px;
+    bottom: -1px;
+    left: 18px;
+    width: auto;
+    height: 2px;
+    box-shadow:
+      inset 0 1px 1px var(--neo-etch-shadow),
+      0 1px 1px var(--neo-etch-highlight);
+  }
+  .empty-workspace, .workspace-error-state { padding: 26px 20px; }
+  .empty-workspace-steps { flex-direction: column; align-items: center; }
+  .toolbar-top, .scope-ledger { padding-inline: 10px; }
+  .scope-ledger { margin-inline: -2px; }
+  .chunk-switch-label { display: none; }
+  .insight-tabbar, .chat-panel, .chunk-list, .trace-panel { width: 100%; box-shadow: none; }
+  .insight-tabbar { z-index: 20; }
+  .chat-panel, .chunk-list, .trace-panel { z-index: 18; }
+  .chat-panel.folder-chat-panel { width: 100vw; max-width: none; }
+  .workspace-statusbar { padding-inline: 4px; }
+  .workspace-statusbar > span { padding-inline: 7px; }
+}
+
+@media (max-width: 480px) {
+  .workspace-topbar .brand::after { display: none; }
+  .workspace-topbar h1 { display: none; }
+  .workspace-topbar .brand { padding-right: 0; }
+  .vt-path { max-width: 52vw; }
+  .insight-tabbar-title { display: none; }
+  .insight-tabbar { justify-content: space-between; }
+  .insight-tabbar button { padding-inline: 6px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app::before, .topbar { animation: none !important; }
+  .workspace-explorer { transition: none; }
+  .status-primary.busy > i { animation: none; }
+}
+
+.privacy-link { border: 0; padding: 4px 0; background: transparent; color: inherit; font: inherit; font-size: 11px; cursor: pointer; }
+.privacy-link:hover { text-decoration: underline; }
+.privacy-dialog { box-sizing: border-box; width: min(580px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); padding: 28px; border: 1px solid var(--border); border-radius: 14px; background: var(--panel); color: var(--text); }
+.privacy-dialog::backdrop { background: rgba(20, 30, 27, .4); }
+.privacy-dialog h2 { margin: 0 32px 20px 0; font-size: 22px; }
+.privacy-dialog p { font-size: 14px; line-height: 1.6; }
+.privacy-close { position: absolute; top: 16px; right: 16px; width: 28px; height: 28px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: inherit; font-size: 22px; cursor: pointer; }
+.privacy-close:hover { border-color: currentColor; }
+
+.licenses-dialog pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 1.6; text-align: left; }
+
+.workspace-topbar .proj-chooser,
+.workspace-topbar .proj-chooser:hover,
+.workspace-topbar .proj-chooser.sandbox-locked,
+.workspace-topbar .proj-chooser.sandbox-locked:disabled { background: transparent; box-shadow: none; border-color: transparent; }
+
+.workspace-topbar .proj-context-btn,
+.workspace-topbar .proj-context-btn:hover,
+.workspace-topbar .proj-context-btn.active,
+.workspace-topbar .proj-context-btn:active { width: auto; min-height: 0; padding: 4px 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; color: inherit; font: inherit; font-size: 11px; transform: none; }
+.workspace-topbar .proj-context-btn:hover { text-decoration: underline; }
+.topbar-separator { font-size: 11px; opacity: .55; }
