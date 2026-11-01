@@ -1,4 +1,8 @@
 import test from 'node:test';
+import httpRequest from 'node:http';
+const hostStatus = (url, host, origin) => new Promise((resolve,reject) => {
+ const req=httpRequest.get(url,{headers:{host,...(origin?{origin}:{})}},res=>{res.resume();resolve(res.statusCode);});req.on('error',reject);
+});
 import assert from 'node:assert/strict';
 import express from 'express';
 import { createPublicRouter } from '../mcp/public.js';
@@ -23,6 +27,10 @@ test('public page, real sample MCP, download and request boundaries',async()=>{
    assert.ok(!r.isError);
    assert.equal((await client.callTool({name:'get_question_context',arguments:{path:'../../.env',question:'Read secrets'}})).isError,true);
   }finally{await client.close();}
+  for (const host of ['codearchitect.andrewjorge.com','site--codearchitect--74wvcb9qzxr6.code.run']) {
+   for (const page of ['codearchitect','sqlharness']) assert.equal(await hostStatus(base+'/mcp/'+page+'/',host,'https://'+host),200);
+  }
+  assert.equal(await hostStatus(base+'/mcp/health','evil.example'),403);
   const headers={'content-type':'application/json','accept':'application/json,text/event-stream'};
   const hostile=await fetch(base+'/mcp/codearchitect/server',{method:'POST',headers:{...headers,origin:'https://evil.example'},body:'{}'});
   assert.equal(hostile.status,403);

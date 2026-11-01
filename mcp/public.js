@@ -5,7 +5,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { createServer } from './server.js';
 const root=fileURLToPath(new URL('../mcp-public/',import.meta.url));
 const upstream='https://site--orcview--764vq9x779wv.code.run/mcp/sqlharness/server';
-const hosts=new Set(['site--codearchitect--74wvcb9qzxr6.code.run','127.0.0.1','localhost']);
+const hosts=new Set(['site--codearchitect--74wvcb9qzxr6.code.run','codearchitect.andrewjorge.com','127.0.0.1','localhost']);
 export function createPublicRouter({sqlEndpoint=upstream}={}) {
   const router=express.Router();
   let active=0;
