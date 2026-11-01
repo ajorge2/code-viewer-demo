@@ -7,6 +7,7 @@ import {
   setProjectBareWindow,
 } from './lib/api.js'
 import Library from './components/Library.jsx'
+import GrainTextSoftening from './components/GrainTextSoftening.jsx'
 import CodeViewer from './components/CodeViewer.jsx'
 import ProjectSwitcher from './components/ProjectSwitcher.jsx'
 import { humanizeError } from './lib/humanizeError.js'
@@ -87,9 +88,9 @@ export default function App() {
   const [explorerWidth, setExplorerWidth] = useState(() => {
     try {
       const saved = Number(localStorage.getItem('cv:explorerWidth'))
-      return Number.isFinite(saved) && saved >= 232 && saved <= 380 ? saved : 288
+      return Number.isFinite(saved) && saved >= 232 && saved <= 380 ? saved : 320
     } catch {
-      return 288
+      return 320
     }
   })
   const projectSwitcherRef = useRef(null)
@@ -416,6 +417,7 @@ export default function App() {
 
   return (
     <div className="app" style={{ '--statusbar-size': showStatusbar ? '26px' : '0px' }}>
+      <GrainTextSoftening />
       <header className="topbar workspace-topbar">
         <div className="brand-area">
         <div className="brand">

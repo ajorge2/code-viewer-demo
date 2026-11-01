@@ -207,7 +207,8 @@ export default function Library({
   }, [scoped, filter])
 
   // Breadcrumb segments for the header: the project root plus each cwd part.
-  const rootName = projectDir ? projectDir.replace(/^.*\//, '') : '…'
+  const directoryName = projectDir ? projectDir.replace(/^.*\//, '') : '…'
+  const rootName = directoryName === 'codearchitect-publish' ? 'codearchitect-source' : directoryName
   const cwdParts = cwd ? cwd.split('/') : []
 
   // Folder chat — scoped to the current directory (cwd). Each folder keeps its own

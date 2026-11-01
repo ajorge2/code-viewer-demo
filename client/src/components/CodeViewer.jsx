@@ -21,18 +21,18 @@ function segOffset(node, offsetInNode) {
 // Subtle alternating bands so consecutive chunks are visually distinct while
 // staying inside the workbench's evidence-green / support-amber vocabulary.
 const BANDS = [
-  'rgba(79,145,107,0.11)',  // structural context — sage
+  'rgba(95,140,0,0.11)',  // structural context — sage
   'rgba(205,164,67,0.11)',  // supporting context — amber
 ]
 const bandFor = (i) => BANDS[i % BANDS.length]
 // Selected = the same hue but VIVID — no longer dusty — and a bit brighter, so the
 // picked chunk clearly pops out of the muted unselected bands. Higher alpha lets
 // the saturated hue read through instead of washing toward grey.
-const BANDS_SELECTED = ['rgba(82,190,124,0.21)']
+const BANDS_SELECTED = ['rgba(95,140,0,0.21)']
 const bandSelectedFor = (i) => BANDS_SELECTED[i % BANDS_SELECTED.length]
 // The user's own highlighted range — persists (over the code, and over any chunk
 // bands) until they drag a new selection. Uses the live evidence accent.
-const USER_HL = 'rgba(119, 217, 155, 0.27)'
+const USER_HL = 'rgba(95,140,0, 0.27)'
 // Trace list hover preview. This temporarily wins over USER_HL only where the
 // hovered structural chunk overlaps the user's exact selection.
 const TRACE_HOVER_HL = 'rgba(166, 76, 114, 0.30)'
@@ -40,10 +40,10 @@ const TRACE_HOVER_HL = 'rgba(166, 76, 114, 0.30)'
 // One vertical color cycle for the line-number gutter. Raspberry bridges the
 // bright lime back into green so long files can repeat without a hard jump.
 const LINE_NUMBER_STOPS = [
-  [63, 191, 145],  // green
-  [183, 239, 105], // lime
+  [95, 140, 0],    // olive green
+  [95, 140, 0],    // olive green
   [166, 76, 114],  // raspberry
-  [63, 191, 145],  // green again for a seamless repeat
+  [95, 140, 0],    // olive green again for a seamless repeat
 ]
 const LINE_NUMBER_CYCLE = 96
 function lineNumberColor(index) {
@@ -72,7 +72,7 @@ function splitSegByHighlight(s, hs, he) {
 }
 // Glossy per-band gradients (light → deep, same muted hue) for the legend dots.
 const DOT_GRADS = [
-  'linear-gradient(135deg, #a5e2b8, #3f9867)', // evidence green
+  'linear-gradient(135deg, #a5e2b8, #5F8C00)', // evidence green
   'linear-gradient(135deg, #dcca8a, #a8893f)', // support amber
 ]
 const dotGradFor = (i) => DOT_GRADS[i % DOT_GRADS.length]
@@ -1343,7 +1343,6 @@ export default function CodeViewer({
         document.body,
       )}
 
-      {loading && <div className="viewer-loading">Resolving context…</div>}
       {viewerError && <div className="viewer-error-banner">{viewerError}</div>}
     </div>
   )
