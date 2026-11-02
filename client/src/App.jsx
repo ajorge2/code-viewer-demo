@@ -512,20 +512,12 @@ export default function App() {
         <div className="workspace-resizer explorer-resizer" onPointerDown={beginExplorerResize} role="separator" aria-label="Resize Explorer" />
         <main className="stage workspace-stage">
           {!loaded ? (
-            <div className="project-loading-state">
+            <div className="project-loading-state" role="status" aria-label="Loading workspace">
               <span className="empty-spinner" aria-hidden="true" />
-              <div>
-                <strong>Preparing workspace</strong>
-                <span>Scanning supported source files and checking coverage…</span>
-              </div>
             </div>
           ) : projectLoading ? (
-            <div className="project-loading-state">
+            <div className="project-loading-state" role="status" aria-label="Loading workspace">
               <span className="empty-spinner" aria-hidden="true" />
-              <div>
-                <strong>{loadingName ? `Reading ${loadingName}` : 'Reading project'}</strong>
-                <span>Filtering generated files and building the structural index…</span>
-              </div>
             </div>
           ) : startupError ? (
             <div className="workspace-error-state">
